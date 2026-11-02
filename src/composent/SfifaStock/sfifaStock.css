@@ -1,0 +1,106 @@
+.sfifa-table-panel { min-width: 0; overflow: hidden; border: 1px solid #d8e2ef; border-radius: 18px; background: #fff; }
+.sfifa-table-hint { padding: 12px 16px; border-bottom: 1px solid #d8e2ef; background: #f3f7ff; color: #52627a; font-size: 12px; }
+.sfifa-table-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.sfifa-stock-table { width: 100%; min-width: 1000px; border-spacing: 0; border-collapse: separate; text-align: start; font-size: 13px; }
+.sfifa-stock-table th, .sfifa-stock-table td { padding: 15px; text-align: start; vertical-align: middle; border-bottom: 1px solid #e5ebf4; }
+.sfifa-stock-table thead th { background: #eaf1ff; color: #34517f; white-space: nowrap; font-size: 12px; }
+.sfifa-stock-table tbody tr { --sfifa-row-bg: #fff; background: var(--sfifa-row-bg); }
+.sfifa-stock-table tbody tr:nth-child(even) { --sfifa-row-bg: #f7f9fd; }
+.sfifa-stock-table tbody tr:hover { --sfifa-row-bg: #eef4ff; }
+.sfifa-stock-table tbody tr:last-child > * { border-bottom: 0; }
+.sfifa-table-code { max-width: 180px; font-size: 17px; }
+.sfifa-table-quantity { color: #047857; font-size: 19px; font-weight: 700; white-space: nowrap; }
+.sfifa-width-badge { display: inline-block; padding: 7px 10px; border-radius: 8px; font-weight: 700; white-space: nowrap; }
+.sfifa-width-badge.is-thin { background: #f2eafe; color: #6d28d9; }
+.sfifa-width-badge.is-thick { background: #e8f1ff; color: #1d4ed8; }
+.sfifa-table-barcode { display: block; user-select: all; color: #52627a; font: 11px Consolas, monospace; }
+.sfifa-barcode-button { display: inline-flex; align-items: center; gap: 6px; margin-top: 7px; min-height: 36px; color: #2454c3; font-size: 12px; font-weight: 700; }
+.sfifa-stock-table .sfifa-table-actions { position: sticky; inset-inline-end: 0; min-width: 176px; width: 176px; background: var(--sfifa-row-bg, #eaf1ff); border-inline-start: 1px solid #d8e2ef; z-index: 1; }
+.sfifa-table-actions > div { display: flex; flex-wrap: wrap; gap: 7px; }
+.sfifa-action { display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 8px 10px; min-height: 40px; border: 1px solid #d8e2ef; border-radius: 9px; color: #42536e; background: #fff; font-weight: 700; font-size: 12px; }
+.sfifa-action.is-blue { width: 100%; }
+.sfifa-action.is-danger { color: #be123c; background: #fff1f2; border-color: #fecdd3; }
+.sfifa-inventory button, .sfifa-dialog button { cursor: pointer; }
+.sfifa-inventory button:disabled, .sfifa-dialog button:disabled { cursor: default; opacity: .5; }
+.sfifa-inventory button:focus-visible, .sfifa-table-scroll:focus-visible, .sfifa-dialog button:focus-visible { outline: 3px solid #93b4fc; outline-offset: 3px; }
+.sfifa-dialog { position: fixed; inset: 0; margin: auto; width: min(540px, calc(100dvw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 22px; border: 1px solid #d8e2ef; border-radius: 20px; background: #fff; color: #17243d; box-shadow: 0 20px 70px #14284a40; }
+.sfifa-dialog::backdrop { background: #101d3999; backdrop-filter: blur(2px); }
+.sfifa-dialog header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+.sfifa-dialog h2 { font-size: 20px; line-height: 1.7; font-weight: 700; }
+.sfifa-dialog header p, .sfifa-restock-input p { margin-top: 6px; color: #60718b; font-size: 12px; line-height: 1.9; }
+.sfifa-dialog header button { padding: 7px; border-radius: 8px; }
+.sfifa-dialog footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.sfifa-dialog footer button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 1px solid #d8e2ef; border-radius: 11px; padding: 11px 16px; font-size: 13px; font-weight: 700; }
+.sfifa-inventory .is-blue, .sfifa-dialog .is-blue { background: #2563eb; color: #fff; border-color: #2563eb; }
+.sfifa-inventory .is-blue:hover, .sfifa-dialog .is-blue:hover { background: #1d4ed8; }
+.sfifa-dialog .is-danger-solid { background: #e11d48; color: #fff; border-color: #e11d48; }
+.sfifa-balance-preview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+.sfifa-balance-preview > div { padding: 14px; background: #f0f5ff; border: 1px solid #dbe6ff; border-radius: 12px; }
+.sfifa-balance-preview dt { color: #52627a; font-size: 12px; }
+.sfifa-balance-preview dd { margin-top: 5px; color: #1d4ed8; font-size: 22px; font-weight: 700; overflow-wrap: anywhere; }
+.sfifa-restock-input label { display: block; margin-bottom: 9px; font-size: 14px; font-weight: 700; }
+.sfifa-restock-input input { width: 100%; border: 1px solid #ccd8ea; border-radius: 12px; background: #fff; padding: 12px; color: #17243d; outline: none; font-size: 17px; }
+.sfifa-restock-input input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px #2563eb1a; }
+.sfifa-delete-warning { padding: 15px; border: 1px solid #fecdd3; border-radius: 12px; color: #9f1239; background: #fff1f2; font-size: 14px; line-height: 2; }
+.sfifa-dialog-error { margin-top: 18px; padding: 13px; border-radius: 11px; color: #be123c; background: #fff1f2; font-size: 13px; line-height: 1.8; }
+.sfifa-dialog-error button { margin-top: 7px; font-weight: 700; text-decoration: underline; }
+.sfifa-label-preview { padding: 15px; border-radius: 13px; background: #eef2f8; }
+[data-sfifa-barcode] svg { display: block; max-width: 100%; height: auto; margin-inline: auto; }
+.dark .sfifa-table-panel, .dark .sfifa-dialog { background: #162136; border-color: #30415d; color: #f0f5ff; }
+.dark .sfifa-table-hint { color: #acbdd5; background: #1c2b45; border-color: #30415d; }
+.dark .sfifa-stock-table thead th { color: #c0d5ff; background: #1c3159; }
+.dark .sfifa-stock-table th, .dark .sfifa-stock-table td { border-color: #30415d; }
+.dark .sfifa-stock-table tbody tr { --sfifa-row-bg: #162136; }
+.dark .sfifa-stock-table tbody tr:nth-child(even) { --sfifa-row-bg: #19273f; }
+.dark .sfifa-stock-table tbody tr:hover { --sfifa-row-bg: #213658; }
+.dark .sfifa-stock-table .sfifa-table-actions { border-color: #30415d; }
+.dark .sfifa-stock-table thead .sfifa-table-actions { background: #1c3159; }
+.dark .sfifa-table-quantity { color: #6ee7b7; }
+.dark .sfifa-table-barcode, .dark .sfifa-dialog header p, .dark .sfifa-restock-input p, .dark .sfifa-balance-preview dt { color: #acbdd5; }
+.dark .sfifa-barcode-button, .dark .sfifa-balance-preview dd { color: #b6cfff; }
+.dark .sfifa-action:not(.is-blue) { border-color: #3a4e6e; background: #22324b; color: #d5e2f9; }
+.dark .sfifa-action.is-danger, .dark .sfifa-delete-warning, .dark .sfifa-dialog-error { color: #ffb0c2; background: #4b1d31; border-color: #78334d; }
+.dark .sfifa-balance-preview > div { background: #1c3159; border-color: #3a5685; }
+.dark .sfifa-restock-input input { background: #0d1525; border-color: #3a4e6e; color: #f0f5ff; }
+.dark .sfifa-dialog footer button { border-color: #3a4e6e; }
+.dark .sfifa-label-preview { background: #0d1525; }
+@media (max-width: 480px) { .sfifa-dialog { padding: 17px; } .sfifa-dialog h2 { font-size: 18px; } .sfifa-stock-table .sfifa-table-actions { min-width: 155px; width: 155px; padding: 10px; } .sfifa-balance-preview dd { font-size: 20px; } }
+.sfifa-action.is-history { width: 100%; color: #2454c3; background: #edf3ff; border-color: #c8d8fc; }
+.sfifa-history-dialog { padding: 0; width: min(850px, calc(100dvw - 24px)); overflow: hidden; }
+.sfifa-history-dialog[open] { display: flex; flex-direction: column; }
+.sfifa-history-dialog > header { flex-shrink: 0; padding: 20px 22px; margin: 0; border-bottom: 1px solid #d8e2ef; }
+.sfifa-history-dialog h2 { display: flex; align-items: center; gap: 8px; }
+.sfifa-history-body { min-height: 0; padding: 20px 22px; overflow-y: auto; overscroll-behavior: contain; }
+.sfifa-history-dialog > footer { flex-shrink: 0; margin: 0; padding: 14px 22px; border-top: 1px solid #d8e2ef; }
+.sfifa-history-summary { margin-bottom: 16px; }
+.sfifa-history-summary dd { font-size: 23px; }
+.sfifa-history-hint, .sfifa-history-note { margin-bottom: 13px; color: #60718b; font-size: 12px; line-height: 1.9; }
+.sfifa-history-note { padding: 10px 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; color: #92400e; }
+.sfifa-history-scroll { width: 100%; overflow-x: auto; border: 1px solid #d8e2ef; border-radius: 13px; }
+.sfifa-history-table { width: 100%; min-width: 570px; border-spacing: 0; border-collapse: separate; text-align: start; font-size: 13px; }
+.sfifa-history-table th, .sfifa-history-table td { padding: 15px 13px; text-align: start; border-bottom: 1px solid #e5ebf4; vertical-align: middle; }
+.sfifa-history-table thead th { background: #edf3ff; color: #34517f; font-size: 12px; white-space: nowrap; }
+.sfifa-history-table tbody tr:nth-child(even) { background: #f7f9fd; }
+.sfifa-history-table tbody tr:last-child td { border-bottom: 0; }
+.sfifa-history-table time { display: block; white-space: nowrap; }
+.sfifa-history-table time small { display: block; margin-top: 5px; color: #60718b; font-size: 11px; }
+.sfifa-history-meters { color: #047857; font-weight: 700; white-space: nowrap; font-size: 17px; }
+.sfifa-history-worker { min-width: 135px; max-width: 200px; overflow-wrap: anywhere; }
+.sfifa-source-badge { display: inline-flex; align-items: center; gap: 5px; padding: 7px 10px; border-radius: 8px; font-weight: 700; font-size: 12px; white-space: nowrap; }
+.sfifa-source-badge.is-manual { background: #e8f1ff; color: #1d4ed8; }
+.sfifa-source-badge.is-worker { background: #f2eafe; color: #6d28d9; }
+.sfifa-history-empty { padding: 28px 10px; text-align: center; color: #60718b; font-size: 14px; line-height: 1.9; }
+.sfifa-history-scroll-hint { display: none; margin-bottom: 12px; font-size: 12px; color: #52627a; line-height: 1.9; }
+.sfifa-history-scroll:focus-visible { outline: 3px solid #93b4fc; outline-offset: 3px; }
+.dark .sfifa-action.is-history { color: #b6cfff; border-color: #3a5685; background: #1c3159; }
+.dark .sfifa-history-dialog > header, .dark .sfifa-history-dialog > footer, .dark .sfifa-history-scroll, .dark .sfifa-history-table td, .dark .sfifa-history-table th { border-color: #30415d; }
+.dark .sfifa-history-table thead th { background: #1c3159; color: #c0d5ff; }
+.dark .sfifa-history-table tbody tr:nth-child(even) { background: #19273f; }
+.dark .sfifa-history-table time small, .dark .sfifa-history-hint, .dark .sfifa-history-empty { color: #acbdd5; }
+.dark .sfifa-history-meters { color: #6ee7b7; }
+.dark .sfifa-history-scroll-hint { color: #acbdd5; }
+.dark .sfifa-source-badge.is-manual { background: #1c3159; color: #b6cfff; }
+.dark .sfifa-source-badge.is-worker { background: #35255d; color: #d8b4fe; }
+.dark .sfifa-history-note { background: #3e3015; color: #fde68a; border-color: #665326; }
+@media (max-width: 480px) { .sfifa-history-dialog > header, .sfifa-history-body, .sfifa-history-dialog > footer { padding: 16px; } .sfifa-history-summary > div { padding: 11px; } .sfifa-history-summary dd { font-size: 20px; } }
+@media (max-width: 600px) { .sfifa-history-scroll-hint { display: block; } }

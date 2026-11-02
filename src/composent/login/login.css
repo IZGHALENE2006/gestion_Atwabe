@@ -1,0 +1,10 @@
+.drt{
+    transition-duration: 1s;
+    transition: 1s;
+    animation: 1s;
+}
+.drt:hover {
+    transition-duration: 0.5s;
+    transition: 0.5s;
+    animation: 0.5s;
+}

@@ -1,0 +1,81 @@
+/* Fonts o Global Styles */
+@import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;600;700;900&display=swap');
+
+.caise {
+    font-family: "Saira", sans-serif;
+    overflow-x: hidden;
+    background-color: var(--color-slate-50, #eef2f6);
+    font-family: "Saira", sans-serif;
+    
+    /* Slate-50 fati7 */
+}
+
+/* Style dial l-Cards f l-Header */
+.CaisseCard {
+    position: relative;
+    overflow: hidden;
+    font-family: "Saira", sans-serif;
+    background: var(--color-white, #f9fafb);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid #e2e8f0;
+}
+
+/* Dik l-leam3a (Shine Effect) fach kadi l-hover */
+.CaisseCard::before {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: -190%;
+    width: 300%;
+    height: 300%;
+    /* Rejja3na l-leam3a b l-azraq fati7 blast l-abyaḍ bach t-ban f l-card l-biḍa */
+    background: linear-gradient(
+        to top, 
+        transparent, 
+        rgba(37, 99, 235, 0.1), /* primary-600 b opacity khfifa */
+        transparent
+    );
+    transition: all 0.8s ease-in-out;
+    transform: rotate(45deg);
+    pointer-events: none;
+}
+
+.CaisseCard:hover {
+    transform: translateY(-4px); /* Kat-tle3 chwya */
+    border-color: #2563eb; /* primary-600 */
+    box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+}
+
+.CaisseCard:hover::before {
+    top: -90%;
+    left: 110%;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+    width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: #2563eb;
+}
+
+/* Animation dial l-shake ila l-stock sala */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.stock-error {
+  animation: shake 0.2s ease-in-out 0s 2;
+  border-color: #f43f5e !important;
+}

@@ -1,0 +1,17 @@
+import express from "express";
+import { auth } from "../middleware/auth.js";
+import { addTailoringWorker, listTailoringWorkers, updateTailoringWorker } from "../controlles/TailoringWorkers.js";
+import { addWorkerWork, completeWorkerWork, deleteWorkerWork, increaseWorkerWork, listWorkerWork, listWorkerOrderOptions } from "../controlles/WorkerWork.js";
+
+const router = express.Router();
+router.use(auth);
+router.get("/", listTailoringWorkers);
+router.post("/", addTailoringWorker);
+router.get("/:id/work", listWorkerWork);
+router.get("/:id/work/orders", listWorkerOrderOptions);
+router.post("/:id/work", addWorkerWork);
+router.post("/:id/work/:workId/completions", completeWorkerWork);
+router.post("/:id/work/:workId/increases", increaseWorkerWork);
+router.delete("/:id/work/:workId", deleteWorkerWork);
+router.put("/:id", updateTailoringWorker);
+export default router;

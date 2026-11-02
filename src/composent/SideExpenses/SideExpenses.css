@@ -1,0 +1,141 @@
+.side-expenses-page { min-height: calc(100vh - 54px); background: #eef2f6; color: #1e293b; padding: 36px 28px; }
+.side-expenses-content { max-width: 1100px; margin: 0 auto; }
+.side-expenses-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 24px; margin-bottom: 28px; }
+.side-expenses-header h1 { font-size: 30px; font-weight: 700; margin: 9px 0; line-height: 1.5; }
+.side-expenses-header p, .side-expenses-selection p { color: #64748b; font-size: 14px; line-height: 1.9; }
+.side-expenses-eyebrow { display: flex; align-items: center; gap: 8px; color: #2b608f; font-size: 13px; font-weight: 700; }
+.side-expenses-primary, .side-expenses-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 11px 20px; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.side-expenses-primary { background: #2b608f; color: #fff; border: 1px solid #2b608f; }
+.side-expenses-primary:hover:not(:disabled) { background: #284e73; }
+.side-expenses-primary:disabled { opacity: .45; cursor: not-allowed; }
+.side-expenses-secondary { background: #fff; border: 1px solid #d8e2ec; color: #475569; }
+.side-expenses-secondary:hover { background: #eef2f6; }
+.side-expenses-selection { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 56px 24px; border: 1px solid #d8e2ec; border-radius: 22px; background: #fff; text-align: center; }
+.side-expenses-selection h2 { max-width: 100%; overflow-wrap: anywhere; font-size: 21px; font-weight: 700; line-height: 1.6; }
+.side-expenses-selection > .side-expenses-icon { width: 72px; height: 72px; border-radius: 21px; margin-bottom: 8px; }
+.side-expenses-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 46px; height: 46px; border-radius: 13px; }
+.side-expenses-icon-blue { background: #deedf9; color: #2b608f; }
+.side-expenses-icon-amber { background: #fef3c7; color: #92400e; }
+.side-expenses-icon-violet { background: #ede9fe; color: #6d28d9; }
+.side-expenses-icon-green { background: #d8f2e8; color: #106b5b; }
+.side-expenses-dialog { width: min(580px, calc(100% - 24px)); max-height: calc(100dvh - 24px); margin: auto; padding: 0; border: 1px solid #d8e2ec; border-radius: 22px; background: #fff; color: #1e293b; box-shadow: 0 24px 70px #10223940; }
+.side-expenses-dialog::backdrop { background: #0f172a99; }
+.side-expenses-dialog[open], .side-expenses-dialog form { display: flex; flex-direction: column; min-height: 0; }
+.side-expenses-dialog form { max-height: calc(100dvh - 26px); }
+.side-expenses-dialog-header { display: flex; flex-shrink: 0; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 24px; border-bottom: 1px solid #e6edf4; }
+.side-expenses-dialog-header h2 { font-size: 21px; font-weight: 700; line-height: 1.6; }
+.side-expenses-dialog-header p { margin-top: 6px; font-size: 13px; color: #64748b; line-height: 1.8; }
+.side-expenses-close { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 10px; color: #64748b; cursor: pointer; }
+.side-expenses-close:hover { background: #eef2f6; }
+.side-expenses-dialog-body { min-height: 0; overflow-y: auto; padding: 24px; }
+.side-expenses-dialog fieldset { min-width: 0; }
+.side-expenses-dialog legend { font-size: 14px; font-weight: 700; margin-bottom: 14px; }
+.side-expenses-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.side-expenses-option { display: flex; align-items: center; gap: 12px; padding: 16px 12px; border: 2px solid #e6edf4; border-radius: 16px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.side-expenses-option > span:nth-child(2) { flex: 1; }
+.side-expenses-option input, .side-expenses-other-choice input { width: 17px; height: 17px; flex-shrink: 0; accent-color: #2b608f; cursor: pointer; }
+.side-expenses-option:hover { border-color: #97c3e7; }
+.side-expenses-option:has(input:checked) { border-color: #3374ad; background: #edf5fc; }
+.side-expenses-other { margin-top: 18px; padding: 16px; border: 2px solid #e6edf4; border-radius: 16px; }
+.side-expenses-other:has(input[type=radio]:checked) { border-color: #3374ad; background: #edf5fc; }
+.side-expenses-other-choice { display: flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.side-expenses-input-label { display: block; font-size: 13px; margin: 14px 0 8px; }
+.side-expenses-other input[type=text], .side-expenses-amount-field input { width: 100%; min-width: 0; min-height: 44px; border: 1px solid #bdccdc; border-radius: 10px; padding: 10px 12px; background: #fff; color: inherit; font-size: 14px; }
+.side-expenses-other input[type=text]:disabled { background: #eef2f6; color: #64748b; cursor: not-allowed; }
+.side-expenses-other input::placeholder { color: #64748b; }
+.side-expenses-month-field { margin-bottom: 18px; }
+.side-expenses-month-field label, .side-expenses-month-filter label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.side-expenses-month-field input, .side-expenses-month-filter input { width: 100%; min-width: 0; padding: 10px 12px; min-height: 44px; border: 1px solid #bdccdc; border-radius: 10px; background: #fff; color: inherit; font-size: 14px; }
+.side-expenses-month-filter { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; margin-bottom: 22px; }
+.side-expenses-month-filter > div { min-width: 170px; max-width: 100%; }
+.side-expenses-month-filter button[aria-pressed=true] { background: #deedf9; color: #284e73; border-color: #97c3e7; }
+.side-expenses-option-kind { display: block; margin-top: 5px; font-size: 11px; font-weight: 400; line-height: 1.6; color: #64748b; }
+.side-expenses-fixed-section { margin-bottom: 22px; }
+.side-expenses-fixed-section > h2 { margin-bottom: 12px; font-size: 15px; font-weight: 700; line-height: 1.8; }
+.side-expenses-fixed-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.side-expenses-fixed-card { min-width: 0; padding: 16px; border: 1px solid #d8e2ec; border-radius: 16px; background: #fff; }
+.side-expenses-fixed-card > div { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.side-expenses-fixed-card h3 { font-size: 14px; font-weight: 700; }
+.side-expenses-fixed-card .side-expenses-icon { width: 36px; height: 36px; }
+.side-expenses-fixed-price { margin-top: 10px; font-size: 23px; font-weight: 700; overflow-wrap: anywhere; }
+.side-expenses-fixed-card > button { margin-top: 10px; min-height: 38px; padding: 8px 12px; font-size: 12px; }
+.side-expenses-secondary:disabled { cursor: default; opacity: .55; }
+.side-expenses-kind { display: inline-block; width: fit-content; padding: 3px 7px; border-radius: 6px; font-size: 10px; font-weight: 700; line-height: 1.6; }
+.side-expenses-kind-fixed { background: #deedf9; color: #284e73; }
+.side-expenses-kind-variable { background: #fef3c7; color: #92400e; }
+.side-expenses-table-type .side-expenses-kind { display: block; margin-top: 6px; }
+.side-expenses-month-notice { margin-top: 12px; font-size: 13px; color: #92400e; line-height: 1.8; }
+.side-expenses-breakdown { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 13px; margin-top: 10px; }
+.side-expenses-estimated-month { display: block; margin-top: 5px; font-size: 10px; color: #64748b; }
+.dark .side-expenses-month-field input, .dark .side-expenses-month-filter input, .dark .side-expenses-fixed-card { background: #0f172a; border-color: #334155; color-scheme: dark; }
+.dark .side-expenses-option-kind, .dark .side-expenses-estimated-month { color: #a6b8ce; }
+.dark .side-expenses-kind-fixed, .dark .side-expenses-month-filter button[aria-pressed=true] { background: #243f5b; color: #c2ddf2; border-color: #475569; }
+.dark .side-expenses-kind-variable { background: #422006; color: #fcd34d; }
+.dark .side-expenses-month-notice { color: #fcd34d; }
+.side-expenses-dialog-footer { display: flex; flex-shrink: 0; justify-content: flex-end; gap: 10px; padding: 18px 24px; border-top: 1px solid #e6edf4; }
+.side-expenses-page button:focus-visible, .side-expenses-dialog button:focus-visible, .side-expenses-dialog input:focus-visible, .side-expenses-option:has(input:focus-visible) { outline: 3px solid #6da9d8; outline-offset: 3px; }
+.dark .side-expenses-page { background: #020617; color: #f1f5f9; }
+.dark .side-expenses-selection, .dark .side-expenses-dialog, .dark .side-expenses-secondary { background: #0f172a; color: #f1f5f9; border-color: #334155; }
+.dark .side-expenses-header p, .dark .side-expenses-selection p, .dark .side-expenses-dialog-header p, .dark .side-expenses-close { color: #a6b8ce; }
+.dark .side-expenses-eyebrow { color: #97c3e7; }
+.dark .side-expenses-dialog-header, .dark .side-expenses-dialog-footer, .dark .side-expenses-option, .dark .side-expenses-other { border-color: #334155; }
+.dark .side-expenses-option:hover { border-color: #6da9d8; }
+.dark .side-expenses-option:has(input:checked), .dark .side-expenses-other:has(input[type=radio]:checked) { background: #14283d; border-color: #6da9d8; }
+.dark .side-expenses-icon-blue { background: #243f5b; color: #c2ddf2; }
+.dark .side-expenses-icon-amber { background: #422006; color: #fcd34d; }
+.dark .side-expenses-icon-violet { background: #2e1065; color: #c4b5fd; }
+.dark .side-expenses-icon-green { background: #10463d; color: #7bd2b9; }
+.dark .side-expenses-other input[type=text], .dark .side-expenses-amount-field input { background: #0f172a; border-color: #475569; }
+.dark .side-expenses-other input[type=text]:disabled, .dark .side-expenses-secondary:hover, .dark .side-expenses-close:hover { background: #1e293b; }
+.dark .side-expenses-other input::placeholder { color: #94a3b8; }
+.side-expenses-amount-field { margin-top: 22px; }
+.side-expenses-amount-field label { display: block; font-size: 14px; font-weight: 700; margin-bottom: 9px; }
+.side-expenses-amount-field input { font-size: 20px; font-weight: 700; padding: 13px; }
+.side-expenses-amount-hint { margin-top: 8px; font-size: 12px; color: #64748b; line-height: 1.8; }
+.side-expenses-field-error { margin: 8px 0; color: #be123c; font-size: 13px; line-height: 1.8; }
+.side-expenses-error, .side-expenses-success { padding: 16px; margin: 16px 0; border-radius: 12px; font-size: 14px; line-height: 1.8; }
+.side-expenses-error { color: #9f1239; background: #fff1f2; border: 1px solid #fecdd3; }
+.side-expenses-error button { margin-top: 12px; }
+.side-expenses-success { color: #106b5b; background: #effaf6; border: 1px solid #b0e5d3; }
+.side-expenses-total-card { display: flex; align-items: center; gap: 18px; background: #edf5fc; border: 1px solid #c2ddf2; border-radius: 18px; padding: 24px; margin-bottom: 26px; }
+.side-expenses-total-card > div { min-width: 0; }
+.side-expenses-total-card dt { font-size: 14px; color: #284e73; }
+.side-expenses-total-card dd { font-size: 30px; font-weight: 700; line-height: 1.7; overflow-wrap: anywhere; }
+.side-expenses-total-card p { font-size: 12px; color: #64748b; margin-top: 3px; }
+.side-expenses-history { background: #fff; border: 1px solid #d8e2ec; border-radius: 18px; overflow: hidden; }
+.side-expenses-history h2 { padding: 20px; font-size: 18px; font-weight: 700; }
+.side-expenses-table-scroll { overflow-x: auto; }
+.side-expenses-history table { width: 100%; min-width: 700px; border-collapse: collapse; text-align: start; font-size: 14px; }
+.side-expenses-history th { padding: 15px 20px; text-align: start; background: #eef2f6; color: #475569; font-size: 13px; }
+.side-expenses-history td { padding: 16px 20px; border-top: 1px solid #e6edf4; }
+.side-expenses-history td:first-child { max-width: 370px; overflow-wrap: anywhere; }
+.side-expenses-history time { white-space: nowrap; color: #64748b; font-size: 13px; }
+.side-expenses-table-type { display: flex; align-items: center; gap: 12px; }
+.side-expenses-table-type .side-expenses-icon { width: 38px; height: 38px; }
+.side-expenses-dialog button:disabled { cursor: not-allowed; opacity: .5; }
+.side-expenses-dialog fieldset:disabled { opacity: .75; }
+.dark .side-expenses-total-card { background: #14283d; border-color: #284e73; }
+.dark .side-expenses-total-card dt { color: #c2ddf2; }
+.dark .side-expenses-total-card p, .dark .side-expenses-amount-hint, .dark .side-expenses-history time { color: #a6b8ce; }
+.dark .side-expenses-history { background: #0f172a; border-color: #334155; }
+.dark .side-expenses-history th { background: #1e293b; color: #cbd5e1; }
+.dark .side-expenses-history td { border-color: #334155; }
+.dark .side-expenses-field-error { color: #fda4af; }
+.dark .side-expenses-error { background: #4c0519; color: #fecdd3; border-color: #881337; }
+.dark .side-expenses-success { background: #062b25; color: #7bd2b9; border-color: #105649; }
+@media (max-width: 640px) {
+  .side-expenses-fixed-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .side-expenses-month-filter > div { flex: 1; }
+  .side-expenses-page { padding: 24px 16px; }
+  .side-expenses-header { gap: 18px; }
+  .side-expenses-header h1 { font-size: 25px; }
+  .side-expenses-header > button { width: 100%; }
+  .side-expenses-total-card { padding: 18px; gap: 12px; }
+  .side-expenses-total-card dd { font-size: 24px; }
+  .side-expenses-selection { padding: 36px 16px; }
+  .side-expenses-dialog-header, .side-expenses-dialog-body { padding: 18px; }
+  .side-expenses-dialog-footer { padding: 16px 18px; }
+  .side-expenses-option { flex-wrap: wrap; gap: 9px; padding: 12px; }
+  .side-expenses-option > .side-expenses-icon { width: 100%; height: 38px; background: transparent; }
+  .side-expenses-dialog-footer > button { flex: 1; padding-inline: 10px; }
+}

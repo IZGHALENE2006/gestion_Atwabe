@@ -1,0 +1,133 @@
+.fesla-view-profits-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:12px 17px; border:1px solid #9edbc7; border-radius:12px; background:#e7f8f0; color:#106b4b; font-size:14px; font-weight:700; }
+.fesla-view-profits-button:hover { background:#d2f1e2; }
+.fesla-profits { --fp-border:#dce6ef; --fp-muted:#61738c; --fp-surface:#fff; --fp-ink:#172a43; --fp-blue:#245ee0; --fp-green:#087655; min-width:0; color:var(--fp-ink); }
+.fesla-profits > * + * { margin-top:22px; }
+.fesla-profits-hero { display:flex; align-items:center; justify-content:space-between; gap:25px; padding:28px; border-radius:23px; background:linear-gradient(115deg,#123b80,#156c9b 60%,#137d69); color:#fff; box-shadow:0 8px 28px #1b497518; }
+.fesla-profits-hero-text { min-width:0; }
+.fesla-profits-eyebrow { display:inline-flex; align-items:center; gap:7px; margin-bottom:12px; color:#c4f2e7; font-size:12px; font-weight:700; }
+.fesla-profits-hero h1 { font-size:29px; font-weight:800; line-height:1.5; }
+.fesla-profits-hero p { max-width:680px; margin-top:8px; font-size:13px; line-height:1.9; color:#e0efff; }
+.fesla-profits-back { display:inline-flex; align-items:center; justify-content:center; gap:8px; flex-shrink:0; padding:12px 15px; border:1px solid #ffffff50; border-radius:12px; background:#ffffff15; color:#fff; font-size:13px; font-weight:700; }
+.fesla-profits-back:hover { background:#ffffff25; }
+[dir=rtl] .fesla-profits-back svg { transform:rotate(180deg); }
+.fesla-profits-sections { display:flex; gap:9px; padding:6px; border:1px solid var(--fp-border); border-radius:15px; background:var(--fp-surface); }
+.fesla-profits-sections a { flex:1; min-width:0; padding:12px 10px; border-radius:10px; color:var(--fp-muted); text-align:center; font-size:13px; font-weight:700; }
+.fesla-profits-sections a[aria-current=page] { background:#e8f0ff; color:#1f58c6; box-shadow:inset 0 0 0 1px #cfe0ff; }
+.fesla-profits-toolbar { padding:19px; border:1px solid var(--fp-border); border-radius:18px; background:var(--fp-surface); }
+.fesla-profits-periods { display:flex; flex-wrap:wrap; gap:7px; padding-bottom:17px; border-bottom:1px solid var(--fp-border); }
+.fesla-profits-periods button { min-width:80px; padding:10px 16px; border:1px solid var(--fp-border); border-radius:10px; background:#f5f8fc; color:var(--fp-muted); font-size:13px; font-weight:700; }
+.fesla-profits-periods button[aria-pressed=true] { color:#fff; background:var(--fp-blue); border-color:var(--fp-blue); box-shadow:0 3px 9px #245ee02b; }
+.fesla-profits-filter-fields { display:flex; align-items:flex-end; flex-wrap:wrap; gap:13px; margin-top:17px; }
+.fesla-profits-filter-fields label { display:block; min-width:0; flex:1 1 210px; }
+.fesla-profits-filter-fields label > span { display:flex; align-items:center; gap:6px; margin-bottom:8px; color:var(--fp-muted); font-size:12px; font-weight:700; }
+.fesla-profits-filter-fields .fesla-profits-search { flex:2 1 260px; }
+.fesla-profits-filter-fields input { width:100%; min-width:0; height:45px; padding:10px 12px; border:1px solid var(--fp-border); border-radius:10px; background:#f8fafc; color:var(--fp-ink); font-size:13px; }
+.fesla-profits-today,.fesla-profits-refresh { display:flex; align-items:center; justify-content:center; min-height:45px; padding:10px 15px; border:1px solid #cbdcf9; border-radius:10px; color:#2459b3; background:#edf4ff; font-size:13px; font-weight:700; }
+.fesla-profits-refresh { width:45px; padding:9px; }
+.fesla-profits button { cursor:pointer; }
+.fesla-profits button:hover { filter:brightness(.97); }
+.fesla-profits button:focus-visible,.fesla-profits a:focus-visible,.fesla-profits input:focus-visible,.fesla-profits-table-scroll:focus-visible,.fesla-view-profits-button:focus-visible { outline:3px solid #7bb4ff; outline-offset:3px; }
+.fesla-profits-period-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.fesla-profits-period-heading h2 { font-size:20px; font-weight:800; }
+.fesla-profits-period-heading > span { font-size:12px; color:var(--fp-muted); }
+.fesla-profits-cards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:15px; }
+.fesla-profits-card { min-width:0; padding:20px; border:1px solid var(--fp-border); border-radius:19px; background:var(--fp-surface); box-shadow:0 3px 12px #18344c05; }
+.fesla-profits-card > div { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.fesla-profits-card > div p { font-size:13px; font-weight:700; line-height:1.8; }
+.fesla-profits-card-icon { display:grid; flex-shrink:0; place-items:center; width:41px; height:41px; border-radius:13px; background:#eaf2ff; color:#3264b8; }
+.fesla-profits-card > strong { display:flex; flex-wrap:wrap; align-items:baseline; gap:7px; margin-top:15px; font-size:28px; font-weight:800; overflow-wrap:anywhere; }
+.fesla-profits-card > strong small { font-size:11px; font-weight:600; }
+.fesla-profits-card-hint { margin-top:8px; font-size:11px; line-height:1.8; color:var(--fp-muted); }
+.fesla-profits-card.is-green { background:linear-gradient(125deg,#087655,#12916d); border-color:#087655; color:#fff; }
+.fesla-profits-card.is-blue { background:linear-gradient(125deg,#2458c8,#367fe6); border-color:#2458c8; color:#fff; }
+.fesla-profits-card.is-loss { background:linear-gradient(125deg,#b52f4c,#d64d68); border-color:#b52f4c; color:#fff; }
+.fesla-profits-card:not(.is-plain) .fesla-profits-card-hint { color:#ffffffde; }
+.fesla-profits-card:not(.is-plain) .fesla-profits-card-icon { color:#fff; background:#ffffff20; }
+.fesla-profits-unknown { padding:14px 17px; border:1px solid #d7e7ff; border-radius:13px; color:#305887; background:#edf5ff; font-size:12px; line-height:1.9; }
+.fesla-profits-panel { min-width:0; overflow:hidden; border:1px solid var(--fp-border); border-radius:19px; background:var(--fp-surface); }
+.fesla-profits-panel > header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:20px 22px; border-bottom:1px solid var(--fp-border); }
+.fesla-profits-panel h2 { font-size:17px; font-weight:800; }
+.fesla-profits-panel header p { margin-top:6px; font-size:12px; color:var(--fp-muted); line-height:1.8; }
+.fesla-profits-panel header > svg { color:#2863c5; }
+.fesla-profits-count { display:grid; place-items:center; min-width:36px; height:33px; padding:5px; border-radius:10px; background:#e8f0ff; color:#2863c5; font-size:13px; font-weight:700; }
+.fesla-profits-history { padding:7px 22px; }
+.fesla-profits-history > button { display:grid; width:100%; grid-template-columns:minmax(120px,1fr) minmax(70px,2fr) minmax(110px,1fr); align-items:center; gap:20px; padding:16px 0; border-bottom:1px solid var(--fp-border); text-align:start; }
+.fesla-profits-history > button:last-child { border:0; }
+.fesla-profits-history > button > div strong { display:block; font-size:13px; }
+.fesla-profits-history > button > div > span { display:block; margin-top:5px; color:var(--fp-muted); font-size:11px; }
+.fesla-profits-history-track { height:9px; overflow:hidden; border-radius:8px; background:#eaf2f8; }
+.fesla-profits-history-track > span { display:block; height:100%; min-width:0; border-radius:8px; background:linear-gradient(90deg,#31a0dc,#0e9970); }
+.fesla-profits-history > button > bdi { color:var(--fp-green); text-align:end; font-size:14px; font-weight:800; }
+.fesla-profits-history > button.is-loss > bdi { color:#b52f4c; }
+.fesla-profits-history > button.is-loss .fesla-profits-history-track > span { background:#d64d68; }
+.fesla-profits-table-hint { padding:10px 22px; background:#f5f8fd; color:var(--fp-muted); font-size:11px; }
+.fesla-profits-table-scroll { width:100%; overflow-x:auto; }
+.fesla-profits-table { width:100%; min-width:930px; border-collapse:collapse; text-align:start; font-size:13px; }
+.fesla-profits-table th,.fesla-profits-table td { padding:16px 18px; border-bottom:1px solid var(--fp-border); text-align:start; }
+.fesla-profits-table thead th { background:#edf4fe; color:#315176; font-size:12px; font-weight:700; white-space:nowrap; }
+.fesla-profits-table tbody th { min-width:210px; font-weight:400; }
+.fesla-profits-table tbody th > strong { display:block; font-size:14px; font-weight:700; overflow-wrap:anywhere; }
+.fesla-profits-phone,.fesla-profits-barcode { display:block; margin-top:7px; color:var(--fp-muted); font-size:11px; }
+.fesla-profits-barcode { font-size:10px; }
+.fesla-profits-table tbody tr:last-child > * { border-bottom:0; }
+.fesla-profits-table tbody tr:nth-child(even) { background:#f8fbff; }
+.fesla-profits-table tbody tr:hover { background:#eff6ff; }
+.fesla-profits-table td small { display:block; margin-top:5px; color:var(--fp-muted); font-size:10px; }
+.fesla-profits-table .is-profit { color:var(--fp-green); font-weight:800; }
+.fesla-profits-table .is-loss { color:#b52f4c; font-weight:800; }
+.fesla-profits-details-button { display:inline-flex; align-items:center; gap:7px; padding:10px 12px; border-radius:10px; background:#245ee0; color:#fff; font-size:12px; font-weight:700; white-space:nowrap; }
+.fesla-profits-empty { display:grid; justify-items:center; gap:10px; padding:48px 20px; text-align:center; color:var(--fp-muted); }
+.fesla-profits-empty > svg { color:#4388c7; }
+.fesla-profits-empty h3 { font-size:16px; font-weight:700; color:var(--fp-ink); }
+.fesla-profits-empty p { max-width:520px; font-size:12px; line-height:1.9; }
+.fesla-profits-error { padding:22px; border:1px solid #f0bbc9; border-radius:15px; color:#a01b3f; background:#fff1f5; }
+.fesla-profits-error button { margin-top:12px; font-weight:700; text-decoration:underline; }
+.fesla-delivery-financials { margin-block:16px; padding:16px; border:1px solid #b4dfd0; border-radius:14px; background:#f0fbf6; color:#106b4b; }
+.fesla-delivery-financials h3 { font-size:14px; font-weight:700; }
+.fesla-delivery-financials > p { margin-top:7px; font-size:12px; line-height:1.8; }
+.fesla-delivery-financials dl { display:grid; gap:9px; margin-top:12px; font-size:13px; }
+.fesla-delivery-financials dl > div { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; }
+.fesla-delivery-financials dd { font-weight:700; }
+.dark .fesla-view-profits-button { background:#143e32; border-color:#2a725a; color:#94edc7; }
+.dark .fesla-profits { --fp-border:#30425d; --fp-muted:#a7b9d2; --fp-surface:#16233a; --fp-ink:#edf5ff; --fp-blue:#316bd9; --fp-green:#80e2b8; }
+.dark .fesla-profits-sections a[aria-current=page] { background:#223f6a; color:#bad6ff; box-shadow:inset 0 0 0 1px #3d5e8b; }
+.dark .fesla-profits-periods button { background:#1c304c; }
+.dark .fesla-profits-periods button[aria-pressed=true] { background:var(--fp-blue); }
+.dark .fesla-profits-filter-fields input { background:#101d31; color-scheme:dark; }
+.dark .fesla-profits-card-icon,.dark .fesla-profits-count { background:#243f63; color:#acd0ff; }
+.dark .fesla-profits-today,.dark .fesla-profits-refresh { background:#1d3659; color:#b3d3ff; border-color:#3c5e8b; }
+.dark .fesla-profits-unknown { background:#193553; color:#b7d7f5; border-color:#355c80; }
+.dark .fesla-profits-table-hint { background:#192c46; }
+.dark .fesla-profits-table thead th { background:#203959; color:#c6daf6; }
+.dark .fesla-profits-table tbody tr:nth-child(even) { background:#1b2b43; }
+.dark .fesla-profits-table tbody tr:hover { background:#223955; }
+.dark .fesla-profits-history-track { background:#263d56; }
+.dark .fesla-profits-table .is-loss,.dark .fesla-profits-history > button.is-loss > bdi { color:#ffacc1; }
+.dark .fesla-delivery-financials { background:#133c30; border-color:#2b7458; color:#99edc7; }
+@media (max-width:1150px) { .fesla-profits-cards { grid-template-columns:repeat(2,minmax(0,1fr)); } .fesla-profits-hero { align-items:flex-start; flex-wrap:wrap; } }
+@media (max-width:600px) { .fesla-profits > * + * { margin-top:16px; } .fesla-profits-hero { gap:17px; padding:21px; border-radius:18px; } .fesla-profits-hero h1 { font-size:24px; } .fesla-profits-hero p { font-size:12px; } .fesla-profits-back { width:100%; } .fesla-profits-sections { gap:4px; padding:5px; } .fesla-profits-sections a { padding:11px 5px; font-size:11px; line-height:1.7; } .fesla-profits-toolbar { padding:14px; } .fesla-profits-periods { flex-wrap:nowrap; gap:5px; } .fesla-profits-periods button { flex:1; min-width:0; padding:10px 6px; font-size:12px; } .fesla-profits-filter-fields { gap:11px; } .fesla-profits-filter-fields label,.fesla-profits-filter-fields .fesla-profits-search { flex:1 1 100%; } .fesla-profits-cards { gap:10px; } .fesla-profits-card { padding:14px; border-radius:15px; } .fesla-profits-card > div { gap:5px; } .fesla-profits-card > div p { font-size:11px; } .fesla-profits-card-icon { width:32px; height:32px; border-radius:10px; } .fesla-profits-card-icon svg { width:18px; } .fesla-profits-card > strong { gap:4px; font-size:22px; } .fesla-profits-card > strong small { font-size:10px; } .fesla-profits-card-hint { font-size:10px; } .fesla-profits-period-heading h2 { font-size:17px; } .fesla-profits-period-heading > span { font-size:11px; } .fesla-profits-panel > header { padding:17px; } .fesla-profits-panel h2 { font-size:15px; } .fesla-profits-history { padding:3px 17px; } .fesla-profits-history > button { grid-template-columns:1fr 1fr; gap:12px; } .fesla-profits-history-track { grid-column:1/-1; grid-row:2; height:7px; } .fesla-profits-history > button > bdi { grid-column:2; grid-row:1; font-size:13px; } }
+
+.fesla-view-total-profits-button { color:#2456b7; background:#eaf2ff; border-color:#b8cef4; }
+.fesla-view-total-profits-button:hover { background:#dae8ff; }
+.fesla-profits-contributions h2 { margin-bottom:12px; font-size:17px; font-weight:800; }
+.fesla-profits-contributions > div { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+.fesla-profits-contributions article { min-width:0; padding:18px 20px; border:1px solid var(--fp-border); border-top:3px solid #149a73; border-radius:15px; background:var(--fp-surface); }
+.fesla-profits-contributions article:nth-child(2) { border-top-color:#387ce0; }
+.fesla-profits-contributions article:nth-child(3) { border-top-color:#1999a7; }
+.fesla-profits-contributions h3 { color:var(--fp-muted); font-size:13px; font-weight:700; }
+.fesla-profits-contributions strong { display:flex; flex-wrap:wrap; align-items:baseline; gap:7px; margin-top:12px; color:var(--fp-green); font-size:24px; font-weight:800; overflow-wrap:anywhere; }
+.fesla-profits-contributions strong.is-loss { color:#b52f4c; }
+.fesla-profits-contributions strong small { font-size:11px; font-weight:600; }
+.fesla-profits-contributions p { margin-top:9px; color:var(--fp-muted); font-size:11px; }
+.fesla-profits-section-name { color:var(--fp-blue); font-size:12px; font-weight:700; white-space:nowrap; }
+.dark .fesla-view-total-profits-button { color:#b6d2ff; background:#1b3658; border-color:#3f5f8b; }
+.dark .fesla-profits-contributions strong.is-loss { color:#ffacc1; }
+.dark .fesla-profits-section-name { color:#b6d2ff; }
+@media (max-width:600px) { .fesla-profits-sections { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); } .fesla-profits-contributions > div { grid-template-columns:minmax(0,1fr); gap:10px; } .fesla-profits-contributions article { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:center; gap:8px; padding:15px 17px; } .fesla-profits-contributions strong { margin:0; font-size:21px; justify-content:flex-end; } .fesla-profits-contributions p { grid-column:1/-1; margin-top:0; } }
+
+.fesla-profits-contributions article:nth-child(4) { border-top-color:#6366dc; }
+@media (min-width:601px) and (max-width:1000px) { .fesla-profits-contributions > div { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:600px) { .fesla-profits-sections a:first-child { grid-column:1/-1; } }
+
+.fesla-profits-contributions article:nth-child(5) { border-top-color:#d39428; }
+@media (max-width:600px) { .fesla-profits-sections a:last-child:nth-child(even) { grid-column:1/-1; } }

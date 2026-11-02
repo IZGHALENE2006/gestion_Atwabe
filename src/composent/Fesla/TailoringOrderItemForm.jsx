@@ -1,0 +1,55 @@
+import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { IoTrashOutline } from "react-icons/io5";
+import { tailoringUsesSfifa, TAILORING_TROUSER_TYPES, SFIFA_STYLES, SFIFA_WIDTHS, TAILORING_SOURCES } from "../../../shared/tailoring.js";
+import DjellabaCostBreakdown from "./DjellabaCostBreakdown.jsx";
+import TrouserFabricCost from "./TrouserFabricCost.jsx";
+import TailoringPhotoField from "./TailoringPhotoField.jsx";
+const fieldId = (index, name) => "fesla-items-" + index + "-" + name.replaceAll(".", "-");
+function Field({ index, name, label, error, children }) {
+  const { t } = useTranslation();
+  return <div className="min-w-0"><label htmlFor={fieldId(index, name)} className="mb-2 block text-sm font-semibold">{label}</label>{children}{error && <p id={fieldId(index, name) + "-error"} className="mt-2 text-xs text-rose-600 dark:text-rose-400">{t("fesla.errors." + error)}</p>}</div>;
+}
+export default function TailoringOrderItemForm({ costPreview, garmentType, item, index, savedItem, order, token, inventory, reloadFabrics, errors, onChange, onRemove, onCameraBusy, disabled, canRemove }) {
+  const { t } = useTranslation();
+  const withSfifa = tailoringUsesSfifa({ garmentType });
+  const trousers = garmentType === "trousers";
+  const garmentText = (key, options) => t(garmentType === "djellaba" ? `fesla.${key}` : `fesla.${garmentType}.${key}`, options);
+  const fields = Object.fromEntries(Object.entries(errors).filter(([key]) => key.startsWith("items." + index + ".")).map(([key, value]) => [key.slice(("items." + index + ".").length), value]));
+  const chosenFabric = inventory.fabrics.find(fabric => fabric._id === item.fabricId);
+  const savedFabric = savedItem?.fabricSource === "shop" && savedItem.fabricId === item.fabricId;
+  const savedColor = savedFabric && savedItem.colorId === item.colorId;
+  const colors = chosenFabric?.colors || [];
+  const twoColors = ["twoTone", "gradient"].includes(item.sfifa?.style);
+  const selection = item.selection, removed = item.removeImage, saving = disabled;
+  const inputClass = "w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-primary-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800";
+  const props = name => ({ id: fieldId(index, name), className: inputClass, "aria-invalid": Boolean(fields[name]), "aria-describedby": fields[name] ? fieldId(index, name) + "-error" : undefined });
+  const patch = value => onChange(item.lineId, value);
+  const trim = value => patch({ sfifa: { ...item.sfifa, ...value } });
+  const cameraChanged = useCallback(busy => onCameraBusy(item.lineId, busy), [item.lineId, onCameraBusy]);
+  return <section className="fesla-item-form" data-tailoring-item-form={item.lineId} aria-labelledby={"fesla-item-title-" + index}>
+    <header><h3 id={"fesla-item-title-" + index}>{garmentText("garmentNumber", { number: index + 1 })}</h3>{canRemove && <button type="button" data-remove-tailoring-item={index} disabled={disabled} onClick={() => onRemove(item.lineId)} aria-label={garmentText("removeGarmentNamed", { number: index + 1 })}><IoTrashOutline size={18} aria-hidden="true" />{t("fesla.removeGarment")}</button>}</header>
+    {garmentType === "shirts" && <fieldset disabled={disabled}><Field index={index} name="shirtType" label={t("fesla.shirtType")} error={fields.shirtType}><input {...props("shirtType")} value={item.shirtType ?? ""} onChange={event => patch({ shirtType: event.target.value })} placeholder={t("fesla.shirtTypePlaceholder")} maxLength={120} required /></Field></fieldset>}
+    {trousers && <fieldset disabled={disabled}><Field index={index} name="trouserType" label={t("fesla.trouserType")} error={fields.trouserType}><select {...props("trouserType")} value={item.trouserType} onChange={event => patch({ trouserType: event.target.value })} required>{TAILORING_TROUSER_TYPES.map(type => <option key={type} value={type}>{t("fesla.trouserTypes." + type)}</option>)}</select></Field></fieldset>}
+    <fieldset disabled={disabled}><Field index={index} name="price" label={garmentText("garmentPrice") + " (" + t("fesla.currency") + ")"} error={fields.price}><input {...props("price")} type="text" inputMode="decimal" dir="ltr" value={item.price} onChange={event => patch({ price: event.target.value })} placeholder="0.00" maxLength={12} required /></Field></fieldset>
+      <fieldset disabled={saving} className="space-y-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+        <legend className="px-2 text-sm font-bold">{t("fesla.fabricType")}</legend>
+        <Field index={index} name="fabricSource" label={t("fesla.fabricSource")} error={fields.fabricSource}><select {...props("fabricSource")} value={item.fabricSource} onChange={(event) => patch({ fabricSource: event.target.value, fabricType: "", fabricColor: "", fabricId: "", colorId: "" })}>{TAILORING_SOURCES.map((source) => <option key={source} value={source}>{t(`fesla.sources.${source}`)}</option>)}</select></Field>
+        {item.fabricSource === "client" ? <div className="grid gap-4 sm:grid-cols-2"><Field index={index} name="fabricType" label={t("fesla.fabricType")} error={fields.fabricType}><input {...props("fabricType")} value={item.fabricType} onChange={(event) => patch({ fabricType: event.target.value })} placeholder={t("fesla.fabricTypePlaceholder")} maxLength={120} required /></Field><Field index={index} name="fabricColor" label={`${t("fesla.fabricColor")} (${t("fabrics.optional")})`} error={fields.fabricColor}><input {...props("fabricColor")} value={item.fabricColor} onChange={(event) => patch({ fabricColor: event.target.value })} maxLength={120} /></Field></div>
+          : <><div className="grid gap-4 sm:grid-cols-2"><Field index={index} name="fabricId" label={t("fesla.fabricType")} error={fields.fabricId}><select {...props("fabricId")} disabled={saving || inventory.loading || inventory.error} value={chosenFabric || savedFabric ? item.fabricId : ""} onChange={(event) => { const fabric = inventory.fabrics.find((entry) => entry._id === event.target.value); patch({ fabricId: fabric?._id || "", colorId: "", fabricType: fabric?.type || "", fabricColor: "" }); }}><option value="">{t(inventory.loading ? "common.loading" : "fesla.chooseFabric")}</option>{savedFabric && !chosenFabric && <option value={savedItem.fabricId}>{t("fesla.savedFabric", { name: savedItem.fabricType })}</option>}{inventory.fabrics.map((fabric) => <option key={fabric._id} value={fabric._id}>{fabric.type}{fabric.reference ? ` · ${fabric.reference}` : ""}</option>)}</select></Field>
+          <Field index={index} name="colorId" label={t("fesla.fabricColor")} error={fields.colorId}><select {...props("colorId")} disabled={saving || (!chosenFabric && !savedFabric)} value={item.colorId} onChange={(event) => { const color = colors.find((entry) => entry._id === event.target.value); patch({ colorId: color?._id || "", fabricColor: color?.name || "" }); }}><option value="">{t("fesla.chooseColor")}</option>{savedColor && savedItem.colorId && !colors.some((color) => color._id === savedItem.colorId) && <option value={savedItem.colorId}>{t("fesla.savedFabric", { name: savedItem.fabricColor })}</option>}{colors.map((color) => <option key={color._id} value={color._id}>{color.name}{color.number ? ` · ${color.number}` : ""}</option>)}</select></Field></div>
+          {inventory.error ? <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">{t("fesla.loadFabricsFailed")} <button type="button" onClick={reloadFabrics} className="font-bold underline">{t("fesla.retry")}</button></p> : !inventory.loading && !inventory.fabrics.length && <p className="text-sm text-slate-500 dark:text-slate-400">{t("fesla.noFabrics")}</p>}</>}
+        {(withSfifa || trousers) && <div className="fesla-fabric-meters"><Field index={index} name="fabricMeters" label={t("fesla.costs.fabricMeters")} error={fields.fabricMeters}><input {...props("fabricMeters")} type="text" inputMode="decimal" dir="ltr" value={item.fabricMeters ?? ""} maxLength={16} required placeholder="2" onChange={event => patch({ fabricMeters: event.target.value })} /></Field><p>{item.fabricSource === "client" ? t("fesla.costs.clientFabricFree") : t("fesla.costs.fabricPriceHint")}</p>{fields.fabricUnitPrice && <p role="alert" className="fesla-action-error">{t("fesla.errors." + fields.fabricUnitPrice)}</p>}</div>}
+        <TailoringPhotoField selection={selection} onSelect={value => patch({ selection: value, removeImage: false })} onRemove={() => patch({ selection: null, removeImage: true })} onCameraBusy={cameraChanged} removed={removed} order={order} item={savedItem} token={token} disabled={saving} />
+      </fieldset>
+      {withSfifa && <fieldset disabled={saving} className="grid min-w-0 gap-4 rounded-xl border border-slate-200 p-4 sm:grid-cols-2 dark:border-slate-700">
+        <legend className="px-2 text-sm font-bold">{t("fesla.sfifa")}</legend>
+        <Field index={index} name="sfifa.width" label={t("fesla.sfifaWidth")} error={fields["sfifa.width"]}><select {...props("sfifa.width")} value={item.sfifa.width} onChange={(event) => trim({ width: event.target.value })}>{SFIFA_WIDTHS.map((width) => <option key={width} value={width}>{t(`fesla.widths.${width}`)}</option>)}</select></Field>
+        <Field index={index} name="sfifa.style" label={t("fesla.sfifaStyle")} error={fields["sfifa.style"]}><select {...props("sfifa.style")} value={item.sfifa.style} onChange={(event) => trim({ style: event.target.value, color1: "", color2: "" })}>{SFIFA_STYLES.map((style) => <option key={style} value={style}>{t(`fesla.styles.${style}`)}</option>)}</select></Field>
+        {twoColors && <><Field index={index} name="sfifa.color1" label={t("fesla.color1")} error={fields["sfifa.color1"]}><input {...props("sfifa.color1")} value={item.sfifa.color1} onChange={(event) => trim({ color1: event.target.value })} maxLength={120} placeholder={t("fesla.colorPlaceholder")} required /></Field><Field index={index} name="sfifa.color2" label={t("fesla.color2")} error={fields["sfifa.color2"]}><input {...props("sfifa.color2")} value={item.sfifa.color2} onChange={(event) => trim({ color2: event.target.value })} maxLength={120} placeholder={t("fesla.colorPlaceholder")} required /></Field></>}
+      </fieldset>}
+    {withSfifa && <DjellabaCostBreakdown garmentType={garmentType} costs={costPreview} meters={item.fabricMeters} />}
+    {trousers && <TrouserFabricCost cost={costPreview} meters={item.fabricMeters} />}
+    {fields.photo && <p role="alert" className="text-sm text-rose-600">{t("fesla.errors." + fields.photo)}</p>}
+  </section>;
+}

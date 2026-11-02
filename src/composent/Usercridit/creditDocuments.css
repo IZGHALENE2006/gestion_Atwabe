@@ -1,0 +1,66 @@
+.credit-details-page table { text-align: start; }
+.credit-share-dialog { width: min(780px, calc(100dvw - 24px)); }
+.credit-share-dialog h2 { display: flex; align-items: center; gap: 9px; }
+.credit-share-body { display: flex; flex-direction: column; gap: 16px; }
+.credit-share-summary { padding: 18px; border: 1px solid #cddff7; border-radius: 15px; background: #fff; }
+.credit-share-summary > strong { display: block; font-size: 19px; overflow-wrap: anywhere; }
+.credit-share-summary dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.credit-share-summary dt { color: #64748b; font-size: 12px; }
+.credit-share-summary dd { font-size: 17px; font-weight: 800; margin-top: 6px; overflow-wrap: anywhere; }
+.credit-share-summary dl > div:last-child { color: #0a7754; }
+.credit-share-file { display: flex; align-items: center; gap: 12px; padding: 15px; background: #e7f4ee; border: 1px solid #bdded0; border-radius: 14px; color: #14664b; }
+.credit-share-file > div { flex: 1; min-width: 0; }
+.credit-share-file strong, .credit-share-file small { display: block; overflow-wrap: anywhere; }
+.credit-share-file small { margin-top: 4px; font-size: 10px; }
+.credit-share-file button { padding: 9px 12px; border-radius: 9px; background: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+.credit-share-instruction { font-size: 13px; line-height: 1.9; color: #52647d; }
+.credit-share-channels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.credit-share-channels section { display: flex; flex-direction: column; gap: 10px; border-radius: 15px; border: 1px solid #d0ddee; background: #fff; padding: 17px; }
+.credit-share-channels h3 { display: flex; gap: 8px; align-items: center; font-size: 17px; font-weight: 800; color: #176b53; }
+.credit-share-channels section + section h3 { color: #2454c3; }
+.credit-share-channels label { font-size: 12px; font-weight: 700; }
+.credit-share-channels input { width: 100%; min-width: 0; padding: 11px; border: 1px solid #b9c9df; border-radius: 9px; background: transparent; font-size: 14px; }
+.credit-share-channels small { color: #64748b; font-size: 11px; line-height: 1.8; flex: 1; }
+.credit-share-channels a { display: block; text-align: center; padding: 11px; border-radius: 10px; font-size: 12px; font-weight: 700; background: #147858; color: #fff; text-decoration: none; }
+.credit-share-channels section + section a, .credit-share-dialog [data-credit-share-native] { background: #2454c3; color: #fff; }
+.credit-share-channels a[aria-disabled="true"] { opacity: .45; cursor: default; }
+.credit-share-dialog a:focus-visible, .credit-share-dialog input:focus-visible { outline: 3px solid #93b4fc; outline-offset: 3px; }
+.credit-share-status { font-size: 13px; color: #136d51; line-height: 1.9; }
+.dark .credit-share-summary, .dark .credit-share-channels section { background: #17263e; border-color: #3b506e; }
+.dark .credit-share-instruction, .dark .credit-share-summary dt, .dark .credit-share-channels small { color: #bdcbe0; }
+.dark .credit-share-summary dl > div:last-child, .dark .credit-share-channels h3, .dark .credit-share-status { color: #81d6b7; }
+.dark .credit-share-channels section + section h3 { color: #aac7ff; }
+.dark .credit-share-file { background: #153b31; color: #c1ecdc; border-color: #376b5a; }
+.dark .credit-share-file button { background: #245b49; color: #fff; }
+@media (max-width: 600px) { .credit-share-channels { grid-template-columns: 1fr; } .credit-share-summary dl { gap: 6px; } .credit-share-summary dd { font-size: 14px; } .credit-share-file { flex-wrap: wrap; } .credit-share-file button { width: 100%; } }
+.credit-document-button, .credit-document-icon { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; border: 1px solid #c8d8fc; border-radius: 12px; background: #edf3ff; color: #2454c3; font-size: 12px; font-weight: 700; cursor: pointer; }
+.credit-document-button { padding: 11px 15px; }
+.credit-document-icon { min-width: 42px; padding: 10px; }
+.credit-document-button:hover, .credit-document-icon:hover { background: #dfeaff; }
+.credit-payment-source { display: block; margin-top: 5px; color: #64748b; font-size: 11px; font-weight: 400; }
+.credit-document-dialog { position: fixed; inset: 0; margin: auto; width: min(920px, calc(100dvw - 24px)); max-height: calc(100dvh - 24px); padding: 0; overflow: hidden; border: 1px solid #d8e2ef; border-radius: 20px; background: #fff; color: #17243d; box-shadow: 0 20px 70px #14284a40; }
+.credit-document-dialog[open] { display: flex; flex-direction: column; }
+.credit-document-dialog::backdrop { background: #101d3999; backdrop-filter: blur(2px); }
+.credit-document-dialog > header { flex-shrink: 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 22px; border-bottom: 1px solid #d8e2ef; }
+.credit-document-dialog h2 { font-size: 20px; font-weight: 700; line-height: 1.7; }
+.credit-document-dialog header p { margin-top: 5px; font-size: 12px; line-height: 1.9; color: #60718b; }
+.credit-document-dialog header button { padding: 7px; border-radius: 8px; cursor: pointer; }
+.credit-document-body { overflow: auto; min-height: 0; padding: 20px; background: #eef2f8; }
+.credit-document-preview .credit-paper:not([data-credit-document="payment"]) { min-width: 600px; }
+.credit-document-dialog > footer { flex-shrink: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid #d8e2ef; }
+.credit-document-dialog footer button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 16px; min-height: 44px; border: 1px solid #d8e2ef; border-radius: 11px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.credit-document-dialog [data-print-credit-document] { color: #fff; background: #2563eb; border-color: #2563eb; }
+.credit-document-dialog button:disabled { opacity: .5; cursor: default; }
+.credit-document-feedback { padding: 22px 10px; color: #be123c; font-size: 13px; text-align: center; }
+.credit-document-feedback button { margin-top: 10px; font-weight: 700; text-decoration: underline; }
+.credit-document-scroll-hint { display: none; margin-bottom: 12px; color: #52627a; font-size: 12px; line-height: 1.9; }
+.credit-document-button:focus-visible, .credit-document-icon:focus-visible, .credit-document-dialog button:focus-visible { outline: 3px solid #93b4fc; outline-offset: 3px; }
+.dark .credit-document-button, .dark .credit-document-icon { background: #1c3159; color: #b6cfff; border-color: #3a5685; }
+.dark .credit-document-dialog { background: #162136; color: #f0f5ff; border-color: #30415d; }
+.dark .credit-document-dialog > header, .dark .credit-document-dialog > footer, .dark .credit-document-dialog footer button { border-color: #30415d; }
+.dark .credit-document-body { background: #0d1525; }
+.dark .credit-document-dialog header p, .dark .credit-payment-source, .dark .credit-document-scroll-hint { color: #acbdd5; }
+.dark .credit-document-feedback { color: #ffb0c2; }
+@media (max-width: 600px) { .credit-document-dialog > header, .credit-document-dialog > footer { padding: 15px; } .credit-document-body { padding: 12px; } .credit-document-scroll-hint { display: block; } .credit-paper[data-credit-document="payment"] { padding: 15px; } .credit-paper[data-credit-document="payment"] .credit-paper-totals { padding: 8px 10px; } .credit-paper[data-credit-document="payment"] .credit-paper-totals > div { gap: 12px; font-size: 13px; } }
+
+.credit-activity{border:1px solid #dce4ee;border-radius:22px;background:#fff;overflow:hidden;color:#172840}.credit-activity header{padding:22px 24px;border-bottom:1px solid #dce4ee}.credit-activity h3{font-weight:800;font-size:18px;margin:0}.credit-activity header p{font-size:14px;color:#526479;margin:8px 0 0}.credit-activity-scroll{overflow-x:auto}.credit-activity table{border-collapse:collapse;width:100%;min-width:850px;text-align:start}.credit-activity th{background:#f4f7fb;color:#526479;font-size:13px;text-align:start;white-space:nowrap}.credit-activity td,.credit-activity th{padding:16px 20px;border-bottom:1px solid #e6edf4;vertical-align:top}.credit-activity td{font-size:14px;line-height:1.8}.credit-activity td:nth-child(4){min-width:260px}.credit-activity td:last-child{font-size:11px}.credit-activity small{display:block;color:#526479;font-size:12px;line-height:1.8}.credit-activity-empty{padding:24px;color:#526479}.dark .credit-activity{background:#0f1a2c;color:#f1f5f9;border-color:#33435a}.dark .credit-activity header,.dark .credit-activity td,.dark .credit-activity th{border-color:#33435a}.dark .credit-activity th{background:#152238}.dark .credit-activity small,.dark .credit-activity header p,.dark .credit-activity th,.dark .credit-activity-empty{color:#bdcbe0}

@@ -1,0 +1,69 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* A shared, softer palette for every screen. */
+@theme {
+  --color-white: #f9fafb;
+  --color-primary-50: #effaf6;
+  --color-primary-100: #d8f2e8;
+  --color-primary-200: #b0e5d3;
+  --color-primary-300: #7bd2b9;
+  --color-primary-400: #42bfa0;
+  --color-primary-500: #19b393;
+  --color-primary-600: #12846e;
+  --color-primary-700: #106b5b;
+  --color-primary-800: #105649;
+  --color-primary-900: #10463d;
+  --color-primary-950: #062b25;
+  --color-blue-50: #edf5fc;
+  --color-blue-100: #deedf9;
+  --color-blue-200: #c2ddf2;
+  --color-blue-300: #97c3e7;
+  --color-blue-400: #6da9d8;
+  --color-blue-500: #4c8dc3;
+  --color-blue-600: #3374ad;
+  --color-blue-700: #2b608f;
+  --color-blue-800: #284e73;
+  --color-blue-900: #243f5b;
+  --color-blue-950: #14283d;
+  --color-slate-50: #eef2f6;
+  --color-slate-100: #e6edf4;
+  --color-slate-200: #d8e2ec;
+  --color-gray-50: #f1f4f7;
+  --color-gray-100: #eef2f6;
+  --color-gray-200: #dde5ec;
+}
+
+.app-display-controls {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-height: 54px;
+  padding: 7px 20px;
+  border-bottom: 1px solid #dce4f2;
+  background: #fff;
+  color: #334666;
+}
+.app-display-controls button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+.app-display-controls button:hover { background: #edf3ff; color: #1d4ed8; }
+.app-display-controls button:focus-visible { outline: 3px solid #7da8ff; outline-offset: 2px; }
+.app-display-controls > span { height: 20px; width: 1px; background: #e0e6f0; }
+.app-display-controls .app-theme-control { width: 38px; padding: 8px; }
+.app-display-controls:not(.app-display-controls-home) { position: fixed; top: auto; bottom: 16px; inset-inline-end: 16px; z-index: 999; min-height: 0; padding: 5px; border: 1px solid #dce4f2; border-radius: 15px; box-shadow: 0 5px 20px #17243d12; }
+.dark .app-display-controls { background: #162136; color: #c5d4ed; border-color: #30415d; }
+.dark .app-display-controls > span { background: #30415d; }
+.dark .app-display-controls button:hover { background: #243b69; color: #fff; }

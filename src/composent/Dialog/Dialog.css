@@ -1,0 +1,84 @@
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(33, 53, 74, 0.35);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+/* 🔹 Dialog box */
+.dialog {
+  border-radius: 20px;
+  width: 100%;
+  max-width: min(900px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  background: #f9fafb;
+  box-shadow: 0 20px 60px rgba(36, 63, 91, 0.16);
+  animation: scaleIn 0.25s ease-out;
+}
+
+/* 🔹 Header */
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 18px;
+  background: #deedf9;
+  color: #284e73;
+  font-weight: 600;
+}
+
+/* 🔹 Close button (if you have one) */
+.dialog-header button {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* 🔹 Body */
+.dialog-body {
+  padding: 20px;
+  color: #333;
+}
+
+.dark .dialog-header { background: #243f5b; color: #deedf9; }
+.dark .dialog-body { color: #d8e2ec; }
+
+/* 🔹 Footer (optional) */
+.dialog-footer {
+  padding: 15px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: #f8f9fb;
+}
+
+/* 🔹 Animations */
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9) translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+.dialog-overlay.closing {
+  animation: fadeOut 0.2s ease forwards;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+  }
+}
+
+

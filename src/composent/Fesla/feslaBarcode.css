@@ -1,0 +1,294 @@
+.fesla-search-panel { display: grid; gap: 15px; padding: 18px; border: 1px solid #d8e2ef; border-radius: 18px; background: #fff; }
+.fesla-search-modes { display: flex; flex-wrap: wrap; gap: 8px; }
+.fesla-search-modes button { display: inline-flex; align-items: center; gap: 7px; min-height: 42px; padding: 10px 14px; border: 1px solid #d8e2ef; border-radius: 11px; color: #52627a; font-size: 13px; font-weight: 700; cursor: pointer; }
+.fesla-search-modes button[aria-pressed="true"] { color: #fff; background: #2563eb; border-color: #2563eb; }
+.fesla-search-input { position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; border: 1px solid #d8e2ef; border-radius: 12px; padding: 0 13px; background: #f5f7fc; color: #60718b; }
+.fesla-search-input > svg { flex-shrink: 0; font-size: 22px; }
+.fesla-search-input input { flex: 1; width: 100%; min-width: 0; padding: 14px 0; border: 0; outline: none; color: #17243d; background: transparent; font-size: 14px; }
+.fesla-search-input:focus-within { border-color: #2563eb; box-shadow: 0 0 0 3px #2563eb1a; }
+.fesla-search-input input::placeholder { color: #60718b; }
+.fesla-search-hint { margin: 0; color: #5c6e88; font-size: 12px; line-height: 1.8; }
+.fesla-barcode-panel { margin-top: 20px; padding-top: 17px; border-top: 1px solid #d8e2ef; }
+.fesla-barcode-panel > p { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; color: #52627a; font-size: 12px; font-weight: 700; }
+.fesla-order-barcode { width: 100%; min-width: 0; overflow: hidden; background: #fff; color: #000; padding: 5px 0; text-align: center; border-radius: 9px; }
+.fesla-order-barcode svg { display: block; max-width: 100%; height: auto; margin-inline: auto; }
+.fesla-barcode-value { display: block; padding: 0 7px 5px; color: #17243d; font-family: Consolas, monospace; font-size: 10px; letter-spacing: .15px; overflow-wrap: anywhere; user-select: all; }
+.fesla-label-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 43px; padding: 10px; margin-top: 11px; border: 1px solid #c8d8fc; border-radius: 11px; background: #edf3ff; color: #2454c3; font-size: 13px; font-weight: 700; cursor: pointer; }
+.fesla-label-button:hover { background: #dfeaff; }
+.fesla-label-dialog { position: fixed; inset: 0; margin: auto; width: min(520px, calc(100dvw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; border: 1px solid #d8e2ef; border-radius: 20px; padding: 22px; background: #fff; color: #17243d; box-shadow: 0 20px 70px #14284a40; }
+.fesla-label-dialog::backdrop { background: #101d3999; backdrop-filter: blur(2px); }
+.fesla-label-dialog header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.fesla-label-dialog h2 { font-size: 20px; font-weight: 700; line-height: 1.7; }
+.fesla-label-dialog header p { color: #60718b; font-size: 12px; line-height: 1.9; margin-top: 6px; }
+.fesla-label-dialog header button { display: grid; place-items: center; padding: 7px; border-radius: 8px; cursor: pointer; }
+.fesla-label-preview { padding: 16px; border-radius: 13px; background: #eef2f8; }
+.fesla-label-dialog footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.fesla-label-dialog footer button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 11px 16px; border: 1px solid #d8e2ef; border-radius: 11px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.fesla-label-dialog [data-print-tailoring-label] { color: #fff; background: #2563eb; border-color: #2563eb; }
+.fesla-print-error { margin-top: 15px; color: #b91c41; font-size: 12px; line-height: 1.8; }
+.fesla-search-panel button:focus-visible, .fesla-label-button:focus-visible, .fesla-label-dialog button:focus-visible { outline: 3px solid #7da8ff; outline-offset: 3px; }
+.dark .fesla-search-panel, .dark .fesla-label-dialog { background: #162136; border-color: #30415d; color: #f0f5ff; }
+.dark .fesla-search-modes button:not([aria-pressed="true"]) { border-color: #30415d; color: #b5c5df; }
+.dark .fesla-search-input { background: #0d1525; border-color: #30415d; color: #acbdd5; }
+.dark .fesla-search-input input { color: #f0f5ff; }
+.dark .fesla-search-input input::placeholder, .dark .fesla-search-hint, .dark .fesla-label-dialog header p { color: #acbdd5; }
+.dark .fesla-barcode-panel { border-color: #30415d; }
+.dark .fesla-barcode-panel > p { color: #b5c5df; }
+.dark .fesla-label-button { background: #1c3159; color: #b6cfff; border-color: #3a5685; }
+.dark .fesla-label-preview { background: #0d1525; }
+.dark .fesla-label-dialog footer button { border-color: #30415d; }
+.dark .fesla-print-error { color: #ffb0c2; }
+.fesla-table-panel { min-width: 0; overflow: hidden; border: 1px solid #d8e2ef; border-radius: 18px; background: #fff; }
+.fesla-table-hint { margin: 0; padding: 12px 16px; border-bottom: 1px solid #d8e2ef; color: #52627a; background: #f4f7fc; font-size: 12px; line-height: 1.8; }
+.fesla-table-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.fesla-orders-table { width: 100%; min-width: 1250px; border-collapse: separate; border-spacing: 0; text-align: start; font-size: 13px; }
+.fesla-orders-table th, .fesla-orders-table td { padding: 17px 15px; border-bottom: 1px solid #e5ebf4; text-align: start; vertical-align: middle; }
+.fesla-orders-table thead th { color: #34517f; background: #edf3ff; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.fesla-orders-table tbody tr { --fesla-row-bg: #fff; background: var(--fesla-row-bg); }
+.fesla-orders-table tbody tr:nth-child(even) { --fesla-row-bg: #f7f9fd; }
+.fesla-orders-table tbody tr:hover { --fesla-row-bg: #eef4ff; }
+.fesla-orders-table tbody tr:last-child > * { border-bottom: 0; }
+.fesla-table-client { min-width: 215px; max-width: 260px; font-weight: 400; overflow-wrap: anywhere; }
+.fesla-table-client > span { display: block; color: #17243d; font-size: 14px; font-weight: 700; }
+.fesla-table-phone { display: block; width: fit-content; margin-top: 6px; color: #52627a; font-size: 12px; }
+.fesla-table-barcode { display: block; width: fit-content; margin-top: 7px; color: #64748b; font: 10px Consolas, monospace; white-space: nowrap; user-select: all; }
+.fesla-orders-table time { white-space: nowrap; }
+.fesla-table-fabric { min-width: 140px; max-width: 200px; overflow-wrap: anywhere; }
+.fesla-table-fabric > span { display: block; font-weight: 600; }
+.fesla-table-fabric small { display: block; margin-top: 5px; color: #60718a; font-size: 12px; }
+.fesla-table-money { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fesla-table-money small { display: block; margin-top: 4px; color: #60718a; font-size: 11px; font-weight: 400; }
+.fesla-table-balance { color: #a85b0c; font-weight: 700; }
+.fesla-table-balance.is-paid { color: #168052; }
+.fesla-orders-table .fesla-table-actions { position: sticky; inset-inline-end: 0; width: 155px; min-width: 155px; padding-inline: 12px; background: var(--fesla-row-bg, #edf3ff); border-inline-start: 1px solid #d8e2ef; z-index: 1; }
+.fesla-details-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 9px 12px; border-radius: 10px; background: #2563eb; color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.fesla-details-button:hover, .fesla-details-print:hover { background: #1d4ed8; }
+.fesla-details-dialog { position: fixed; inset: 0; margin: auto; width: min(740px, calc(100dvw - 24px)); max-height: calc(100dvh - 24px); padding: 0; overflow: hidden; border: 1px solid #d8e2ef; border-radius: 20px; background: #fff; color: #17243d; box-shadow: 0 20px 70px #14284a40; }
+.fesla-details-dialog[open] { display: flex; flex-direction: column; }
+.fesla-details-dialog::backdrop { background: #101d3999; backdrop-filter: blur(2px); }
+.fesla-details-header { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 22px; border-bottom: 1px solid #d8e2ef; background: #edf3ff; }
+.fesla-details-header h2 { font-size: 20px; font-weight: 700; }
+.fesla-details-header button { display: grid; place-items: center; padding: 7px; border-radius: 9px; cursor: pointer; }
+.fesla-details-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px 22px; }
+.fesla-details-body > article { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.fesla-details-footer { display: flex; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; gap: 9px; padding: 15px 22px; border-top: 1px solid #d8e2ef; }
+.fesla-details-footer button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 43px; padding: 10px 13px; border: 1px solid #d8e2ef; border-radius: 11px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.fesla-details-footer .fesla-details-print { color: #fff; background: #2563eb; border-color: #2563eb; }
+.fesla-details-button:focus-visible, .fesla-details-dialog button:focus-visible, .fesla-table-scroll:focus-visible { outline: 3px solid #7da8ff; outline-offset: -3px; }
+.dark .fesla-table-panel, .dark .fesla-details-dialog { background: #162136; border-color: #30415d; color: #f0f5ff; }
+.dark .fesla-table-hint, .dark .fesla-orders-table thead th, .dark .fesla-details-header { background: #1b2e4f; color: #c3d6f7; border-color: #30415d; }
+.dark .fesla-orders-table tbody tr { --fesla-row-bg: #162136; }
+.dark .fesla-orders-table tbody tr:nth-child(even) { --fesla-row-bg: #1a2840; }
+.dark .fesla-orders-table tbody tr:hover { --fesla-row-bg: #203658; }
+.dark .fesla-orders-table th, .dark .fesla-orders-table td, .dark .fesla-details-footer, .dark .fesla-details-footer button { border-color: #30415d; }
+.dark .fesla-orders-table thead .fesla-table-actions { background: #1b2e4f; }
+.dark .fesla-table-client > span { color: #f0f5ff; }
+.dark .fesla-table-phone, .dark .fesla-table-barcode, .dark .fesla-table-fabric small, .dark .fesla-table-money small { color: #acbdd5; }
+.dark .fesla-table-balance { color: #f5c17e; }
+.dark .fesla-table-balance.is-paid { color: #7cdeb1; }
+.fesla-row-actions { display: grid; gap: 7px; }
+.fesla-order-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.fesla-payment-button, .fesla-deliver-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 39px; padding: 9px 11px; border: 1px solid transparent; border-radius: 10px; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.fesla-payment-button { color: #1d4ed8; background: #eaf1ff; border-color: #c4d5fc; }
+.fesla-payment-button:hover { background: #dce8ff; }
+.fesla-deliver-button { color: #fff; background: #168052; border-color: #168052; }
+.fesla-deliver-button:hover { background: #116540; }
+.fesla-payment-button:disabled, .fesla-deliver-button:disabled { opacity: .6; cursor: default; }
+.fesla-order-status { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border-radius: 9px; color: #956017; background: #fff2d9; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.fesla-order-status.is-delivered { color: #116540; background: #dcf7e9; }
+.fesla-delivered-date { margin-top: 9px; color: #52627a; font-size: 12px; line-height: 1.8; }
+.fesla-details-status { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid #d8e2ef; }
+.fesla-payment-history { margin-top: 20px; padding: 15px; border: 1px solid #d8e2ef; border-radius: 12px; }
+.fesla-payment-history h3 { margin-bottom: 10px; font-size: 14px; font-weight: 700; }
+.fesla-payment-history li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-block: 10px; border-top: 1px solid #e5ebf4; font-size: 13px; }
+.fesla-payment-history li > bdi { font-weight: 700; color: #168052; }
+.fesla-payment-history time { color: #52627a; font-size: 12px; }
+.fesla-action-dialog { position: fixed; inset: 0; margin: auto; width: min(510px, calc(100dvw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 22px; border: 1px solid #d8e2ef; border-radius: 20px; color: #17243d; background: #fff; box-shadow: 0 20px 70px #14284a40; }
+.fesla-action-dialog::backdrop { background: #101d3999; backdrop-filter: blur(2px); }
+.fesla-action-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.fesla-action-dialog h2 { font-size: 20px; font-weight: 700; }
+.fesla-action-dialog header button { display: grid; place-items: center; padding: 7px; border-radius: 8px; cursor: pointer; }
+.fesla-action-client { margin-bottom: 15px; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+.fesla-action-summary { display: grid; gap: 13px; padding: 16px; border-radius: 12px; color: #34517f; background: #edf3ff; font-size: 13px; }
+.fesla-action-summary > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.fesla-action-summary > div:last-child { font-weight: 700; }
+.fesla-payment-input { margin-top: 20px; }
+.fesla-payment-input label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 700; }
+.fesla-payment-input input { width: 100%; padding: 13px; border: 1px solid #c8d5e9; border-radius: 11px; background: #fff; color: #17243d; font-size: 16px; }
+.fesla-payment-input > p { margin-top: 12px; color: #34517f; font-size: 13px; line-height: 1.8; }
+.fesla-delivery-hint { margin-top: 18px; color: #52627a; font-size: 13px; line-height: 1.9; }
+.fesla-action-error { margin-top: 15px; padding: 12px; border-radius: 10px; color: #b91c41; background: #fff0f3; font-size: 13px; line-height: 1.8; }
+.fesla-action-error button { margin-top: 8px; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.fesla-action-dialog footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; margin-top: 22px; }
+.fesla-action-dialog footer button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 43px; padding: 10px 15px; border: 1px solid #c8d5e9; border-radius: 11px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.fesla-action-dialog footer button:disabled { opacity: .6; cursor: default; }
+.fesla-action-dialog footer .fesla-payment-button { color: #fff; background: #2563eb; border-color: #2563eb; }
+.fesla-action-dialog footer .fesla-deliver-button { border-color: #168052; }
+.fesla-payment-button:focus-visible, .fesla-deliver-button:focus-visible, .fesla-action-dialog button:focus-visible, .fesla-action-dialog input:focus-visible { outline: 3px solid #7da8ff; outline-offset: 2px; }
+.dark .fesla-payment-button { color: #b6cfff; background: #1c3159; border-color: #3a5685; }
+.dark .fesla-order-status { color: #f5c17e; background: #44321e; }
+.dark .fesla-order-status.is-delivered { color: #7cdeb1; background: #153f33; }
+.dark .fesla-delivered-date, .dark .fesla-payment-history time, .dark .fesla-delivery-hint { color: #acbdd5; }
+.dark .fesla-details-status, .dark .fesla-payment-history, .dark .fesla-payment-history li { border-color: #30415d; }
+.dark .fesla-payment-history li > bdi { color: #7cdeb1; }
+.dark .fesla-action-dialog { background: #162136; border-color: #30415d; color: #f0f5ff; }
+.dark .fesla-action-summary { background: #1b2e4f; color: #c3d6f7; }
+.dark .fesla-payment-input input { background: #0d1525; color: #f0f5ff; border-color: #30415d; }
+.dark .fesla-payment-input > p { color: #c3d6f7; }
+.dark .fesla-action-error { color: #ffb0c2; background: #421e2c; }
+.dark .fesla-action-dialog footer button { border-color: #30415d; }
+.fesla-items-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.fesla-items-heading h3 { font-size: 17px; font-weight: 700; }
+.fesla-items-heading p { margin-top: 7px; color: #60718a; font-size: 12px; line-height: 1.8; }
+.fesla-items-heading > span, .fesla-table-fabric > strong { display: inline-flex; padding: 6px 9px; border-radius: 9px; color: #2454c3; background: #edf3ff; font-size: 12px; font-weight: 700; }
+.fesla-item-form { display: grid; gap: 18px; padding: 18px; border: 1px solid #cddbf1; border-radius: 16px; background: #fff; }
+.fesla-item-form > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid #d8e2ef; }
+.fesla-item-form > header h3 { color: #2454c3; font-size: 16px; font-weight: 700; }
+.fesla-item-form > header button { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 8px 11px; border: 1px solid #fecdd6; border-radius: 10px; color: #be2344; background: #fff0f3; font-size: 12px; font-weight: 700; cursor: pointer; }
+.fesla-add-item { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 45px; padding: 12px; border: 1px dashed #86aaf6; border-radius: 12px; color: #2454c3; background: #edf3ff; font-size: 14px; font-weight: 700; cursor: pointer; }
+.fesla-add-item:disabled { opacity: .5; cursor: default; }
+.fesla-form-total { display: grid; align-content: center; gap: 10px; padding: 13px; border-radius: 12px; color: #2454c3; background: #edf3ff; font-size: 14px; font-weight: 700; }
+.fesla-form-total p { color: #be2344; font-size: 12px; font-weight: 400; }
+.fesla-garment-details { display: grid; gap: 18px; margin-top: 18px; }
+.fesla-garment-detail { min-width: 0; padding: 16px; border: 1px solid #d8e2ef; border-radius: 14px; }
+.fesla-garment-detail > header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; color: #2454c3; font-size: 14px; font-weight: 700; }
+.fesla-garment-detail > header > bdi { padding: 6px 9px; border-radius: 8px; background: #edf3ff; }
+.fesla-add-item:focus-visible, .fesla-item-form > header button:focus-visible { outline: 3px solid #7da8ff; outline-offset: 2px; }
+.dark .fesla-items-heading p { color: #acbdd5; }
+.dark .fesla-item-form, .dark .fesla-garment-detail { color: #f0f5ff; background: #162136; border-color: #30415d; }
+.dark .fesla-item-form > header { border-color: #30415d; }
+.dark .fesla-item-form > header h3, .dark .fesla-garment-detail > header { color: #b6cfff; }
+.dark .fesla-add-item, .dark .fesla-form-total, .dark .fesla-items-heading > span, .dark .fesla-table-fabric > strong, .dark .fesla-garment-detail > header > bdi { color: #b6cfff; background: #1c3159; border-color: #3a5685; }
+.dark .fesla-item-form > header button { color: #ffb0c2; background: #421e2c; border-color: #723247; }
+@media (max-width: 600px) {
+  .fesla-search-panel { padding: 14px; }
+  .fesla-search-modes button { flex: 1; justify-content: center; padding-inline: 8px; font-size: 12px; }
+  .fesla-search-input input { font-size: 12px; }
+  .fesla-label-dialog { padding: 17px; }
+  .fesla-label-preview { padding: 10px; }
+  .fesla-label-dialog footer button { flex: 1; padding-inline: 10px; font-size: 12px; }
+  .fesla-details-header { padding: 13px 15px; }
+  .fesla-details-header h2 { font-size: 18px; }
+  .fesla-details-body { padding: 16px; }
+  .fesla-details-footer { padding: 12px; gap: 7px; }
+  .fesla-details-footer button { flex: 1; padding-inline: 8px; }
+  .fesla-details-footer .fesla-details-print { flex-basis: 100%; }
+  .fesla-action-dialog { padding: 17px; }
+  .fesla-action-dialog footer button { flex: 1; padding-inline: 10px; }
+  .fesla-order-actions { width: 100%; }
+  .fesla-order-actions button { flex: 1; }
+  .fesla-item-form { padding: 12px; }
+  .fesla-garment-detail { padding: 12px; }
+}
+
+.fesla-orders-table { min-width: 1450px; }
+.fesla-table-tracking { min-width: 205px; max-width: 255px; }
+.fesla-tracking-summary { display: flex; flex-wrap: wrap; gap: 7px; font-size: 12px; line-height: 1.8; }
+.fesla-tracking-stage { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 7px 10px; border-radius: 9px; font-size: 12px; font-weight: 700; line-height: 1.7; }
+.fesla-tracking-stage svg { flex-shrink: 0; }
+.fesla-tracking-stage.is-active { color: #9a5c0a; background: #fff3d1; }
+.fesla-tracking-stage.is-done { color: #08794f; background: #e4f8ee; }
+.fesla-tracking-empty { color: #64748b; font-size: 13px; line-height: 1.9; }
+.fesla-tracking-error { color: #be123c; font-size: 13px; line-height: 1.9; }
+.fesla-tracking-panel { margin-bottom: 20px; padding: 18px; border: 1px solid #cbdcfd; border-radius: 16px; background: #f5f8ff; }
+.fesla-tracking-panel > header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.fesla-tracking-panel h3 { font-size: 16px; font-weight: 700; }
+.fesla-tracking-panel > header p { margin-top: 6px; color: #60718b; font-size: 12px; line-height: 1.9; }
+.fesla-tracking-panel > header button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 9px 12px; border: 1px solid #c8d8fc; border-radius: 10px; background: #fff; color: #2454c3; font-size: 12px; font-weight: 700; cursor: pointer; }
+.fesla-tracking-panel > header button:disabled { opacity: .5; cursor: default; }
+.fesla-assignment-list { display: grid; gap: 12px; }
+.fesla-assignment { min-width: 0; padding: 15px; border: 1px solid #d8e2ef; border-radius: 12px; background: #fff; }
+.fesla-assignment-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.fesla-assignment-header a { font-size: 14px; font-weight: 700; text-decoration: underline; color: #2454c3; overflow-wrap: anywhere; }
+.fesla-assignment-garments { display: grid; gap: 5px; margin-top: 12px; color: #52627a; font-size: 12px; line-height: 1.9; }
+.fesla-assignment-sfifa { margin-top: 9px; color: #6d28d9; font-size: 12px; line-height: 1.9; }
+.fesla-assignment-amounts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 13px; padding-top: 12px; border-top: 1px solid #e5ebf4; }
+.fesla-assignment-amounts dt { color: #60718b; font-size: 11px; line-height: 1.8; }
+.fesla-assignment-amounts dd { margin-top: 5px; color: #17243d; font-weight: 700; font-size: 17px; overflow-wrap: anywhere; }
+.fesla-assignment-date { display: flex; flex-wrap: wrap; gap: 7px 15px; margin-top: 12px; color: #60718b; font-size: 11px; line-height: 1.9; }
+.dark .fesla-tracking-panel { background: #172844; border-color: #3a5685; }
+.dark .fesla-tracking-panel > header p, .dark .fesla-tracking-empty, .dark .fesla-assignment-garments, .dark .fesla-assignment-amounts dt, .dark .fesla-assignment-date { color: #acbdd5; }
+.dark .fesla-tracking-panel > header button, .dark .fesla-assignment { background: #162136; border-color: #30415d; }
+.dark .fesla-tracking-panel > header button, .dark .fesla-assignment-header a { color: #b6cfff; }
+.dark .fesla-tracking-stage.is-active { color: #fde68a; background: #493714; }
+.dark .fesla-tracking-stage.is-done { color: #86efb6; background: #123e31; }
+.dark .fesla-tracking-error { color: #ffb0c2; }
+.dark .fesla-assignment-amounts { border-color: #30415d; }
+.dark .fesla-assignment-amounts dd { color: #f0f5ff; }
+.dark .fesla-assignment-sfifa { color: #d8b4fe; }
+@media (max-width: 480px) { .fesla-tracking-panel { padding: 13px; } .fesla-assignment { padding: 12px; } .fesla-assignment-amounts { gap: 7px; } }
+
+
+.fesla-section-nav { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px; border: 1px solid #dbe4f1; border-radius: 16px; background: #fff; }
+.fesla-section-nav a { display: inline-flex; flex: 1; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 10px 18px; border-radius: 11px; color: #52627a; font-size: 15px; font-weight: 700; }
+.fesla-section-nav a:hover { background: #f1f5fc; }
+.fesla-section-nav a[aria-current="page"] { color: #fff; background: #2563eb; box-shadow: 0 3px 9px #2563eb26; }
+.fesla-section-nav b { min-width: 25px; padding: 2px 7px; border-radius: 7px; background: #e8eef8; color: #52627a; font-size: 12px; text-align: center; }
+.fesla-section-nav a[aria-current="page"] b { color: #fff; background: #ffffff30; }
+.fesla-form-profit { min-width: 0; padding: 15px; border: 1px solid #a7e1c1; border-radius: 12px; background: #ecfdf3; color: #08794f; }
+.fesla-form-profit label { display: block; font-size: 13px; font-weight: 700; }
+.fesla-form-profit output { display: block; margin-top: 9px; font-size: 21px; font-weight: 700; overflow-wrap: anywhere; }
+.fesla-form-profit p { margin-top: 7px; font-size: 11px; line-height: 1.8; }
+.fesla-form-profit.is-loss { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
+.fesla-table-money.is-loss { color: #be123c; }
+.fesla-garment-type { margin-top: 14px; padding: 8px 11px; border-radius: 9px; background: #eff6ff; color: #2454c3; font-size: 13px; font-weight: 700; }
+.dark .fesla-section-nav { background: #162136; border-color: #30415d; }
+.dark .fesla-section-nav a { color: #acbdd5; }
+.dark .fesla-section-nav a:hover, .dark .fesla-section-nav b { background: #253652; color: #c4d7f5; }
+.dark .fesla-section-nav a[aria-current="page"] { color: #fff; background: #2563eb; }
+.dark .fesla-form-profit { background: #123e31; color: #86efb6; border-color: #27694f; }
+.dark .fesla-form-profit.is-loss { background: #421e2c; color: #ffb0c2; border-color: #723247; }
+.dark .fesla-table-money.is-loss { color: #ffb0c2; }
+.dark .fesla-garment-type { color: #b6cfff; background: #1c3159; }
+@media (max-width: 480px) { .fesla-section-nav { gap: 5px; padding: 6px; } .fesla-section-nav a { gap: 7px; padding: 10px 8px; font-size: 13px; } }
+
+@media (max-width: 480px) {
+  .fesla-section-nav a { flex: 1 1 0; min-width: 0; gap: 5px; padding-inline: 5px; font-size: 12px; }
+  .fesla-section-nav a > svg { display: none; }
+  .fesla-section-nav b { min-width: 20px; padding-inline: 5px; font-size: 11px; }
+}
+
+.fesla-cost-settings-dialog { position: fixed; inset: 0; margin: auto; width: calc(100dvw - 2rem); max-width: 560px; max-height: 92dvh; overflow-y: auto; padding: 22px; border: 1px solid #dbe4f1; border-radius: 18px; color: #17243d; background: #fff; box-shadow: 0 20px 65px #0f172a40; }
+.fesla-cost-settings-dialog::backdrop { background: #0f172a99; }
+.fesla-cost-settings-dialog > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.fesla-cost-settings-dialog h2 { font-size: 19px; font-weight: 700; }
+.fesla-cost-settings-dialog header button { display: grid; place-items: center; min-width: 42px; min-height: 42px; border-radius: 10px; }
+.fesla-cost-settings-hint { margin: 14px 0 20px; color: #60718b; font-size: 13px; line-height: 1.9; }
+.fesla-cost-settings-dialog fieldset { display: grid; gap: 18px; min-width: 0; }
+.fesla-cost-setting-field label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 700; }
+.fesla-cost-setting-field input { width: 100%; min-width: 0; padding: 12px; border: 1px solid #cfdaeb; border-radius: 11px; background: #f8faff; color: inherit; outline: none; }
+.fesla-cost-setting-field input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px #2563eb1a; }
+.fesla-cost-setting-field input[aria-invalid=true] { border-color: #e11d48; }
+.fesla-cost-settings-dialog footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.fesla-cost-settings-dialog footer button, .fesla-cost-settings-dialog [role=alert] > button, .fesla-costs-notice button { min-height: 42px; padding: 10px 14px; border: 1px solid #c8d8fc; border-radius: 10px; color: #2454c3; background: #eff5ff; font-size: 12px; font-weight: 700; cursor: pointer; }
+.fesla-cost-settings-dialog footer button[type=submit] { color: #fff; background: #2563eb; border-color: #2563eb; }
+.fesla-cost-settings-dialog button:disabled { opacity: .5; cursor: default; }
+.fesla-costs-notice { padding: 14px; border: 1px solid #cbdcfd; border-radius: 12px; background: #f5f8ff; color: #2454c3; font-size: 12px; line-height: 1.9; }
+.fesla-costs-notice > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
+.fesla-costs-notice [role=alert] { color: #be123c; margin-top: 8px; }
+.fesla-fabric-meters > p { margin-top: 7px; color: #60718b; font-size: 12px; line-height: 1.9; }
+.fesla-cost-breakdown { margin-top: 16px; padding: 15px; border: 1px solid #a7e1c1; border-radius: 12px; background: #f0fdf5; color: #126446; font-size: 12px; }
+.fesla-cost-breakdown h4 { font-size: 14px; font-weight: 700; }
+.fesla-fabric-equation { margin-top: 9px; line-height: 1.9; overflow-wrap: anywhere; }
+.fesla-cost-breakdown dl { display: grid; gap: 9px; margin-top: 12px; }
+.fesla-cost-breakdown dl > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+.fesla-cost-breakdown dd { font-weight: 700; overflow-wrap: anywhere; }
+.fesla-cost-breakdown dl > div:last-child { border-top: 1px solid #b9e6cd; padding-top: 10px; font-weight: 700; font-size: 14px; }
+.fesla-form-total > p { margin-top: 8px; font-size: 11px; line-height: 1.8; }
+.dark .fesla-cost-settings-dialog { color: #f0f5ff; background: #111c30; border-color: #30415d; }
+.dark .fesla-cost-settings-hint, .dark .fesla-fabric-meters > p { color: #acbdd5; }
+.dark .fesla-cost-setting-field input { color: #f0f5ff; background: #1e293b; border-color: #3a4c69; }
+.dark .fesla-costs-notice, .dark .fesla-costs-notice button, .dark .fesla-cost-settings-dialog footer button:not([type=submit]), .dark .fesla-cost-settings-dialog [role=alert] > button { color: #b6cfff; background: #1c3159; border-color: #3a5685; }
+.dark .fesla-cost-breakdown { color: #86efb6; background: #123e31; border-color: #27694f; }
+.dark .fesla-cost-breakdown dl > div:last-child { border-color: #27694f; }
+.dark .fesla-costs-notice [role=alert] { color: #ffb0c2; }
+@media (max-width: 480px) { .fesla-cost-settings-dialog { padding: 17px; } .fesla-cost-settings-dialog h2 { font-size: 17px; } .fesla-cost-settings-dialog footer button { flex: 1; } .fesla-cost-breakdown { padding: 12px; } }
+
+.fesla-form-total > p:not([role=alert]) { color: #60718b; }
+.dark .fesla-form-total > p:not([role=alert]) { color: #acbdd5; }
+
+@media (max-width:600px) { .fesla-section-nav { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+@media (max-width:600px) { .fesla-section-nav a:last-child:nth-child(odd) { grid-column:1/-1; } }
+
+.fesla-actions-left { flex:1 1 100%; justify-content:left; }

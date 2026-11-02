@@ -1,0 +1,35 @@
+import { Fragment, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { IoAddCircleOutline, IoCheckmarkCircleOutline, IoEyeOutline, IoTimeOutline, IoTrashOutline } from "react-icons/io5";
+import { SFIFA_STOCK_FAMILIES, formatSfifaCode } from "../../../shared/sfifaStock.js";
+
+import { tailoringGarmentType } from "../../../shared/tailoring.js";
+
+export default function WorkerWorkTable({ works, category, canComplete, canIncrease, canDelete, onComplete, onIncrease, onDelete }) {
+  const { t, i18n } = useTranslation();
+  const [expanded, setExpanded] = useState(null);
+  const locale = i18n.language === "ar" ? "ar-MA" : "fr-MA";
+  const number = value => new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(value);
+  const date = value => new Date(value).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" });
+  const isSfifa = category === "sfifa";
+  const amount = value => <><bdi>{number(value)}</bdi>{isSfifa && <small>{t("sfifaStock.unit")}</small>}</>;
+  return <div className="worker-table-panel"><p className="worker-table-hint" id="worker-table-hint">{t("workers.work.scrollTable")}</p><div className="worker-table-scroll" role="region" aria-label={t("workers.work.design.workList")} aria-describedby="worker-table-hint" tabIndex={0}>
+    <table className="worker-work-table"><caption className="sr-only">{t("workers.work.design.workList")}</caption>
+      <thead><tr>{["identity", "quantity", "completedQuantity", "remainingQuantity", "status", "assignedDate", "actions"].map(key => <th scope="col" key={key} className={key === "actions" ? "worker-table-actions" : undefined}>{t(["quantity", "completedQuantity", "remainingQuantity"].includes(key) ? `workers.work.${isSfifa ? "sfifa." : ""}${key}` : key === "identity" && category === "trousers" ? "workers.work.trousers.identity" : `workers.work.${key}`)}</th>)}</tr></thead>
+      <tbody>{works.map(work => {
+        const done = work.remainingQuantity === 0, open = expanded === work._id;
+        return <Fragment key={work._id}><tr data-worker-work={work._id} data-work-status={done ? "done" : "inProgress"}>
+          <th scope="row" className="worker-table-identity">{isSfifa ? <><strong>{t(`sfifaStock.widths.${work.sfifa.width}`)}</strong><bdi dir="ltr">{formatSfifaCode(work.sfifa.code, work.sfifa.family)}</bdi><small>{SFIFA_STOCK_FAMILIES.find(family => family.value === work.sfifa.family)?.label}</small>{work.tailoring && <><strong dir="auto">{work.tailoring.clientName}</strong><bdi dir="ltr" className="worker-order-barcode">{work.tailoring.barcode}</bdi></>}</> : <><strong dir="auto">{work.productName}</strong>{category === "trousers" && work.trouserType && <span className={`worker-trouser-badge worker-trouser-${work.trouserType}`}>{t(`workers.work.trousers.styles.${work.trouserType}`)}</span>}{work.tailoring && <><bdi dir="ltr" className="worker-order-barcode">{work.tailoring.barcode}</bdi><small>{t(tailoringGarmentType(work.tailoring) === "djellaba" ? "fesla.garmentsCount" : "fesla." + tailoringGarmentType(work.tailoring) + ".garmentsCount", { count: work.tailoring.items.length })}</small></>}</>}</th>
+          {["quantity", "completedQuantity", "remainingQuantity"].map(key => <td key={key} data-work-quantity={key} data-value={work[key]} className={`worker-table-number worker-amount-${key}`}>{amount(work[key])}</td>)}
+          <td><span className={`work-status-badge ${done ? "work-status-done" : "work-status-pending"}`}>{done ? <IoCheckmarkCircleOutline aria-hidden="true" /> : <IoTimeOutline aria-hidden="true" />}{t(done ? "workers.work.done" : "workers.work.inProgress")}</span></td>
+          <td><time dateTime={work.createdAt}>{date(work.createdAt)}</time></td>
+          <td className="worker-table-actions"><div>{!done && canComplete && <button type="button" data-complete-work onClick={() => onComplete(work)} className="work-button work-button-blue"><IoAddCircleOutline aria-hidden="true" />{t("workers.work.complete")}</button>}{(canIncrease || canDelete) && <div className="worker-change-actions">{canIncrease && <button type="button" data-increase-work onClick={() => onIncrease(work)} aria-label={t("workers.work.increase")} className="work-button work-button-quiet"><IoAddCircleOutline aria-hidden="true" />{t("workers.work.increaseShort")}</button>}{canDelete && <button type="button" data-delete-work onClick={() => onDelete(work)} aria-label={t("workers.work.remove")} className="work-button work-button-red-quiet"><IoTrashOutline aria-hidden="true" />{t("workers.work.deleteShort")}</button>}</div>}<button type="button" data-view-work={work._id} aria-expanded={open} aria-controls={`work-detail-${work._id}`} onClick={() => setExpanded(open ? null : work._id)} className="work-button work-button-quiet"><IoEyeOutline aria-hidden="true" />{t("workers.work.details")}</button></div></td>
+        </tr>{open && <tr id={`work-detail-${work._id}`} className="worker-expanded-row"><td colSpan={7}>
+          {work.tailoring && <section className="worker-order-detail"><h3>{t("workers.work.orderGarments")}</h3><p><bdi dir="ltr">{work.tailoring.phone}</bdi> · {t("fesla.readyDate")}: <time dateTime={work.tailoring.readyDate}>{work.tailoring.readyDate}</time></p><ul>{work.tailoring.items.map((item, index) => <li key={item.lineId}><strong>{t(tailoringGarmentType(work.tailoring) === "djellaba" ? "fesla.garmentNumber" : "fesla." + tailoringGarmentType(work.tailoring) + ".garmentNumber", { number: index + 1 })}: <span dir="auto">{item.fabricType}{item.fabricColor ? ` · ${item.fabricColor}` : ""}</span></strong>{item.sfifa?.width && <span>{t(`fesla.widths.${item.sfifa.width}`)} · {t(`fesla.styles.${item.sfifa.style}`)}{item.sfifa.style !== "fabric" ? ` · ${item.sfifa.color1} · ${item.sfifa.color2}` : ""}</span>}{item.trouserType && <span>{t("fesla.trouserTypes." + item.trouserType)}</span>}{item.shirtType && <span>{t("fesla.shirtType")}: {item.shirtType}</span>}</li>)}</ul></section>}
+          {Boolean(work.additions?.length) && <section className="worker-completion-history worker-addition-history"><h3>{t("workers.work.increaseHistory")}</h3><ol>{[...work.additions].reverse().map(event => <li key={event._id} data-work-addition><strong>+ {amount(event.quantity)}</strong><time dateTime={event.date}>{date(event.date)}</time><p>{t("workers.work.increaseEntry", { before: number(event.before), after: number(event.after) })}</p></li>)}</ol></section>}
+          <section className="worker-completion-history"><h3>{t("workers.work.history")}</h3>{work.completions.length ? <ol>{[...work.completions].reverse().map(event => <li key={event._id} data-work-completion><strong>+ {amount(event.quantity)}</strong><time dateTime={event.date}>{date(event.date)}</time><p>{t(isSfifa ? "workers.work.sfifa.balanceEntry" : "workers.work.balanceEntry", { before: number(event.before), after: number(event.after) })}</p></li>)}</ol> : <p>{t("workers.work.noCompletions")}</p>}</section>
+        </td></tr>}</Fragment>;
+      })}</tbody>
+    </table>
+  </div></div>;
+}

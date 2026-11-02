@@ -1,0 +1,84 @@
+@font-face {
+  font-family: "Amiri";
+  src: url("./assets/fonts/amiri/Amiri-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Amiri";
+  src: url("./assets/fonts/amiri/Amiri-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: "Saira", sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  
+  background-color: #eef2f6;
+  
+  overflow-x: hidden;
+  color: #1e293b; 
+}
+
+/* Scrollbar Style - Modern & Light */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #97b9d5;
+  border-radius: 50px;
+
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #6a98bf;
+}
+
+/* Utilities for Inputs */
+@layer utilities {
+  .no-spinner::-webkit-outer-spin-button,
+  .no-spinner::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .no-spinner {
+    -moz-appearance: textfield;
+  }
+}
+
+/* Arabic uses system fonts that include connected Arabic glyphs, even offline. */
+html[lang="ar"] body,
+html[lang="ar"] .font-sans,
+html[lang="ar"] button,
+html[lang="ar"] input,
+html[lang="ar"] select,
+html[lang="ar"] textarea {
+  font-family: Tahoma, Arial, sans-serif;
+  letter-spacing: normal;
+}
+
+html[lang="ar"] [class*="tracking-"] {
+  letter-spacing: normal;
+}
+
+.invoice-document,
+.invoice-document button {
+  font-family: "Amiri", Tahoma, Arial, sans-serif;
+}
+
+.invoice-document [class*="tracking-"] {
+  letter-spacing: normal;
+}
+
+.invoice-document th {
+  font-size: 0.875rem;
+}
