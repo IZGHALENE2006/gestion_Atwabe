@@ -1,3 +1,5 @@
+import { tailoringMoneyCents } from "../../shared/tailoring.js";
+import { workerCompletionEarning, workerPayrollMonthValid } from "../../shared/workerPayroll.js";
 import mongoose from "mongoose";
 import { WORK_QUANTITY_LIMIT, WORK_TRACKING_CATEGORIES, WORK_TYPES, TROUSER_TYPES, workerOrderGarmentTypes, workQuantityUnits } from "../../shared/workerWork.js";
 import { SFIFA_STOCK_FAMILIES, SFIFA_STOCK_WIDTHS, sfifaCodeNumber } from "../../shared/sfifaStock.js";
@@ -13,6 +15,8 @@ const sfifaSchema = new mongoose.Schema({
   code: { type: Number, required: true, validate: function (value) { return sfifaCodeNumber(value, this.family) !== null; } },
 }, { _id: false });
 const completionSchema = new mongoose.Schema({
+  earningAmount: { type: Number, default: undefined, validate: value => value === undefined || tailoringMoneyCents(value) !== null },
+  earningMonth: { type: String, default: undefined, validate: value => value === undefined || workerPayrollMonthValid(value) },
   sequence: { type: Number, min: 1, validate: Number.isSafeInteger, default: undefined },
   requestId: { type: String, required: true, match: requestPattern },
   quantity: quantityField(0.001),
@@ -63,6 +67,7 @@ const schema = new mongoose.Schema({
   deletedBy: { type: mongoose.Schema.Types.ObjectId, default: undefined },
   productName: { type: String, required: true, trim: true, maxlength: 160 },
   sfifa: { type: sfifaSchema, default: undefined },
+  unitWage: { type: Number, default: undefined, immutable: true, validate: value => value === undefined || tailoringMoneyCents(value) !== null },
   quantity: quantityField(0.001),
   initialQuantity: { ...quantityField(0.001), required: false, default: undefined },
   completedQuantity: { ...quantityField(0), default: 0 },
@@ -72,6 +77,19 @@ const schema = new mongoose.Schema({
   requestFingerprint: { type: String, required: true },
 }, { timestamps: true, optimisticConcurrency: true });
 schema.pre("validate", function () {
+  let pricedCompleted = 0;
+  for (const event of this.completions) {
+    if (this.unitWage === undefined) {
+      if (event.earningAmount !== undefined || event.earningMonth !== undefined) this.invalidate("completions", "Unpriced work cannot have earnings");
+    } else {
+      try {
+        const expected = workerCompletionEarning({ category: this.category, unitWage: this.unitWage, completedQuantity: pricedCompleted }, event.quantity, event.date);
+        if (event.earningAmount !== expected.earningAmount || event.earningMonth !== expected.earningMonth) this.invalidate("completions", "Inconsistent completion earnings");
+      } catch { this.invalidate("completions", "Invalid completion earnings"); }
+    }
+    const scale = this.category === "sfifa" ? 1000 : 1;
+    pricedCompleted = Math.round((pricedCompleted + event.quantity) * scale) / scale;
+  }
   const linked = Boolean(this.tailoring);
   const trouserClient = this.category === "trousers" && this.workType === "client";
   if ((trouserClient && !TROUSER_TYPES.includes(this.trouserType)) || (!trouserClient && this.trouserType !== undefined)) this.invalidate("trouserType", "Trouser type must match client trouser work");

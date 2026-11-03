@@ -128,6 +128,9 @@ export function validateTailoringOrder(input) {
   if (![undefined, true, false, "true", "false"].includes(rawFabricMode)) throw Object.assign(new Error("invalidOrder"), { fields: { fabricCosting: "costsRequired" } });
   const fabricCosting = rawFabricMode === true || rawFabricMode === "true";
   if (fabricCosting && (tailoringGarmentType(input) !== "trousers" || input?.items === undefined)) throw Object.assign(new Error("invalidOrder"), { fields: { items: "itemsRequired" } });
+  if (![undefined, true, false, "true", "false"].includes(input?.laborCosting)) throw Object.assign(new Error("invalidOrder"), { fields: { laborCosting: "costsRequired" } });
+  const laborCosting = input?.laborCosting === true || input?.laborCosting === "true";
+  if (laborCosting && !fabricCosting) throw Object.assign(new Error("invalidOrder"), { fields: { laborCosting: "costsRequired" } });
   const rawMode = input?.automaticCosting;
   if (![undefined, true, false, "true", "false"].includes(rawMode)) throw Object.assign(new Error("invalidOrder"), { fields: { automaticCosting: "costsRequired" } });
   const automaticCosting = rawMode === true || rawMode === "true";
@@ -155,10 +158,10 @@ export function validateTailoringOrder(input) {
     }
   });
   let costSettingsVersion;
-  if (automaticCosting) {
+  if (automaticCosting || laborCosting) {
     const rawVersion = input.costSettingsVersion;
-    costSettingsVersion = typeof rawVersion === "number" ? rawVersion : typeof rawVersion === "string" && /^\d+$/.test(rawVersion) ? Number(rawVersion) : NaN;
-    if (!Number.isSafeInteger(costSettingsVersion) || costSettingsVersion < 0) fields.costSettingsVersion = "costSettingsRequired";
+    costSettingsVersion = laborCosting && (rawVersion === null || rawVersion === "") ? null : typeof rawVersion === "number" ? rawVersion : typeof rawVersion === "string" && /^\d+$/.test(rawVersion) ? Number(rawVersion) : NaN;
+    if (!(laborCosting && costSettingsVersion === null) && (!Number.isSafeInteger(costSettingsVersion) || costSettingsVersion < 0)) fields.costSettingsVersion = "costSettingsRequired";
   }
   if (automaticCosting || fabricCosting) {
     items.forEach((item, index) => {
@@ -179,7 +182,7 @@ export function validateTailoringOrder(input) {
   else if (totalPrice !== null && paid > tailoringMoneyCents(totalPrice)) fields.paidAmount = "paidExceedsPrice";
   if (Object.keys(fields).length) throw Object.assign(new Error("invalidOrder"), { fields });
   const first = items[0];
-  return { clientName: input.clientName.trim(), phone: input.phone.trim(), orderDate: input.orderDate.trim(), readyDate: input.readyDate.trim(), totalPrice, paidAmount: paid / 100, fabricSource: first.fabricSource, fabricType: first.fabricType, fabricColor: first.fabricColor, fabricId: first.fabricId, colorId: first.colorId, ...(input.garmentType === undefined ? {} : { garmentType: input.garmentType }), ...(trousers ? { trouserType: first.trouserType, expenseAmount: expenses / 100 } : input.garmentType === "shirts" ? { shirtType: first.shirtType, expenseAmount: expenses / 100 } : { sfifa: first.sfifa }), items, ...(automaticCosting ? { automaticCosting: true, costSettingsVersion } : {}), ...(fabricCosting ? { fabricCosting: true } : {}) };
+  return { clientName: input.clientName.trim(), phone: input.phone.trim(), orderDate: input.orderDate.trim(), readyDate: input.readyDate.trim(), totalPrice, paidAmount: paid / 100, fabricSource: first.fabricSource, fabricType: first.fabricType, fabricColor: first.fabricColor, fabricId: first.fabricId, colorId: first.colorId, ...(input.garmentType === undefined ? {} : { garmentType: input.garmentType }), ...(trousers ? { trouserType: first.trouserType, expenseAmount: expenses / 100 } : input.garmentType === "shirts" ? { shirtType: first.shirtType, expenseAmount: expenses / 100 } : { sfifa: first.sfifa }), items, ...(automaticCosting ? { automaticCosting: true, costSettingsVersion } : {}), ...(fabricCosting ? { fabricCosting: true } : {}), ...(laborCosting ? { laborCosting: true, costSettingsVersion } : {}) };
 }
 
 const searchable = (value) => String(value || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();

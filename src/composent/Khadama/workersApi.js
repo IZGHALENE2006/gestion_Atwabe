@@ -12,3 +12,10 @@ export const assignWorkerWork = async (token, workerId, input, requestId) => (aw
 export const completeWorkerWork = async (token, workerId, work, quantity, requestId) => (await axios.post(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}/completions`, { quantity, requestId, version: work.__v }, { headers: headers(token) })).data;
 export const increaseWorkerWork = async (token, workerId, work, input, requestId) => (await axios.post(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}/increases`, { ...input, requestId, version: work.__v }, { headers: headers(token) })).data;
 export const deleteWorkerWork = async (token, workerId, work) => (await axios.delete(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}`, { data: { version: work.__v }, headers: headers(token) })).data;
+
+export async function loadWorkerPayroll(token, workerId, signal) {
+  return (await axios.get(api + "/" + workerId + "/payroll", { headers: headers(token), signal })).data;
+}
+export async function saveWorkerPayment(token, workerId, input, requestId) {
+  return (await axios.post(api + "/" + workerId + "/payments", { ...input, requestId }, { headers: headers(token) })).data;
+}

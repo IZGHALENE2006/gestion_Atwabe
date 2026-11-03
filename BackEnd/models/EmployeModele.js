@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 
 import bcrypt from "bcryptjs";
 import { PAYMENT_METHOD_VALUES } from "../../shared/paymentMethods.js";
+import { EMPLOYEE_MODULES } from "../../shared/employeePermissions.js";
 
 const ShemaEmploye = new mongoose.Schema(
     {
@@ -13,6 +14,7 @@ const ShemaEmploye = new mongoose.Schema(
         password:String,
         isActive:Boolean,
         color:String,
+        moduleAccess: { type: [{ type: String, enum: EMPLOYEE_MODULES }], default: undefined },
         action:{
             delete:{
                 type:Boolean,

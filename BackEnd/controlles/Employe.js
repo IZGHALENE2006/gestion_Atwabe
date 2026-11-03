@@ -2,11 +2,15 @@ import EmployeModel from '../models/EmployeModele.js'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import productModel from '../models/productModel.js'
+import { validateEmployeePermissions } from '../../shared/employeePermissions.js';
 
 //Add Employe 
 
 export const AddEmploye= async(req,res)=>{
     const {name,phone,cin,email,password,color,isActive} =req.body
+    let permissions = {};
+    try { if (req.body.moduleAccess !== undefined || req.body.action !== undefined) permissions = validateEmployeePermissions(req.body); }
+    catch { return res.status(400).json({ message: 'invalidPermissions' }); }
     const item  = await EmployeModel.findOne({email})
      if(item) return res.status(400).json({message:"email if exite"})
         const cinExist = await EmployeModel.findOne({ cin });
@@ -39,7 +43,8 @@ if (cinExist) {
         email,
         password,
         color,
-        isActive
+        isActive,
+        ...permissions
         
     })
     if(!newEmploye) return res.status(404).json({message:"Not Found"})
@@ -83,7 +88,9 @@ export const LoginEmploye = async (req, res) => {
           idAdmin: employe.idAdmin,
         name: employe.name,
         email: employe.email,
-        role: employe.role
+        role: employe.role,
+        moduleAccess: employe.moduleAccess,
+        action: employe.action
       }
     });
 
@@ -104,7 +111,7 @@ export const AllEmploye = async(req,res)=>{
 export const DeleteEmploye = async(req,res)=>{
        const {id} = req.params
       try{
-         const DeleteEmploye = await EmployeModel.findByIdAndDelete(id)
+         const DeleteEmploye = await EmployeModel.findOneAndDelete({ _id: id, idAdmin: req.user.id })
        if(!DeleteEmploye) return res.status(404).json({message:"Not Found"})
         res.json(DeleteEmploye)
       }catch(err){
@@ -117,15 +124,15 @@ export const DeleteEmploye = async(req,res)=>{
     const {id} = req.params
     const {name,phone,cin,email,password,isActive} = req.body
 try{
-      const user = await EmployeModel.findOne({email,_id:{$ne:id}})
+      const user = email === undefined ? null : await EmployeModel.findOne({email,_id:{$ne:id}})
     if(user) return res.status(400).json({message:"email if exite"})
-    const usercin = await EmployeModel.findOne({cin,_id:{$ne:id}})
+    const usercin = cin === undefined ? null : await EmployeModel.findOne({cin,_id:{$ne:id}})
      if(usercin) return res.status(400).json({message:"cin if exite"})
      
-    const newEmploye = await EmployeModel.findByIdAndUpdate(id,
+    const newEmploye = await EmployeModel.findOneAndUpdate({ _id: id, idAdmin: req.user.id },
       {
         name,phone,cin,email,password,isActive
-      }
+      }, { new: true, runValidators: true }
     )
      if(!newEmploye) return res.status(404).json({message:"Not Found"})
       res.status(200).json(newEmploye)
@@ -135,4 +142,15 @@ try{
    
    
  }
+
+export async function UpdateEmployeePermissions(req, res) {
+  let permissions;
+  try { permissions = validateEmployeePermissions(req.body); }
+  catch { return res.status(400).json({ message: 'invalidPermissions' }); }
+  try {
+    const employee = await EmployeModel.findOneAndUpdate({ _id: req.params.id, idAdmin: req.user.id }, { $set: permissions }, { new: true, runValidators: true });
+    if (!employee) return res.status(404).json({ message: 'Not Found' });
+    res.json(employee);
+  } catch { res.status(500).json({ message: 'permissionsSaveFailed' }); }
+}
 

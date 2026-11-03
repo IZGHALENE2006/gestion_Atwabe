@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
+import { canOpenEmployeePage } from '../../../shared/employeePermissions.js';
 import { Link } from 'react-router-dom';
 import {
   IoAppsOutline,
@@ -86,11 +87,11 @@ const iconTones = {
 
 export default function PageNave() {
   const { t, i18n } = useTranslation();
-  const role = useSelector((state) => state.LoginAdmin.role);
+  const { role, user } = useSelector((state) => state.LoginAdmin);
   const groups = pageGroups
     .map((group) => ({
       ...group,
-      pages: group.pages.filter((page) => !page.adminOnly || role === 'admin'),
+      pages: group.pages.filter((page) => (!page.adminOnly || role === 'admin') && canOpenEmployeePage(role, user, page.to)),
     }))
     .filter((group) => group.pages.length > 0);
   const pageCount = groups.reduce((total, group) => total + group.pages.length, 0);

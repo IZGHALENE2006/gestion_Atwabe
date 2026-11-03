@@ -4,6 +4,7 @@ import { salesRevenueArabic } from "./salesRevenue.js";
 import { creditAuditArabic } from "./creditAudit.js";
 import { creditCheckoutArabic } from "./creditCheckout.js";
 import { creditDocumentsArabic } from "./creditDocuments.js";
+import { employeePermissionsArabic } from "./employeePermissions.js";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import french from "./fr.js";
@@ -17,6 +18,7 @@ const resources = {
   ar: {
     translation: {
       creditDocuments: creditDocumentsArabic,
+      employeePermissions: employeePermissionsArabic,
       creditCheckout: creditCheckoutArabic,
       creditAudit: creditAuditArabic,
       salesRevenue: salesRevenueArabic,

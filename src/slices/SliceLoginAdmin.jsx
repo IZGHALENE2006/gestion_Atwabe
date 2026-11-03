@@ -37,7 +37,7 @@ export const getMe = createAsyncThunk(
 
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Server error"
+        { message: error.response?.data?.message || "Server error", status: error.response?.status || 0 }
       );
     }
   }
@@ -98,6 +98,9 @@ const initialState = {
   user: "",
   role: "",
   token: localStorage.getItem("token") || null,
+  sessionReady: false,
+  sessionError: false,
+  sessionRequestId: null,
   loading: false,
   error: null
 
@@ -109,6 +112,10 @@ const LoginAdminSlice = createSlice(
          reducers:{
           logoutAdmin:(state)=>{
            state.user = null;
+           state.role = "";
+           state.sessionReady = false;
+           state.sessionError = false;
+           state.sessionRequestId = null;
            state.token = null;
            state.error = null;
            localStorage.removeItem("token");
@@ -124,7 +131,11 @@ const LoginAdminSlice = createSlice(
             state.loading = false
             state.error = null
             state.token = action.payload.Token
-            state.user = action.payload
+            state.user = action.payload.user
+            state.role = action.payload.user?.role || ""
+            state.sessionReady = false
+            state.sessionError = false
+            state.sessionRequestId = null
             localStorage.setItem('token',action.payload.Token)
           })
            .addCase(Loginuser.rejected,(state,action)=>{
@@ -133,9 +144,18 @@ const LoginAdminSlice = createSlice(
         
           })
           bulder.addCase(getMe.fulfilled,(state,action)=>{
+            if (!state.token || state.sessionRequestId !== action.meta.requestId) return;
             state.user = action.payload.user
             state.role = action.payload.role
+            state.sessionReady = true
+            state.sessionError = false
       
+          })
+          bulder.addCase(getMe.pending, (state, action) => { state.sessionError = false; state.sessionRequestId = action.meta.requestId; })
+          bulder.addCase(getMe.rejected, (state, action) => {
+            if (!state.token || state.sessionRequestId !== action.meta.requestId) return;
+            state.sessionError = true;
+            if ([401, 403, 404].includes(action.payload?.status)) state.sessionReady = false;
           })
           bulder
 .addCase(addVentes.fulfilled, (state, action) => {

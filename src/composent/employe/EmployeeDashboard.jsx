@@ -2,9 +2,12 @@ import { useTranslation } from "react-i18next";
 import React, { useState, useLayoutEffect, useRef, useEffect } from "react";
 import { gsap } from "gsap";
 import { Draggable } from "gsap/dist/Draggable";
-import { IoTrashOutline, IoWarningOutline, IoPersonOutline } from "react-icons/io5";
+import { IoTrashOutline, IoWarningOutline, IoPersonOutline, IoPencil } from "react-icons/io5";
+import { Toaster } from "react-hot-toast";
 import { EmployeeCard } from "./EmployeeCard";
 import EmployeeSearch from "./EmployeeSearch";
+import EmployeePermissionsButton from "./EmployeePermissionsDialog.jsx";
+import EmployeeEditDialog from "./EmployeeEditDialog.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import { DeleteEmploye, GetAllEmploye } from "../../slices/sliceEmploye";
 
@@ -13,7 +16,7 @@ gsap.registerPlugin(Draggable);
 export const EmployeeDashboard = () => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
-  const [refreshEmployees, setRefreshEmployees] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   const [view, setView] = useState("card"); // 'card' or 'list'
   const [searchTerm, setSearchTerm] = useState(""); // Added for Search logic
@@ -25,10 +28,11 @@ export const EmployeeDashboard = () => {
   const deleteZoneRef = useRef(null);
 
   const { Employe } = useSelector((state) => state.Employe);
+  const editingEmployee = Employe?.find(employee => employee._id === editingId);
 
   useEffect(() => {
     dispatch(GetAllEmploye());
-  }, [dispatch , refreshEmployees]);
+  }, [dispatch]);
 
   // ================= SEARCH FILTER LOGIC =================
   const filteredEmployees = (Employe || []).filter((emp) => {
@@ -118,6 +122,8 @@ export const EmployeeDashboard = () => {
 
   return (
     <div className="min-h-screen transition-colors duration-300 pb-20 ">
+      <Toaster/>
+      {editingEmployee && <EmployeeEditDialog key={editingEmployee._id} employee={editingEmployee} onClose={() => setEditingId(null)}/>}
       <div className="px-6 md:px-5 mb-8">
         <EmployeeSearch 
           view={view} 
@@ -134,9 +140,9 @@ export const EmployeeDashboard = () => {
             /* CARD GRID VIEW */
             <div ref={containerRef} className="flex flex-wrap gap-8 justify-center md:justify-start">
               {filteredEmployees.map((emp) => (
-                <div key={emp._id} data-id={emp._id} className="card-wrapper cursor-grab active:cursor-grabbing z-0">
+                <div key={emp._id} data-id={emp._id} className="card-wrapper w-full sm:w-auto cursor-grab active:cursor-grabbing z-0">
                   <EmployeeCard employee={emp}
-                    onUpdated={() => setRefreshEmployees(prev => !prev)}
+                    onEdit={employee => setEditingId(employee._id)}
 
                   />
                 </div>
@@ -168,6 +174,8 @@ export const EmployeeDashboard = () => {
                       <td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">{emp.cin || t("employees.unavailable")}</td>
                       <td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">{emp.email}</td>
                       <td className="px-6 py-4 text-right">
+                        <button type="button" data-edit-employee={emp._id} onClick={() => setEditingId(emp._id)} className="employee-edit-button"><IoPencil size={17}/>{t("employees.edit")}</button>
+                        <EmployeePermissionsButton employee={emp}/>
                         <button 
                           onClick={() => { setPendingDelete({ id: emp._id }); setConfirmOpen(true); }}
                           className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all"

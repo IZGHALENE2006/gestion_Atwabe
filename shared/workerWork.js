@@ -1,4 +1,4 @@
-import { TAILORING_GARMENT_TYPES, TAILORING_SFIFA_GARMENT_TYPES, tailoringGarmentType } from "./tailoring.js";
+import { TAILORING_GARMENT_TYPES, TAILORING_SFIFA_GARMENT_TYPES, tailoringGarmentType, tailoringMoneyCents } from "./tailoring.js";
 import { WORKER_CATEGORIES } from "./workers.js";
 import { SFIFA_STOCK_SCALE, sfifaQuantityUnits, validateSfifaStock } from "./sfifaStock.js";
 
@@ -17,6 +17,15 @@ export function workQuantityUnits(raw, category) {
   if (!/^\d+$/.test(text)) return null;
   const quantity = Number(text);
   return Number.isSafeInteger(quantity) && quantity <= WORK_QUANTITY_LIMIT ? quantity : null;
+}
+
+// Cumulative rounding keeps split metre completions equal to one full completion.
+export function workerWageCents(unitWage, quantity, category) {
+  const cents = tailoringMoneyCents(unitWage), units = workQuantityUnits(quantity, category);
+  if (cents === null || units === null) return null;
+  const scale = category === "sfifa" ? 1000n : 1n;
+  const total = (BigInt(cents) * BigInt(units) + scale / 2n) / scale;
+  return total <= 99999999999n ? Number(total) : null;
 }
 
 export function parseWorkQuantity(raw, category) {
@@ -41,6 +50,7 @@ export function validateWorkerIncrease(input, work, { checkLimits = true } = {})
   if (quantity === null) throw Object.assign(new Error("invalidWork"), { fields: { quantity: work.category === "sfifa" ? "invalidMeters" : "invalidQuantity" } });
   const total = workQuantityUnits(work.quantity, work.category) + workQuantityUnits(quantity, work.category);
   if (checkLimits && total > WORK_QUANTITY_LIMIT * (work.category === "sfifa" ? SFIFA_STOCK_SCALE : 1)) throw Object.assign(new Error("invalidWork"), { fields: { quantity: "increaseLimit" } });
+  if (checkLimits && work.unitWage !== undefined && workerWageCents(work.unitWage, total / (work.category === "sfifa" ? SFIFA_STOCK_SCALE : 1), work.category) === null) throw Object.assign(new Error("invalidWork"), { fields: { quantity: "invalidWage" } });
   return { quantity, ...(lineIds ? { lineIds } : {}) };
 }
 
@@ -80,17 +90,23 @@ function orderSelection(input) {
 
 export function validateWorkerWork(input, { allowLegacyTrouserClient = false } = {}) {
   if (input?.workType !== undefined && !WORK_TYPES.includes(input.workType)) throw Object.assign(new Error("invalidWork"), { fields: { workType: "invalidWorkType" } });
+  const withWage = result => {
+    if (input?.unitWage === undefined) return result;
+    const cents = tailoringMoneyCents(input.unitWage);
+    if (cents === null || workerWageCents(input.unitWage, result.quantity, result.category) === null) throw Object.assign(new Error("invalidWork"), { fields: { unitWage: "invalidWage" } });
+    return { ...result, unitWage: cents / 100 };
+  };
   const type = input?.workType === undefined ? {} : { workType: input.workType };
   if (input?.workType === "client" && input.category !== "sfifa" && !(input.category === "trousers" && allowLegacyTrouserClient)) {
     if (!WORK_TRACKING_CATEGORIES.includes(input.category)) throw Object.assign(new Error("invalidWork"), { fields: { category: "invalidWorkCategory" } });
     const selection = orderSelection(input);
-    return { workType: "client", ...selection, quantity: selection.lineIds.length, category: input.category };
+    return withWage({ workType: "client", ...selection, quantity: selection.lineIds.length, category: input.category });
   }
   if (input?.category === "sfifa") {
     try {
       const { quantity, ...sfifa } = validateSfifaStock({ ...input.sfifa, quantity: input.quantity });
       const selection = input.workType === "client" && (input.linkOrder === true || input.orderId || input.lineIds?.length) ? orderSelection(input) : {};
-      return { productName: "Sfifa", quantity, category: "sfifa", sfifa, ...type, ...selection };
+      return withWage({ productName: "Sfifa", quantity, category: "sfifa", sfifa, ...type, ...selection });
     } catch (error) {
       const fields = { ...error.fields };
       if (fields.quantity) fields.quantity = "invalidMeters";
@@ -109,7 +125,7 @@ export function validateWorkerWork(input, { allowLegacyTrouserClient = false } =
   if (Object.keys(fields).length) throw Object.assign(new Error("invalidWork"), { fields });
   const garmentType = input.category === "machine" && input.garmentType !== undefined ? input.garmentType : undefined;
   if (garmentType !== undefined && !TAILORING_SFIFA_GARMENT_TYPES.includes(garmentType)) throw Object.assign(new Error("invalidWork"), { fields: { garmentType: "invalidGarmentType" } });
-  return { productName, quantity, category: input.category, ...type, ...(garmentType ? { garmentType } : {}), ...(isTrouserClient ? { trouserType: input.trouserType } : {}) };
+  return withWage({ productName, quantity, category: input.category, ...type, ...(garmentType ? { garmentType } : {}), ...(isTrouserClient ? { trouserType: input.trouserType } : {}) });
 }
 
 export function validateWorkerCompletion(input, remaining, category) {

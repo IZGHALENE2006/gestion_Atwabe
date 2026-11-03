@@ -12,7 +12,8 @@ import {
 } from "react-icons/io5";
 import { addEmploye } from "../../slices/sliceEmploye";
 import { useDispatch, useSelector } from "react-redux";
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
+import EmployeePermissionsFields from './EmployeePermissionsFields.jsx';
 
 function AddEmploye({ open, onClose }) {
   const { t } = useTranslation();
@@ -25,6 +26,8 @@ function AddEmploye({ open, onClose }) {
     password: "",
     color: "#10b981", // Default to Emerald
     isActive: true,
+    moduleAccess: ["cashier"],
+    action: { add: true, update: false, delete: false },
   });
 
   const { loading } = useSelector((state) => state.Employe);
@@ -62,7 +65,7 @@ function AddEmploye({ open, onClose }) {
       />
 
       {/* Dialog */}
-      <div className="relative bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-8 border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+      <div className="relative bg-white dark:bg-slate-900 w-full max-w-2xl max-h-[90dvh] overflow-y-auto rounded-[2.5rem] shadow-2xl p-8 border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -167,6 +170,7 @@ function AddEmploye({ open, onClose }) {
             </div>
           </div>
 
+          <EmployeePermissionsFields value={infoEmp} onChange={setInfoEmp} disabled={loading}/>
           {/* Status Toggle */}
           <div className="pt-2">
             <label className="flex items-center justify-between p-4 bg-primary-50/50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30 rounded-2xl cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all">

@@ -1,3 +1,4 @@
+import WorkerPayroll from "./WorkerPayroll.jsx";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
@@ -24,7 +25,7 @@ export default function WorkerWorkPage() {
   const needsGarment = category === "machine" && Boolean(workType) && !garmentType;
   const { t, i18n } = useTranslation();
   const token = useSelector(state => state.LoginAdmin.token);
-  const [result, setResult] = useState(null), [attempt, setAttempt] = useState(0), [editor, setEditor] = useState(null), [status, setStatus] = useState(null), [view, setView] = useState(null);
+  const [result, setResult] = useState(null), [attempt, setAttempt] = useState(0), [editor, setEditor] = useState(null), [status, setStatus] = useState(null), [view, setView] = useState(null), [payrollRevision, setPayrollRevision] = useState(0);
   const scope = `${workerId}:${category}`, workScope = `${scope}:${workType}:${garmentType}`;
   const validCategory = WORK_TRACKING_CATEGORIES.includes(category), isSfifa = category === "sfifa", isTrousers = category === "trousers";
   const state = result?.token === token && result.scope === scope && result.attempt === attempt ? result : { worker: null, works: [], permissions: {}, loading: true, error: "" };
@@ -41,6 +42,7 @@ export default function WorkerWorkPage() {
   const reload = () => { setEditor(null); setStatus(null); setAttempt(value => value + 1); };
   const edit = (work = null, mode = work ? "complete" : "new") => { setEditor({ token, scope: workScope, work, mode }); setStatus(null); };
   const saved = work => {
+    setPayrollRevision(value => value + 1);
     setResult(current => current?.token === token && current.scope === scope ? { ...current, works: work.deleted ? current.works.filter(entry => entry._id !== work._id) : [work, ...current.works.filter(entry => entry._id !== work._id)].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt) || b._id.localeCompare(a._id)) } : current);
     setStatus({ token, scope: workScope, key: editor.mode === "delete" ? "deletedSaved" : editor.mode === "increase" ? "increasedSaved" : `${isSfifa ? "sfifa." : ""}${editor.work ? "completedSaved" : "assignedSaved"}` }); setEditor(null); setView(null);
   };
@@ -65,6 +67,7 @@ export default function WorkerWorkPage() {
     <header className="work-hero"><div className="work-person"><span className="work-avatar" aria-hidden="true"><IoPersonOutline /></span><div className="work-person-copy"><p className="work-eyebrow">{t("workers.work.title")} · {t(`workers.categories.${category}`)}</p><h1 dir="auto">{state.worker?.name || t("workers.work.title")}</h1>{state.worker && <a className="work-phone" href={`tel:${state.worker.phone.replace(/[^\d+]/g, "")}`}><IoCallOutline /><bdi dir="ltr">{state.worker.phone}</bdi></a>}</div></div><div className="work-hero-actions">{workType && !needsGarment && garmentType !== "legacy" && state.canAssign && state.permissions.add && <button type="button" data-add-work onClick={() => edit()} className="work-button work-button-blue"><IoAddOutline />{t("workers.work.add")}</button>}{isSfifa && <Link to="/Home/SfifaStock" data-open-sfifa-stock className="work-button work-button-quiet"><IoCubeOutline />{t("sfifaStock.title")}</Link>}</div></header>
     {state.loading && <p role="status" className="work-empty">{t("common.loading")}</p>}
     {state.error && <div role="alert" className="work-feedback work-feedback-error"><p>{t(`workers.work.errors.${state.error}`)}</p><button type="button" onClick={reload} className="work-text-button">{t("workers.retry")}</button></div>}
+    {!state.loading && !state.error && state.worker && <WorkerPayroll key={`${token}:${workerId}`} token={token} worker={state.worker} revision={`${attempt}:${payrollRevision}`} />}
     {!state.loading && !state.error && isTrousers && workType !== "shop" && <TrouserSummary works={state.works} />}
     {!state.loading && !state.error && (!workType ? <section className="worker-type-section" aria-labelledby="worker-type-title"><h2 id="worker-type-title">{t("workers.work.chooseWorkType")}</h2><div className="worker-type-grid">{WORK_TYPES.map(type => <button type="button" key={type} data-work-type={type} onClick={() => setParams({ type })} className={`worker-type-card worker-type-${type}`}><span className="worker-type-icon" aria-hidden="true">{type === "shop" ? <IoBusinessOutline /> : <IoPeopleOutline />}</span><h3>{typeLabel(type)}</h3><p>{t(`workers.work.${isTrousers || category === "shirts" ? category + "." : ""}typeHints.${type}`)}</p><strong>{t("workers.work.workCount", { count: state.works.filter(work => workerWorkType(work) === type).length })}</strong></button>)}</div></section> : needsGarment ? <WorkerGarmentChoices works={typeWorks} onChoose={kind => { setParams({ type: workType, garment: kind }); setEditor(null); }} /> : <>
       <nav className="worker-type-tabs" aria-label={t("workers.work.chooseWorkType")}>{WORK_TYPES.map(type => <button type="button" key={type} data-work-type={type} aria-pressed={workType === type} onClick={() => { setParams({ type }); setEditor(null); }}>{type === "shop" ? <IoBusinessOutline aria-hidden="true" /> : <IoPeopleOutline aria-hidden="true" />}{typeLabel(type)}</button>)}</nav>

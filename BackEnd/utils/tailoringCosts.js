@@ -46,7 +46,7 @@ export async function priceDjellabaOrder(value, idAdmin, current) {
   return { ...stored, items, expenseAmount, costing: { rates, settingsVersion, calculatedAt: new Date() } };
 }
 
-// Trousers retain an editable expense total; only the fabric calculation is snapshotted.
+// Trousers retain an editable expense total and snapshot cloth prices and labor rates.
 async function priceTrouserOrder(value, idAdmin, current) {
   const previous = tailoringOrderItems(current), fabrics = new Map(), items = [];
   for (const [index, item] of (value.items || []).entries()) {
@@ -73,6 +73,17 @@ async function priceTrouserOrder(value, idAdmin, current) {
     const { fabricUnitPrice: _quote, ...stored } = item;
     items.push({ ...stored, fabricCost });
   }
-  const { fabricCosting: _mode, ...stored } = value;
-  return { ...stored, ...(value.items ? { items } : {}) };
+  let trouserCosting = current?.trouserCosting;
+  if (value.laborCosting) {
+    let laborPrice = trouserCosting?.laborPrice ?? 0, settingsVersion = trouserCosting?.settingsVersion ?? null;
+    // Existing orders retain their original rates, including older orders with no labor setting.
+    if (!current) {
+      const settings = await tailoringCostSettingsModel("trousers").findOne({ idAdmin });
+      laborPrice = settings?.laborPrice ?? 0; settingsVersion = settings?.__v ?? null;
+    }
+    if (settingsVersion !== value.costSettingsVersion) throw fail("costSettingsChanged");
+    trouserCosting = { laborPrice, settingsVersion, calculatedAt: trouserCosting?.calculatedAt || new Date() };
+  }
+  const { fabricCosting: _mode, laborCosting: _laborMode, costSettingsVersion: _version, ...stored } = value;
+  return { ...stored, ...(trouserCosting ? { trouserCosting } : {}), ...(value.items ? { items } : {}) };
 }

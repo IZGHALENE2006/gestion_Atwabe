@@ -48,7 +48,9 @@ const itemSchema = new mongoose.Schema({
 const schema = new mongoose.Schema({
   idAdmin: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Admin" },
   createdBy: { type: mongoose.Schema.Types.ObjectId, required: true },
+  creator: { type: new mongoose.Schema({ id: { type: mongoose.Schema.Types.ObjectId, required: true }, name: { type: String, default: "" }, role: { type: String, enum: ["admin", "Employe"], required: true } }, { _id: false }), immutable: true },
   garmentType: { type: String, enum: TAILORING_GARMENT_TYPES, immutable: true },
+  trouserCosting: { type: new mongoose.Schema({ laborPrice: { type: Number, required: true, validate: value => tailoringMoneyCents(value) !== null }, settingsVersion: { type: Number, default: null, validate: value => value === null || Number.isSafeInteger(value) && value >= 0 }, calculatedAt: { type: Date, required: true } }, { _id: false }) },
   costing: { type: costingSchema },
   expenseAmount: { type: Number, required: function () { return tailoringHasExpenses(this); }, validate: value => tailoringMoneyCents(value) !== null },
   requestId: { type: String, required: true },
@@ -80,6 +82,7 @@ const schema = new mongoose.Schema({
   items: { type: [itemSchema], default: undefined },
 }, { timestamps: true, optimisticConcurrency: true });
 schema.pre("validate", function () {
+  if (this.trouserCosting && this.garmentType !== "trousers") this.invalidate("trouserCosting", "Trouser labor rates require a trouser order");
   if (this.deliveryFinancials && !this.deliveredAt) this.invalidate("deliveryFinancials", "Delivery is required for recognized profit");
   for (const [index, item] of (this.items || []).entries()) {
     if (!item.fabricCost) continue;

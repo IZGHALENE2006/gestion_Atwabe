@@ -7,6 +7,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import app from "../BackEnd/app.js";
 import AdminModel from "../BackEnd/models/AdminModel.js";
+import EmployeeModel from "../BackEnd/models/EmployeModele.js";
 import { normalizeInvoiceSettings } from "../shared/invoiceSettings.js";
 import { deleteInvoiceLogo, invoiceLogosDirectory } from "../BackEnd/utils/invoiceLogos.js";
 
@@ -42,6 +43,7 @@ function form(settings, file, extra = {}) {
   return data;
 }
 function setup(t) {
+  t.mock.method(EmployeeModel, "findById", id => ({ select: async () => String(id) === otherOwner ? new EmployeeModel({ _id: otherOwner, idAdmin: owner, name: "Employé", role: "Employe", isActive: true }) : null }));
   let stored = new AdminModel({ _id: owner, name: "Owner" });
   const read = t.mock.method(AdminModel, "findById", (id) => {
     assert.equal(String(id), owner, "Only read the authenticated shop's settings");

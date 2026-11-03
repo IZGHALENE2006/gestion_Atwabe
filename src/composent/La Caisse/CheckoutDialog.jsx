@@ -1,4 +1,5 @@
 import { cashierCartRows } from '../../../shared/cashierBatches.js';
+import { hasModuleAccess } from '../../../shared/employeePermissions.js';
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
@@ -24,7 +25,7 @@ export default function CheckoutDialog({ cart, total, discount, received, user, 
   const [customers, setCustomers] = useState([]), [loading, setLoading] = useState(false), [loadError, setLoadError] = useState(false), [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const dialogRef = useRef(null), busyRef = useRef(false);
-  const locked = busy || Boolean(pending), creditAllowed = ["admin", "Employe"].includes(user?.role);
+  const creditAllowed = hasModuleAccess(user?.role, user, "credit"), locked = busy || Boolean(pending) && (mode !== "credit" || creditAllowed);
   const paid = initialPaid === "" ? 0 : Number(initialPaid);
   const invalidPaid = !Number.isFinite(paid) || paid < 0 || roundMoney(paid) > snapshot.total;
   const money = value => `${new Intl.NumberFormat(i18n.language === "ar" ? "ar-MA" : "fr-MA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)} ${i18n.language === "ar" ? "درهم" : "DH"}`;
@@ -41,6 +42,7 @@ export default function CheckoutDialog({ cart, total, discount, received, user, 
   async function submit(event) {
     event.preventDefault();
     if (busyRef.current) return;
+    if (mode === "credit" && !creditAllowed) { setError(t("creditAudit.accessDenied")); return; }
     if (mode === "credit" && !pending && (invalidPaid || (customerMode === "existing" && !customerId))) { setError(t(invalidPaid ? "creditCheckout.paymentInvalid" : "creditCheckout.customerRequired")); return; }
     busyRef.current = true; setBusy(true); setError("");
     try {
@@ -89,9 +91,10 @@ export default function CheckoutDialog({ cart, total, discount, received, user, 
             </fieldset>
           </>}
         </>}
+        {mode === "credit" && !creditAllowed && <p role="alert" className="checkout-error">{t("creditAudit.accessDenied")}</p>}
         {error && <p role="alert" className="checkout-error">{error}</p>}
       </div>
-      <footer><button type="button" disabled={locked} onClick={mode === "choose" ? close : () => { setMode("choose"); setError(""); }}>{t(mode === "choose" ? "common.cancel" : "creditCheckout.back")}</button>{mode !== "choose" && <button type="submit" data-confirm-checkout disabled={busy || (mode === "credit" && !pending && (invalidPaid || (customerMode === "existing" && (!customerId || loading || loadError))))}>{t(busy ? "creditCheckout.saving" : pending ? "creditCheckout.resume" : mode === "cash" ? "cashier.confirmSale" : "creditCheckout.confirmCredit")}</button>}</footer>
+      <footer><button type="button" disabled={locked} onClick={mode === "choose" || mode === "credit" && !creditAllowed ? close : () => { setMode("choose"); setError(""); }}>{t(mode === "choose" ? "common.cancel" : "creditCheckout.back")}</button>{mode !== "choose" && <button type="submit" data-confirm-checkout disabled={busy || (mode === "credit" && (!creditAllowed || !pending && (invalidPaid || (customerMode === "existing" && (!customerId || loading || loadError)))))}>{t(busy ? "creditCheckout.saving" : pending ? "creditCheckout.resume" : mode === "cash" ? "cashier.confirmSale" : "creditCheckout.confirmCredit")}</button>}</footer>
     </form>
   </dialog>;
 }

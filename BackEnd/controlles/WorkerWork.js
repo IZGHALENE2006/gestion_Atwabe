@@ -1,3 +1,4 @@
+import { workerCompletionEarning } from "../../shared/workerPayroll.js";
 import mongoose from "mongoose";
 import { createHash } from "node:crypto";
 import TailoringWorker from "../models/TailoringWorker.js";
@@ -14,6 +15,7 @@ import { loadClientAssignments, blockingAssignments, describeBlockingAssignments
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
 const publicWork = work => ({
+  ...(work.unitWage !== undefined ? { unitWage: work.unitWage } : {}),
   _id: work._id, productName: work.productName, category: work.category, quantity: work.quantity,
   ...(work.garmentType ? { garmentType: work.garmentType } : {}),
   workType: workerWorkType(work), ...(work.tailoring ? { tailoring: work.tailoring } : {}),
@@ -21,7 +23,7 @@ const publicWork = work => ({
   completedQuantity: work.completedQuantity, remainingQuantity: remainingWorkQuantity(work),
   ...(work.category === "sfifa" ? { sfifa: { width: work.sfifa.width, family: work.sfifa.family, code: work.sfifa.code } } : {}),
   __v: work.__v ?? 0, createdAt: work.createdAt, updatedAt: work.updatedAt,
-  completions: work.completions.map(event => ({ _id: event._id, quantity: event.quantity, before: event.before, after: event.after, date: event.date })),
+  completions: work.completions.map(event => ({ _id: event._id, quantity: event.quantity, before: event.before, after: event.after, date: event.date, ...(event.earningAmount !== undefined ? { earningAmount: event.earningAmount, earningMonth: event.earningMonth } : {}) })),
   additions: (work.additions || []).map(event => ({ _id: event._id, quantity: event.quantity, before: event.before, after: event.after, date: event.date, ...(event.lineIds ? { lineIds: event.lineIds } : {}) })),
 });
 const sendError = (res, error, fallback = "saveWorkFailed") => {
@@ -59,7 +61,7 @@ async function resolveClientWork(input, idAdmin) {
     const blockers = (await describeBlockingAssignments(pending, idAdmin)).map(({ category, workerName, lineIds }) => ({ category, workerName, lineIds }));
     throw Object.assign(fail("garmentInProgress", 409), { blockers });
   }
-  return { workType: "client", category: input.category, ...(trouserType ? { trouserType } : {}), productName: input.category === "sfifa" ? "Sfifa" : order.clientName, quantity: input.category === "sfifa" ? input.quantity : items.length, ...(input.category === "sfifa" ? { sfifa: input.sfifa } : {}), tailoring: { garmentType: tailoringGarmentType(order), orderId: order._id, lineIds: input.lineIds, clientName: order.clientName, phone: order.phone, barcode: tailoringOrderBarcode(order), orderDate: order.orderDate, readyDate: order.readyDate, items: items.map(garmentSnapshot) } };
+  return { ...(input.unitWage !== undefined ? { unitWage: input.unitWage } : {}), workType: "client", category: input.category, ...(trouserType ? { trouserType } : {}), productName: input.category === "sfifa" ? "Sfifa" : order.clientName, quantity: input.category === "sfifa" ? input.quantity : items.length, ...(input.category === "sfifa" ? { sfifa: input.sfifa } : {}), tailoring: { garmentType: tailoringGarmentType(order), orderId: order._id, lineIds: input.lineIds, clientName: order.clientName, phone: order.phone, barcode: tailoringOrderBarcode(order), orderDate: order.orderDate, readyDate: order.readyDate, items: items.map(garmentSnapshot) } };
 }
 export async function listWorkerOrderOptions(req, res) {
   try {
@@ -160,8 +162,9 @@ export async function completeWorkerWork(req, res) {
     if (!Number.isSafeInteger(version) || version !== work.__v) throw fail("workConflict", 409);
     const remaining = work.quantity - work.completedQuantity;
     validateWorkerCompletion(req.body, remaining);
+    const date = new Date(), earning = workerCompletionEarning(work, quantity, date);
     work.completedQuantity += quantity;
-    work.completions.push({ requestId, quantity, before: remaining, after: remaining - quantity, date: new Date(), createdBy: access.createdBy, sequence: nextWorkSequence(work) });
+    work.completions.push({ requestId, quantity, before: remaining, after: remaining - quantity, ...earning, date, createdBy: access.createdBy, sequence: nextWorkSequence(work) });
     await work.save();
     res.status(201).json(publicWork(work));
   } catch (error) {

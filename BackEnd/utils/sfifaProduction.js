@@ -1,3 +1,4 @@
+import { workerCompletionEarning } from "../../shared/workerPayroll.js";
 import SfifaStock from "../models/SfifaStock.js";
 import WorkerWork from "../models/WorkerWork.js";
 import { nextWorkSequence, remainingWorkQuantity, validateWorkerCompletion, workQuantityUnits } from "../../shared/workerWork.js";
@@ -72,9 +73,9 @@ export async function completeSfifaWork({ scope, body, requestId, quantity, crea
       if (variant) variant.quantity = units / SFIFA_STOCK_SCALE;
       else stock.variants.push({ code, quantity });
       stock.quantity = (sfifaQuantityUnits(stock.quantity, { max: SFIFA_STOCK_GROUP_LIMIT }) + sfifaQuantityUnits(quantity)) / SFIFA_STOCK_SCALE;
-      const date = new Date();
+      const date = new Date(), earning = workerCompletionEarning(work, quantity, date);
       work.completedQuantity = (workQuantityUnits(work.completedQuantity, "sfifa") + sfifaQuantityUnits(quantity)) / SFIFA_STOCK_SCALE;
-      work.completions.push({ requestId, quantity, before: remaining, after: (sfifaQuantityUnits(remaining) - sfifaQuantityUnits(quantity)) / SFIFA_STOCK_SCALE, date, createdBy, sequence: nextWorkSequence(work) });
+      work.completions.push({ requestId, quantity, before: remaining, after: (sfifaQuantityUnits(remaining) - sfifaQuantityUnits(quantity)) / SFIFA_STOCK_SCALE, ...earning, date, createdBy, sequence: nextWorkSequence(work) });
       work.__v += 1; work.updatedAt = date;
       stock.receipts.push({ requestId, code, quantity, createdBy, date, workId: work._id, workerId: work.workerId, workerName });
       // One optimistic write persists the work, history, receipt and stock together.

@@ -4,6 +4,7 @@ import { salesRevenueFrench } from "./salesRevenue.js";
 import { creditAuditFrench } from "./creditAudit.js";
 import { creditCheckoutFrench } from "./creditCheckout.js";
 import { creditDocumentsFrench } from "./creditDocuments.js";
+import { employeePermissionsFrench } from "./employeePermissions.js";
 import { fabricsFrench } from "./fabrics.js";
 import { feslaFrench } from "./fesla.js";
 import { workersFrench } from "./workers.js";
@@ -11,6 +12,7 @@ import { sfifaStockFrench } from "./sfifaStock.js";
 
 export default {
   creditDocuments: creditDocumentsFrench,
+  employeePermissions: employeePermissionsFrench,
   creditCheckout: creditCheckoutFrench,
   creditAudit: creditAuditFrench,
   salesRevenue: salesRevenueFrench,

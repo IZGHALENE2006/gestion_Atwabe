@@ -28,13 +28,13 @@ const sendError = (res, error, fallback) => {
 async function accessFor(req, action) {
   if (!["admin", "Employe"].includes(req.user?.role)) throw fail("forbidden", 403);
   const admin = req.user.role === "admin";
-  const actor = await (admin ? AdminModel : EmployeModel).findById(req.user.id).select("_id idAdmin isActive action");
+  const actor = await (admin ? AdminModel : EmployeModel).findById(req.user.id).select("_id name role idAdmin isActive action");
   if (!actor || (!admin && !actor.isActive)) throw fail("forbidden", 403);
   const idAdmin = admin ? actor._id : actor.idAdmin;
   if (!mongoose.isObjectIdOrHexString(idAdmin)) throw fail("forbidden", 403);
   const permissions = { add: admin || actor.action?.add === true, update: admin || actor.action?.update === true };
   if (action && !permissions[action]) throw fail("forbidden", 403);
-  return { idAdmin, createdBy: actor._id, permissions };
+  return { idAdmin, createdBy: actor._id, creator: { id: actor._id, name: actor.name || "", role: req.user.role }, permissions };
 }
 // Check current account permissions before accepting an image upload.
 export const tailoringWriteAccess = (action) => async (req, res, next) => {
@@ -99,7 +99,7 @@ export async function addTailoringOrder(req, res) {
   const createdPhotos = [];
   let requestId, requestFingerprint, committed = false;
   try {
-    const { idAdmin, createdBy } = req.tailoringAccess;
+    const { idAdmin, createdBy, creator } = req.tailoringAccess;
     requestId = typeof req.body?.requestId === "string" ? req.body.requestId.toLowerCase() : "";
     if (!/^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/.test(requestId)) throw fail("invalidRequest", 400);
     const value = validateTailoringOrder(req.body);
@@ -115,7 +115,7 @@ export async function addTailoringOrder(req, res) {
       return res.json(publicOrder(existing));
     }
     const input = await attachPhotos(req, await orderInput(req, idAdmin), null, createdPhotos);
-    const document = { ...input, _id: new mongoose.Types.ObjectId(), idAdmin, createdBy, requestId, requestFingerprint };
+    const document = { ...input, _id: new mongoose.Types.ObjectId(), idAdmin, createdBy, creator, requestId, requestFingerprint };
     document.customerReceipt = createTailoringReceipt(document, { issuedAt: new Date() });
     const order = await TailoringOrder.create(document);
     committed = true;

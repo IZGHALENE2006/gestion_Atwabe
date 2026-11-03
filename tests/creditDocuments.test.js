@@ -16,7 +16,7 @@ after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.c
 const query=fn=>({sort(){return this;},then(resolve,reject){return Promise.resolve().then(fn).then(resolve,reject);}});
 function setup(t){
   t.mock.method(Admin,"findById",async id=>[owner,otherOwner].includes(String(id))?new Admin({_id:id,name:"المدير"}):null);
-  t.mock.method(Employee,"findById",async()=>null);
+  t.mock.method(Employee,"findById",()=>({select:async()=>null}));
   const records=[],controls={failSave:false};
   const matches=(row,scope)=>Object.entries(scope).every(([key,value])=>String(row[key])===String(value));
   t.mock.method(UserCredit,"findOne",async scope=>{const row=records.find(value=>matches(value,scope));return row?new UserCredit(row.toObject()):null;});

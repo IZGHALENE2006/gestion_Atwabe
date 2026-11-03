@@ -1,3 +1,5 @@
+import { tailoringMoneyCents } from "../../../shared/tailoring.js";
+import { workerCompletionEarning } from "../../../shared/workerPayroll.js";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IoAddOutline, IoArrowForwardOutline, IoCheckmarkCircleOutline, IoCloseOutline, IoCubeOutline, IoPersonOutline } from "react-icons/io5";
@@ -13,7 +15,7 @@ export default function WorkerWorkForm({ token, worker, category, workType = "sh
   const isSfifa = category === "sfifa";
   const isTrouserClient = category === "trousers" && (work?.workType || workType) === "client";
   const isClient = !isSfifa && (work?.workType || workType) === "client";
-  const [data, setData] = useState({ productName: "", quantity: "", trouserType: isTrouserClient ? "regular" : "", ...(category === "machine" && workType === "shop" && garmentType ? { garmentType } : {}), orderId: "", lineIds: [], linkOrder: false, width: "thin", family: SFIFA_STOCK_FAMILIES[0].value, code: "" });
+  const [data, setData] = useState({ unitWage: "", productName: "", quantity: "", trouserType: isTrouserClient ? "regular" : "", ...(category === "machine" && workType === "shop" && garmentType ? { garmentType } : {}), orderId: "", lineIds: [], linkOrder: false, width: "thin", family: SFIFA_STOCK_FAMILIES[0].value, code: "" });
   const range = SFIFA_STOCK_FAMILIES.find(family => family.value === data.family);
   const [blockers, setBlockers] = useState([]);
   const [fields, setFields] = useState({}), [error, setError] = useState(""), [saving, setSaving] = useState(false);
@@ -27,7 +29,9 @@ export default function WorkerWorkForm({ token, worker, category, workType = "sh
     event.preventDefault();
     if (savingRef.current) return;
     let input;
-    try { input = work ? validateWorkerCompletion(data, work.remainingQuantity, category) : validateWorkerWork({ ...data, category, workType, ...(isSfifa ? { sfifa: { width: data.width, family: data.family, code: data.code } } : {}) }); }
+    try {
+      if (!work && tailoringMoneyCents(data.unitWage) === null) throw Object.assign(new Error("invalidWork"), { fields: { unitWage: "invalidWage" } });
+      input = work ? validateWorkerCompletion(data, work.remainingQuantity, category) : validateWorkerWork({ ...data, category, workType, ...(isSfifa ? { sfifa: { width: data.width, family: data.family, code: data.code } } : {}) }); }
     catch (failure) { setFields(failure.fields || {}); setError("invalidWork"); dialogRef.current?.querySelector(`#worker-work-${Object.keys(failure.fields || {})[0] || "quantity"}`)?.focus(); return; }
     const fingerprint = JSON.stringify(input);
     if (submissionRef.current?.fingerprint !== fingerprint) submissionRef.current = { fingerprint, requestId: crypto.randomUUID() };
@@ -45,6 +49,7 @@ export default function WorkerWorkForm({ token, worker, category, workType = "sh
     } finally { savingRef.current = false; if (dialogRef.current?.open) setSaving(false); }
   };
   const number = value => new Intl.NumberFormat(i18n.language === "ar" ? "ar-MA" : "fr-MA", { maximumFractionDigits: 3 }).format(value);
+  const money = value => new Intl.NumberFormat(i18n.language === "ar" ? "ar-MA" : "fr-MA", { style: "currency", currency: "MAD" }).format(value);
   const entered = parseWorkQuantity(data.quantity, category);
   const validCompletion = work && entered !== null && entered <= work.remainingQuantity;
   const after = validCompletion ? (workQuantityUnits(work.remainingQuantity, category) - workQuantityUnits(entered, category)) / (isSfifa ? SFIFA_STOCK_SCALE : 1) : work?.remainingQuantity;
@@ -85,7 +90,9 @@ export default function WorkerWorkForm({ token, worker, category, workType = "sh
             {!work && isSfifa && <div className="work-field"><label htmlFor="worker-work-code">{t("sfifaStock.code")}</label><input {...fieldProps("code")} className="work-input work-number-input" type="text" inputMode="numeric" dir="ltr" value={data.code} onChange={event => patch({ code: event.target.value })} maxLength={4} placeholder={String(range.min).padStart(range.min === 1 ? 2 : 1, "0")} required aria-describedby={`worker-work-code-hint${fields.code ? " worker-work-code-error" : ""}`} /><p id="worker-work-code-hint" className="work-field-hint">{t("sfifaStock.codeHint", { min: range.min, max: range.max })}</p>{errorFor("code")}</div>}
             <div className="work-field"><label htmlFor="worker-work-quantity">{t(`workers.work.${isSfifa ? "sfifa." : ""}${work ? "completedInput" : "quantity"}`)}</label><div className="work-input-with-unit"><input {...fieldProps("quantity")} className="work-input work-number-input" type="text" inputMode={isSfifa ? "decimal" : "numeric"} dir="ltr" value={!work && isClient ? String(data.lineIds.length) : data.quantity} readOnly={!work && isClient} onChange={event => patch({ quantity: event.target.value })} maxLength={isSfifa ? 11 : 7} placeholder="0" required />{isSfifa && <span aria-hidden="true">{t("sfifaStock.unit")}</span>}</div>{errorFor("quantity")}{!work && isClient && <p className="work-field-hint">{t("workers.work.selectedGarmentsHint", { count: data.lineIds.length })}</p>}</div>
           </div>
+          {!work && <div className="work-field"><label htmlFor="worker-work-unitWage">{t(`workers.payroll.${isSfifa ? "wagePerMeter" : "wagePerPiece"}`)}</label><input {...fieldProps("unitWage")} inputMode="decimal" dir="ltr" value={data.unitWage} onChange={event => patch({ unitWage: event.target.value })} maxLength={13} placeholder="0.00" required /><p className="work-field-hint">{t("workers.payroll.wageHint")}</p>{errorFor("unitWage")}</div>}
         </fieldset>
+        {work && validCompletion && <p className="payroll-month-due">{t("workers.payroll.earningPreview")} <strong data-completion-earning>{work.unitWage === undefined ? t("workers.payroll.unpriced") : money(workerCompletionEarning(work, entered).earningAmount)}</strong></p>}
         {isSfifa && <div className="work-transfer-note"><IoCubeOutline aria-hidden="true" /><p>{t(work ? "workers.work.design.stockTransfer" : "workers.work.sfifa.assignmentHint")}{work && validCompletion && <strong data-work-preview-credit>+ {amount(entered)}</strong>}</p></div>}
         {error && <div role="alert" className="work-feedback work-feedback-error"><p>{t(`workers.work.errors.${error}`)}</p>{error === "garmentInProgress" && <WorkerBlockingNotice blockers={blockers} />}{["workConflict", "workerSectionChanged", "workNotFound", "orderNotFound", "orderAlreadyDelivered", "orderGarmentsChanged", "garmentAlreadyAssigned", "garmentInProgress"].includes(error) && <button type="button" onClick={onReload} disabled={saving} className="work-text-button">{t("workers.work.reload")}</button>}</div>}
       </div>

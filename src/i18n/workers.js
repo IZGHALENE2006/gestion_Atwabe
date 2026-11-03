@@ -1,4 +1,95 @@
 export const workersFrench = {
+  payroll: {
+  "title": "Compte de l’artisan",
+  "scopeHint": "Tous les départements de cet artisan. Les montants sont acquis lors de la réalisation.",
+  "history": "Historique des gains et versements",
+  "recordPayment": "Enregistrer un versement",
+  "savePayment": "Enregistrer le versement",
+  "paymentSaved": "Le versement a été enregistré pour le mois choisi.",
+  "wage": "Rémunération",
+  "wagePerPiece": "Rémunération par pièce (DH)",
+  "wagePerMeter": "Rémunération par mètre (DH)",
+  "wageHint": "Seule la quantité réalisée est rémunérée. Les ajouts au même travail gardent ce tarif.",
+  "perPiece": "par pièce",
+  "perMeter": "par mètre",
+  "earnedShort": "Acquis",
+  "earningPreview": "Montant acquis avec cette réalisation",
+  "unpriced": "Tarif non renseigné",
+  "unpricedHint": "{{count}} réalisation(s) ancienne(s) sans tarif enregistré : exclues des montants calculés.",
+  "deletedWork": "Travail retiré de la liste · rémunération conservée",
+  "total": {
+    "earned": "Total acquis",
+    "paid": "Total versé",
+    "due": "Reste à verser"
+  },
+  "selected": {
+    "earned": "Acquis sur la période",
+    "paid": "Versé pour la période",
+    "due": "Reste dû",
+    "advance": "Solde des avances"
+  },
+  "advanceBalance": "Avances non encore couvertes par les réalisations : {{amount}}. Elles restent rattachées à leurs mois.",
+  "unpaidMonths": "Mois avec un reste à verser",
+  "paymentType": "Type de versement",
+  "types": {
+    "settlement": "Versement sur les sommes dues",
+    "advance": "Avance"
+  },
+  "typeHints": {
+    "settlement": "Ne peut pas dépasser le reste dû du mois choisi.",
+    "advance": "Possible avant la réalisation ; reste rattachée au mois choisi."
+  },
+  "entitlementMonth": "Mois concerné",
+  "monthHint": "Pour régler un ancien mois, choisissez ce mois, même si le paiement est effectué aujourd’hui.",
+  "dueForMonth": "Reste dû pour ce mois",
+  "amount": "Montant versé (DH)",
+  "paymentDate": "Date du versement",
+  "note": "Note (facultatif)",
+  "period": "Période",
+  "periods": {
+    "month": "Un mois",
+    "year": "Une année",
+    "all": "Tout l’historique"
+  },
+  "year": "Année",
+  "records": "Écritures",
+  "kinds": {
+    "all": "Toutes",
+    "earning": "Réalisations",
+    "payment": "Versements et avances"
+  },
+  "monthSummary": "Résumé par mois",
+  "columns": {
+    "month": "Mois concerné",
+    "earned": "Acquis",
+    "paid": "Versé",
+    "due": "Reste dû",
+    "advance": "Avances",
+    "date": "Date",
+    "detail": "Détails"
+  },
+  "recordedBy": "Enregistré par",
+  "meters": "m",
+  "pieces": "pièce(s)",
+  "empty": "Aucune écriture pour cette période.",
+  "uncertain": "La confirmation n’a pas été reçue. Réessayez ce même versement pour vérifier son enregistrement sans le doubler.",
+  "errors": {
+    "invalidPayment": "Vérifiez les champs indiqués.",
+    "invalidAmount": "Saisissez un montant positif avec deux décimales au maximum.",
+    "invalidMonth": "Choisissez un mois valide.",
+    "invalidDate": "Saisissez une date valide, au plus tard aujourd’hui.",
+    "invalidNote": "La note est limitée à 300 caractères sans saut de ligne.",
+    "invalidType": "Choisissez un type de versement.",
+    "paymentExceedsDue": "Le montant dépasse le reste dû pour ce mois. Actualisez le compte ou choisissez une avance.",
+    "paymentConflict": "Le compte a changé. Actualisez avant de réessayer.",
+    "paymentRequestConflict": "Ce versement a déjà été reçu avec d’autres informations.",
+    "invalidRequest": "Rouvrez le formulaire avant de réessayer.",
+    "forbidden": "Vous n’avez pas la permission nécessaire.",
+    "notFound": "Cet artisan n’est plus disponible.",
+    "saveFailed": "Impossible de confirmer le versement. Réessayez.",
+    "loadFailed": "Impossible de charger le compte. Réessayez."
+  }
+},
   work: {
     chooseGarmentType: "Choisissez les pièces", legacyGarments: "Travaux précédents sans type",
     shirts: { types: { shop: "Chemises pour la vente", client: "Chemises des clients" }, typeHints: { shop: "Production de chemises pour le magasin.", client: "Choisissez les chemises des commandes Fesla enregistrées." } },
@@ -111,6 +202,7 @@ export const workersFrench = {
     emptyHint: "Ajoutez le nom du produit et la quantité confiée.",
     reload: "Actualiser les travaux",
     errors: {
+      invalidWage: "Saisissez une rémunération valide (deux décimales) dont le total ne dépasse pas la limite autorisée.",
       workDeleted: "Ce travail a été supprimé. Actualisez la liste.",
       increaseLimit: "Le total dépasserait la limite autorisée de 1 000 000.",
       tooManyGarments: "Le travail ne peut pas dépasser les 50 pièces de la commande.",
@@ -190,6 +282,97 @@ export const workersFrench = {
 };
 
 export const workersArabic = {
+  payroll: {
+  "title": "حساب العامل",
+  "scopeHint": "جميع أقسام العامل في حساب واحد. تُحتسب الأجرة عند تسجيل الإنجاز.",
+  "history": "سجل المستحقات والدفعات",
+  "recordPayment": "تسجيل مصروف",
+  "savePayment": "حفظ الدفعة",
+  "paymentSaved": "تم تسجيل الدفعة على الشهر المحدد.",
+  "wage": "أجرة العمل",
+  "wagePerPiece": "أجرة القطعة (درهم)",
+  "wagePerMeter": "أجرة المتر (درهم)",
+  "wageHint": "تُحتسب الأجرة على الكمية المنجزة فقط. وتُطبّق الأجرة نفسها على زيادة كمية هذا العمل.",
+  "perPiece": "لكل قطعة",
+  "perMeter": "لكل متر",
+  "earnedShort": "المستحق المكتسب",
+  "earningPreview": "المستحق المضاف بهذا الإنجاز",
+  "unpriced": "أجرة غير مسجّلة",
+  "unpricedHint": "يوجد {{count}} إنجاز سابق دون أجرة مسجّلة، لم يُحتسب ضمن المبالغ.",
+  "deletedWork": "عمل محذوف من القائمة · المستحق محفوظ",
+  "total": {
+    "earned": "مجموع المستحقات المكتسبة",
+    "paid": "مجموع ما صُرف للعامل",
+    "due": "المتبقي للعامل"
+  },
+  "selected": {
+    "earned": "مستحقات الفترة",
+    "paid": "دفعات الفترة",
+    "due": "المتبقي المستحق",
+    "advance": "رصيد التسبيقات"
+  },
+  "advanceBalance": "تسبيقات لم تغطّها الإنجازات بعد: {{amount}}. يبقى كل تسبيق مرتبطًا بشهره.",
+  "unpaidMonths": "أشهر بها مستحقات غير مسدّدة",
+  "paymentType": "نوع المصروف",
+  "types": {
+    "settlement": "دفعة من المستحقات",
+    "advance": "تسبيق"
+  },
+  "typeHints": {
+    "settlement": "تسديد جزئي أو كامل، في حدود المتبقي من الشهر المحدد.",
+    "advance": "يمكن صرفه قبل الإنجاز، ويُسجّل في حساب الشهر المحدد."
+  },
+  "entitlementMonth": "شهر الاستحقاق",
+  "monthHint": "لتسديد مستحقات شهر سابق، اختر ذلك الشهر، حتى لو كان الصرف اليوم.",
+  "dueForMonth": "المتبقي المستحق لهذا الشهر",
+  "amount": "المبلغ المصروف (درهم)",
+  "paymentDate": "تاريخ الصرف",
+  "note": "ملاحظة (اختيارية)",
+  "period": "الفترة",
+  "periods": {
+    "month": "شهر محدد",
+    "year": "سنة محددة",
+    "all": "جميع السجلات"
+  },
+  "year": "السنة",
+  "records": "السجلات",
+  "kinds": {
+    "all": "الجميع",
+    "earning": "الإنجازات والمستحقات",
+    "payment": "الدفعات والتسبيقات"
+  },
+  "monthSummary": "الملخص الشهري",
+  "columns": {
+    "month": "شهر الاستحقاق",
+    "earned": "المستحق المكتسب",
+    "paid": "المصروف",
+    "due": "المتبقي",
+    "advance": "التسبيقات",
+    "date": "التاريخ",
+    "detail": "التفاصيل"
+  },
+  "recordedBy": "سجّلها",
+  "meters": "متر",
+  "pieces": "قطعة",
+  "empty": "لا توجد سجلات في هذه الفترة.",
+  "uncertain": "لم يصل تأكيد الحفظ. أعد محاولة الدفعة نفسها للتحقق من تسجيلها دون تكرارها.",
+  "errors": {
+    "invalidPayment": "راجع الحقول المشار إليها.",
+    "invalidAmount": "أدخل مبلغًا أكبر من صفر، بمنزلتين عشريتين كحد أقصى.",
+    "invalidMonth": "اختر شهرًا صحيحًا.",
+    "invalidDate": "أدخل تاريخًا صحيحًا لا يتجاوز اليوم.",
+    "invalidNote": "الملاحظة لا تتجاوز 300 حرف ودون أسطر جديدة.",
+    "invalidType": "اختر نوع المصروف.",
+    "paymentExceedsDue": "المبلغ يتجاوز المتبقي لهذا الشهر. حدّث الحساب أو اختر تسبيقًا.",
+    "paymentConflict": "تغيّر الحساب منذ عرضه. حدّثه قبل إعادة المحاولة.",
+    "paymentRequestConflict": "سبق تسجيل هذه الدفعة ببيانات مختلفة.",
+    "invalidRequest": "أعد فتح النموذج قبل المحاولة.",
+    "forbidden": "ليست لديك صلاحية تنفيذ هذا الإجراء.",
+    "notFound": "هذا العامل لم يعد متاحًا.",
+    "saveFailed": "تعذّر تأكيد حفظ الدفعة. أعد المحاولة.",
+    "loadFailed": "تعذّر تحميل حساب العامل. أعد المحاولة."
+  }
+},
   work: {
     chooseGarmentType: "اختر نوع القطع", legacyGarments: "أعمال سابقة دون نوع محدد",
     shirts: { types: { shop: "أقمصة البيع", client: "أقمصة الزبائن" }, typeHints: { shop: "إنتاج الأقمصة المخصّصة للبيع في المحل.", client: "اختر الأقمصة من طلبات الفصلة المسجّلة." } },
@@ -302,6 +485,7 @@ export const workersArabic = {
     emptyHint: "أضف اسم المنتج والكمية التي سلّمتها للعامل.",
     reload: "تحديث الأعمال",
     errors: {
+      invalidWage: "أدخل أجرة صحيحة بمنزلتين عشريتين كحد أقصى، ضمن الحد المسموح لإجمالي العمل.",
       workDeleted: "حُذف هذا العمل. حدّث القائمة.",
       increaseLimit: "ستتجاوز الكمية الإجمالية الحد المسموح به وهو 1000000.",
       tooManyGarments: "لا يمكن أن يتجاوز العمل 50 قطعة من الطلب نفسه.",

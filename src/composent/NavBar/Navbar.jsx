@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { 
   IoAppsOutline, IoGridOutline, IoPeopleOutline, IoPeopleCircleOutline, IoCartOutline,
   IoBarChartOutline, IoCardOutline, IoReceiptOutline, IoDocumentTextOutline,
@@ -6,7 +6,8 @@ import {
 } from "react-icons/io5";
 import { useSelector, useDispatch } from 'react-redux';
 import { NavLink, useMatch, useNavigate } from 'react-router-dom';
-import { getMe, logoutAdmin } from '../../slices/SliceLoginAdmin';
+import { logoutAdmin } from '../../slices/SliceLoginAdmin';
+import { canOpenEmployeePage } from '../../../shared/employeePermissions.js';
 import {Box} from "lucide-react"
 import { IoCashOutline, IoWalletOutline } from "react-icons/io5";
 import { useTranslation } from "react-i18next";
@@ -16,19 +17,11 @@ export default function Sidebar() {
   const addingInvoice = Boolean(useMatch('/Home/Facture/new'));
   const [isExpanded, setIsExpanded] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const { user, role, token } = useSelector(state => state.LoginAdmin);
+  const { user, role } = useSelector(state => state.LoginAdmin);
 
   const dispatch = useDispatch();
   const nav = useNavigate();
 
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    if (token && !loaded) {
-      dispatch(getMe());
-      setLoaded(true);
-    }
-  }, [dispatch, token, loaded]);
 
   const handleProfileClick = () => {
     setProfileOpen(!profileOpen);
@@ -133,6 +126,8 @@ export default function Sidebar() {
 
 // NavItem Helper
 function NavItem({ to, icon, label, expanded, end = false }) {
+  const { user, role } = useSelector(state => state.LoginAdmin);
+  if (!canOpenEmployeePage(role, user, to)) return null;
   return (
     <NavLink 
       to={to} 

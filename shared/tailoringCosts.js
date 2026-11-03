@@ -1,9 +1,10 @@
 import { tailoringMoneyCents, tailoringFabricMeters } from "./tailoring.js";
 
 export const DJELLABA_RATE_FIELDS = ["thinSfifaPrice", "thickSfifaPrice", "laborPrice"];
-export function validateDjellabaRates(input) {
+export const tailoringRateFields = garmentType => garmentType === "trousers" ? ["laborPrice"] : DJELLABA_RATE_FIELDS;
+export function validateDjellabaRates(input, garmentType = "djellaba") {
   const fields = {}, rates = {};
-  for (const key of DJELLABA_RATE_FIELDS) {
+  for (const key of tailoringRateFields(garmentType)) {
     const cents = tailoringMoneyCents(input?.[key]);
     if (cents === null) fields[key] = "invalidMoney";
     else rates[key] = cents / 100;
@@ -22,6 +23,12 @@ export function tailoringFabricCost(item) {
 }
 export function tailoringFabricCostsTotal(costs) {
   return Array.isArray(costs) ? djellabaCostsTotal(costs.map(cost => cost && ({ totalAmount: cost.fabricAmount }))) : null;
+}
+export function trouserCostsTotal(costs, laborPrice = 0) {
+  const fabric = tailoringMoneyCents(tailoringFabricCostsTotal(costs)), labor = tailoringMoneyCents(laborPrice);
+  if (fabric === null || labor === null) return null;
+  const total = BigInt(fabric) + BigInt(labor) * BigInt(costs.length);
+  return total <= 99999999999n ? Number(total) / 100 : null;
 }
 export function djellabaItemCosts(item, rates) {
   const fabric = tailoringFabricCost(item);

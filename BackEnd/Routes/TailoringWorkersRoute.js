@@ -1,3 +1,4 @@
+import { getWorkerPayroll, addWorkerPayment } from "../controlles/WorkerPayroll.js";
 import express from "express";
 import { auth } from "../middleware/auth.js";
 import { addTailoringWorker, listTailoringWorkers, updateTailoringWorker } from "../controlles/TailoringWorkers.js";
@@ -7,6 +8,8 @@ const router = express.Router();
 router.use(auth);
 router.get("/", listTailoringWorkers);
 router.post("/", addTailoringWorker);
+router.get("/:id/payroll", getWorkerPayroll);
+router.post("/:id/payments", addWorkerPayment);
 router.get("/:id/work", listWorkerWork);
 router.get("/:id/work/orders", listWorkerOrderOptions);
 router.post("/:id/work", addWorkerWork);
