@@ -61,6 +61,27 @@ const finish = (f, work, quantity, extra = {}) => request(f.worker, `/work/${wor
 const account = async f => { const result = await request(f.worker, "/payroll"); assert.equal(result.status, 200); return result.data; };
 const payment = extra => ({ type: "settlement", month: "2026-11", paidOn: "2026-11-03", amount: 100, note: "", requestId: randomUUID(), ...extra });
 
+test("linked client sfifa earns wages, releases its order on completion and can be paid without creating stock", async t => {
+  const f = fixture(t), order = f.seedGarmentOrder("djellaba"), lineIds = [order.items[0].lineId];
+  const work = await assign(f, { category: "sfifa", workType: "client", garmentType: undefined, quantity: 12, unitWage: 2.5, sfifa: { width: "thick", family: "01-30", code: 12 }, orderId: String(order._id), lineIds });
+  const first = await finish(f, work, 4); assert.equal(first.status, 201);
+  let ledger = await account(f); assert.equal(ledger.totals.earned, 10); assert.equal(ledger.totals.due, 10);
+  let options = await request(f.worker, "/work/orders?category=machine&garmentType=djellaba"); assert.equal(options.status, 200);
+  let garment = options.data.orders.find(row => row._id === String(order._id)).items.find(row => row.lineId === lineIds[0]);
+  assert.equal(garment.available, false); assert.equal(garment.blockedBy[0].category, "sfifa");
+  const last = await finish(f, first.data, 8); assert.equal(last.status, 201); assert.equal(last.data.remainingQuantity, 0);
+  options = await request(f.worker, "/work/orders?category=machine&garmentType=djellaba");
+  garment = options.data.orders.find(row => row._id === String(order._id)).items.find(row => row.lineId === lineIds[0]);
+  assert.equal(garment.available, true); assert.deepEqual(garment.blockedBy, []);
+  assert.equal(f.stocks[0].quantity, 0); assert.equal(f.stocks[0].variants.length, 0); assert.equal(f.stocks[0].receipts.length, 0);
+  ledger = await account(f); assert.equal(ledger.totals.earned, 30); assert.equal(ledger.entries.length, 2);
+  assert.equal((await request(f.worker, "/payments", payment({ amount: 10 }))).status, 201);
+  const deleted = await request(f.worker, `/work/${work._id}`, { version: last.data.__v, requestId: randomUUID() }, actor, "DELETE");
+  assert.equal(deleted.status, 200);
+  ledger = await account(f); assert.deepEqual([ledger.totals.earned, ledger.totals.paid, ledger.totals.due], [30, 10, 20]);
+  assert.equal(f.stocks[0].receipts.length, 0); assert.equal(f.stocks[0].quantity, 0);
+});
+
 test("wages validate precisely for every category and preserve client-order rates", async t => {
   const f = fixture(t);
   for (const category of WORKER_CATEGORIES.filter(value => value !== "sfifa")) {

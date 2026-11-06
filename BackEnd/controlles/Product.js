@@ -1,4 +1,5 @@
-import { hasProductBatches, productBatches, batchFail } from '../../shared/productBatches.js';
+import { isProductBatchBarcode } from "../../shared/productBarcodes.js";
+import { hasProductBatches, receivedProductBatches, productBatches, batchFail } from '../../shared/productBatches.js';
 import { productVersionScope } from '../utils/productStock.js';
 import ProductModel from '../models/productModel.js';
 import CategoryModel from '../models/Category.js';
@@ -10,6 +11,7 @@ const errorStatus = (error) => error.status || (['ValidationError', 'CastError']
 const publicProduct = product => {
   const value = product.toObject ? product.toObject() : { ...product };
   if (hasProductBatches(product)) {
+    value.stockBatches = receivedProductBatches(product);
     const latest = productBatches(product).at(-1);
     value.prix_vente = latest.prix_vente;
     value.prix_gros = latest.prix_gros;
@@ -30,7 +32,8 @@ export const CreateProduct = async (req, res) => {
     const category = await CategoryModel.findOne({ _id: categorie, idAdmin: req.user.idAdmin });
     if (!category) return res.status(404).json({ message: 'Category not found' });
     if (!cleanBarcode) return res.status(400).json({ message: 'Barcode is required' });
-    const barcodeExists = await ProductModel.findOne({ idAdmin: req.user.idAdmin, barcode: cleanBarcode });
+    if (isProductBatchBarcode(cleanBarcode)) throw batchFail('productBatchBarcodeReserved');
+    const barcodeExists = await ProductModel.findOne({ idAdmin: req.user.idAdmin, $or: [{ barcode: cleanBarcode }, { 'stockBatches.barcode': cleanBarcode }] });
     if (barcodeExists) return res.status(400).json({ message: 'Barcode already exists' });
 
     uploadedImage = await saveProductImage(req.file);
@@ -82,8 +85,9 @@ export const UpdateProduit = async (req, res) => {
     const category = await CategoryModel.findOne({ _id: categorie, idAdmin: req.user.idAdmin });
     if (!category) return res.status(404).json({ message: 'Category not found' });
     if (!cleanBarcode) return res.status(400).json({ message: 'Barcode is required' });
+    if (cleanBarcode !== currentProduct.barcode && isProductBatchBarcode(cleanBarcode)) throw batchFail('productBatchBarcodeReserved');
     const barcodeExists = await ProductModel.findOne({
-      idAdmin: req.user.idAdmin, barcode: cleanBarcode, _id: { $ne: req.params.id },
+      idAdmin: req.user.idAdmin, $or: [{ barcode: cleanBarcode }, { 'stockBatches.barcode': cleanBarcode }], _id: { $ne: req.params.id },
     });
     if (barcodeExists) return res.status(400).json({ message: 'Barcode already exists' });
 
@@ -93,6 +97,7 @@ export const UpdateProduit = async (req, res) => {
       dateupdate: new Date(),
     };
     if (hasProductBatches(currentProduct)) {
+      update.stockBatches = receivedProductBatches(currentProduct);
       for (const key of ['quantite', 'prix_achat', 'prix_vente', 'prix_gros', 'frais_total', 'frais_quantite', 'frais_unitaire', 'profite']) delete update[key];
     }
     if (req.file) {

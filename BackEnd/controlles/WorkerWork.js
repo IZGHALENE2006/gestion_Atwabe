@@ -1,4 +1,8 @@
 import { workerCompletionEarning } from "../../shared/workerPayroll.js";
+import Fabric from '../models/Fabric.js';
+import SfifaStock from '../models/SfifaStock.js';
+import { usesWorkerMaterials, supportsWorkerMaterialHistory, workerMaterialInputKey, workerMaterialRows, workerPieceSelectionKey } from '../../shared/workerMaterials.js';
+import { archiveWorkerAssignment, makeWorkerMaterialOperation, requireWorkerMaterialsReady, resolveWorkerMaterials, resumeWorkerMaterials } from '../utils/workerMaterials.js';
 import mongoose from "mongoose";
 import { createHash } from "node:crypto";
 import TailoringWorker from "../models/TailoringWorker.js";
@@ -14,7 +18,10 @@ import { assignSfifaWork, changeSfifaWork, completeSfifaWork, findSfifaWork, lis
 import { loadClientAssignments, blockingAssignments, describeBlockingAssignments, withOrderAssignmentLock } from "../utils/workerAvailability.js";
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
+const sameCompletion = (event, quantity, body) => event?.quantity === quantity && (event.lineIds === undefined || workerPieceSelectionKey(event.lineIds) === workerPieceSelectionKey(body?.lineIds));
+const workLockKey = work => (work.tailoring || work.archivedTailoring)?.orderId || (usesWorkerMaterials(work.category, work.workType, work.garmentType) ? `worker-material:${work.requestId}` : undefined);
 const publicWork = work => ({
+  ...(work.materialOperations?.length || work.materialCancellation ? { materials: workerMaterialRows(work), materialStatus: work.materialStatus, ...(work.cancelledAt ? { cancelledAt: work.cancelledAt } : {}) } : {}),
   ...(work.unitWage !== undefined ? { unitWage: work.unitWage } : {}),
   _id: work._id, productName: work.productName, category: work.category, quantity: work.quantity,
   ...(work.garmentType ? { garmentType: work.garmentType } : {}),
@@ -23,7 +30,7 @@ const publicWork = work => ({
   completedQuantity: work.completedQuantity, remainingQuantity: remainingWorkQuantity(work),
   ...(work.category === "sfifa" ? { sfifa: { width: work.sfifa.width, family: work.sfifa.family, code: work.sfifa.code } } : {}),
   __v: work.__v ?? 0, createdAt: work.createdAt, updatedAt: work.updatedAt,
-  completions: work.completions.map(event => ({ _id: event._id, quantity: event.quantity, before: event.before, after: event.after, date: event.date, ...(event.earningAmount !== undefined ? { earningAmount: event.earningAmount, earningMonth: event.earningMonth } : {}) })),
+  completions: work.completions.map(event => ({ _id: event._id, quantity: event.quantity, before: event.before, after: event.after, date: event.date, ...(event.lineIds ? { lineIds: event.lineIds } : {}), ...(event.earningAmount !== undefined ? { earningAmount: event.earningAmount, earningMonth: event.earningMonth } : {}) })),
   additions: (work.additions || []).map(event => ({ _id: event._id, quantity: event.quantity, before: event.before, after: event.after, date: event.date, ...(event.lineIds ? { lineIds: event.lineIds } : {}) })),
 });
 const sendError = (res, error, fallback = "saveWorkFailed") => {
@@ -65,7 +72,7 @@ async function resolveClientWork(input, idAdmin) {
 }
 export async function listWorkerOrderOptions(req, res) {
   try {
-    const { idAdmin } = await workerAccessFor(req, "add");
+    const { idAdmin } = await workerAccessFor(req, ["assign", "increase"]);
     const worker = await workerFor(req, idAdmin), category = req.query.category;
     if (!WORK_TRACKING_CATEGORIES.includes(category)) throw fail("invalidWorkCategory", 400);
     if (!workerCategories(worker).includes(category)) throw fail("workerSectionChanged", 409);
@@ -95,10 +102,18 @@ export async function listWorkerWork(req, res) {
     res.json({ worker: publicWorker(worker), category, works: works.filter(work => !work.deletedAt).map(publicWork), permissions, canAssign: workerCategories(worker).includes(category) });
   } catch (error) { sendError(res, error, "loadWorkFailed"); }
 }
+export async function listWorkerMaterialOptions(req, res) {
+  try {
+    const { idAdmin } = await workerAccessFor(req, ["assign", "increase"]), worker = await workerFor(req, idAdmin);
+    if (!workerCategories(worker).includes('machine')) throw fail('workerSectionChanged', 409);
+    const [fabrics, sfifa] = await Promise.all([Fabric.find({ idAdmin }).select('type reference colors').lean(), SfifaStock.find({ idAdmin }).select('width family variants quantity unassignedQuantity').lean()]);
+    res.json({ fabrics: fabrics.map(fabric => ({ _id: fabric._id, type: fabric.type, reference: fabric.reference, colors: fabric.colors })), sfifa: sfifa.flatMap(stock => [...(stock.variants || []).map(variant => ({ _id: variant._id, parentId: stock._id, width: stock.width, family: stock.family, code: variant.code, quantity: variant.quantity })), ...((stock.unassignedQuantity ?? stock.quantity) > 0 ? [{ _id: stock._id, parentId: stock._id, width: stock.width, family: stock.family, quantity: stock.unassignedQuantity ?? stock.quantity }] : [])]) });
+  } catch (error) { sendError(res, error, 'loadMaterialsFailed'); }
+}
 export async function addWorkerWork(req, res) {
   let access, requestId, fingerprint, input;
   try {
-    access = await workerAccessFor(req, "add");
+    access = await workerAccessFor(req, "assign");
     const worker = await workerFor(req, access.idAdmin);
     requestId = requestIdFor(req.body);
     // Honor an exact retry of an older unlinked trouser assignment; new client work requires an order.
@@ -106,7 +121,7 @@ export async function addWorkerWork(req, res) {
       ? await WorkerWork.findOne({ idAdmin: access.idAdmin, requestId }) : null;
     input = validateWorkerWork(req.body, { allowLegacyTrouserClient: Boolean(legacy && legacy.category === "trousers" && legacy.workType === "client" && !legacy.tailoring) });
     fingerprint = createHash("sha256").update(JSON.stringify({ ...input, workerId: String(worker._id) })).digest("hex");
-    return await withOrderAssignmentLock(access.idAdmin, input.orderId, async () => {
+    return await withOrderAssignmentLock(access.idAdmin, input.orderId || (input.materials ? `worker-material:${requestId}` : undefined), async () => {
       if (input.category === "sfifa") {
         const saved = await assignSfifaWork({ input, ...access, workerId: worker._id, requestId, fingerprint, canAssign: workerCategories(worker).includes("sfifa"), resolveInput: input.orderId ? () => resolveClientWork(input, access.idAdmin) : undefined });
         return res.status(saved.status).json(publicWork(saved.work));
@@ -115,11 +130,14 @@ export async function addWorkerWork(req, res) {
       if (existing) {
         if (existing.deletedAt) throw fail("workDeleted", 409);
         if (existing.requestFingerprint !== fingerprint) throw fail("workRequestConflict", 409);
+        await resumeWorkerMaterials(existing);
         return res.json(publicWork(existing));
       }
       if (!workerCategories(worker).includes(input.category)) throw fail("workerSectionChanged", 409);
       const details = input.orderId ? await resolveClientWork(input, access.idAdmin) : input;
-      const work = await WorkerWork.create({ ...details, workerId: worker._id, idAdmin: access.idAdmin, createdBy: access.createdBy, requestId, requestFingerprint: fingerprint });
+      const rows = input.materials ? await resolveWorkerMaterials(input.materials, details, access.idAdmin) : null;
+      const work = await WorkerWork.create({ ...details, ...(rows ? { materialStatus: 'pending', materialOperations: [makeWorkerMaterialOperation('assign', requestId, rows, access.createdBy)] } : {}), workerId: worker._id, idAdmin: access.idAdmin, createdBy: access.createdBy, requestId, requestFingerprint: fingerprint });
+      await resumeWorkerMaterials(work);
       res.status(201).json(publicWork(work));
     });
   } catch (error) {
@@ -127,7 +145,7 @@ export async function addWorkerWork(req, res) {
       try {
         const existing = await WorkerWork.findOne({ idAdmin: access.idAdmin, requestId });
         if (existing?.deletedAt) return res.status(409).json({ message: "workDeleted" });
-        if (existing?.requestFingerprint === fingerprint) return res.json(publicWork(existing));
+        if (existing?.requestFingerprint === fingerprint) { await resumeWorkerMaterials(existing); return res.json(publicWork(existing)); }
         if (existing) return res.status(409).json({ message: "workRequestConflict" });
       } catch { /* Return the stable save error below. */ }
     }
@@ -138,7 +156,7 @@ export async function addWorkerWork(req, res) {
 export async function completeWorkerWork(req, res) {
   let scope, requestId, quantity;
   try {
-    const access = await workerAccessFor(req, "update");
+    const access = await workerAccessFor(req, "complete");
     const worker = await workerFor(req, access.idAdmin);
     if (!mongoose.isObjectIdOrHexString(req.params.workId)) throw fail("workNotFound", 404);
     scope = { _id: req.params.workId, workerId: worker._id, idAdmin: access.idAdmin };
@@ -150,21 +168,22 @@ export async function completeWorkerWork(req, res) {
     if (work.additions?.some(event => event.requestId === requestId)) throw fail("workRequestConflict", 409);
     const previous = work.completions.find(event => event.requestId === requestId);
     if (previous) {
-      if (previous.quantity !== quantity) throw fail("workRequestConflict", 409);
+      if (!sameCompletion(previous, quantity, req.body)) throw fail("workRequestConflict", 409);
       return res.json(publicWork(work));
     }
     if (work.category === "sfifa") {
       const saved = await completeSfifaWork({ scope, body: req.body, requestId, quantity, createdBy: access.createdBy, workerName: worker.name });
       return res.status(saved.status).json(publicWork(saved.work));
     }
+    requireWorkerMaterialsReady(work);
     const rawVersion = req.body?.version;
     const version = typeof rawVersion === "number" ? rawVersion : /^\d+$/.test(rawVersion || "") ? Number(rawVersion) : NaN;
     if (!Number.isSafeInteger(version) || version !== work.__v) throw fail("workConflict", 409);
     const remaining = work.quantity - work.completedQuantity;
-    validateWorkerCompletion(req.body, remaining);
-    const date = new Date(), earning = workerCompletionEarning(work, quantity, date);
+    const { lineIds } = validateWorkerCompletion(req.body, remaining, work.category, work);
+    const date = new Date(), earning = workerCompletionEarning(work, quantity, date, lineIds);
     work.completedQuantity += quantity;
-    work.completions.push({ requestId, quantity, before: remaining, after: remaining - quantity, ...earning, date, createdBy: access.createdBy, sequence: nextWorkSequence(work) });
+    work.completions.push({ requestId, quantity, before: remaining, after: remaining - quantity, ...(lineIds ? { lineIds } : {}), ...earning, date, createdBy: access.createdBy, sequence: nextWorkSequence(work) });
     await work.save();
     res.status(201).json(publicWork(work));
   } catch (error) {
@@ -173,7 +192,7 @@ export async function completeWorkerWork(req, res) {
         const work = await WorkerWork.findOne(scope);
         const event = work?.completions.find(entry => entry.requestId === requestId);
         if (work?.deletedAt) return res.status(409).json({ message: "workDeleted" });
-        if (event?.quantity === quantity) return res.json(publicWork(work));
+        if (sameCompletion(event, quantity, req.body)) return res.json(publicWork(work));
         if (event) return res.status(409).json({ message: "workRequestConflict" });
       } catch { /* Return the stable conflict below. */ }
     }
@@ -194,40 +213,46 @@ const workScopeFor = (req, worker, idAdmin) => {
 export async function increaseWorkerWork(req, res) {
   let scope, replay;
   try {
-    const access = await workerAccessFor(req, "add"), worker = await workerFor(req, access.idAdmin);
+    const access = await workerAccessFor(req, "increase"), worker = await workerFor(req, access.idAdmin);
     scope = workScopeFor(req, worker, access.idAdmin);
     const requestId = requestIdFor(req.body), original = await readWork(scope);
     if (!original) throw fail("workNotFound", 404);
     replay = work => {
       if (work.deletedAt) throw fail("workDeleted", 409);
       if (work.completions.some(event => event.requestId === requestId)) throw fail("workRequestConflict", 409);
+      const operation = work.materialOperations?.find(operation => operation.requestId === requestId);
+      if (operation?.state === 'failed') throw fail(operation.failureCode, 409);
       const previous = work.additions?.find(event => event.requestId === requestId);
       if (!previous) return false;
       const input = validateWorkerIncrease(req.body, work, { checkLimits: false });
       if (previous.quantity !== input.quantity || JSON.stringify(previous.lineIds ? [...previous.lineIds].sort() : []) !== JSON.stringify(input.lineIds || [])) throw fail("workRequestConflict", 409);
+      if (workerMaterialInputKey(operation?.rows) !== workerMaterialInputKey(input.materials)) throw fail('workRequestConflict', 409);
       return true;
     };
     const mutate = async work => {
+      requireWorkerMaterialsReady(work);
       if (!workerCategories(worker).includes(work.category)) throw fail("workerSectionChanged", 409);
       const input = validateWorkerIncrease(req.body, work);
       const details = input.lineIds ? await resolveClientWork({ category: work.category, workType: "client", orderId: String(work.tailoring.orderId), lineIds: input.lineIds }, access.idAdmin) : null;
+      const rows = input.materials ? await resolveWorkerMaterials(input.materials, details || work, access.idAdmin) : null;
       if (details && work.category === "trousers" && details.trouserType !== work.trouserType) throw Object.assign(fail("invalidWork", 400), { fields: { lineIds: "mixedTrouserTypes" } });
       applyWorkerIncrease(work, input, requestId, access.createdBy);
       if (details) {
         work.tailoring.lineIds = [...work.tailoring.lineIds, ...details.tailoring.lineIds].sort();
         work.tailoring.items.push(...details.tailoring.items);
       }
+      if (rows) { work.materialOperations ||= []; work.materialOperations.push(makeWorkerMaterialOperation('increase', requestId, rows, access.createdBy)); work.materialStatus = 'pending'; }
     };
-    return await withOrderAssignmentLock(access.idAdmin, original.tailoring?.orderId, async () => {
+    return await withOrderAssignmentLock(access.idAdmin, workLockKey(original), async () => {
       if (original.category === "sfifa") {
         const saved = await changeSfifaWork({ scope, body: req.body, replay, mutate });
         return res.status(saved.status).json(publicWork(saved.work));
       }
       const work = await readWork(scope);
       if (!work) throw fail("workNotFound", 404);
-      if (replay(work)) return res.json(publicWork(work));
+      if (replay(work)) { await resumeWorkerMaterials(work); return res.json(publicWork(work)); }
       requireWorkVersion(req.body, work);
-      await mutate(work); await work.save();
+      await mutate(work); await work.save(); await resumeWorkerMaterials(work);
       return res.status(201).json(publicWork(work));
     });
   } catch (error) {
@@ -241,19 +266,15 @@ export async function increaseWorkerWork(req, res) {
 
 export async function deleteWorkerWork(req, res) {
   try {
-    const access = await workerAccessFor(req, "delete"), worker = await workerFor(req, access.idAdmin);
+    const access = await workerAccessFor(req, "deleteWork"), worker = await workerFor(req, access.idAdmin);
     const scope = workScopeFor(req, worker, access.idAdmin), original = await readWork(scope);
     if (!original) throw fail("workNotFound", 404);
+    if (original.deletedAt) return res.json({ _id: original._id, deleted: true, ...(original.cancelledAt ? { cancelled: true } : {}) });
+    if (original.materialOperations?.length && !original.deletedAt) return cancelWorkerWork(req, res);
+    requireWorkerMaterialsReady(original);
     const result = work => res.json({ _id: work._id, deleted: true });
-    const mutate = work => {
-      work.deletedAt = new Date(); work.deletedBy = access.createdBy;
-      if (work.tailoring) {
-        // Release the live garment index while keeping the original assignment.
-        work.archivedTailoring = work.tailoring.toObject ? work.tailoring.toObject() : work.tailoring;
-        work.tailoring = undefined;
-      }
-    };
-    return await withOrderAssignmentLock(access.idAdmin, original.tailoring?.orderId, async () => {
+    const mutate = work => archiveWorkerAssignment(work, access.createdBy);
+    return await withOrderAssignmentLock(access.idAdmin, workLockKey(original), async () => {
       if (original.category === "sfifa") {
         const saved = await changeSfifaWork({ scope, body: req.body, replay: work => Boolean(work.deletedAt), mutate });
         return result(saved.work);
@@ -265,4 +286,41 @@ export async function deleteWorkerWork(req, res) {
       return result(work);
     });
   } catch (error) { return sendError(res, error); }
+}
+
+export async function resumeWorkerWorkMaterials(req, res) {
+  try {
+    const access = await workerAccessFor(req), worker = await workerFor(req, access.idAdmin), scope = workScopeFor(req, worker, access.idAdmin);
+    const original = await WorkerWork.findOne(scope);
+    if (!original) throw fail('workNotFound', 404);
+    await workerAccessFor(req, 'resume');
+    return await withOrderAssignmentLock(access.idAdmin, workLockKey(original), async () => {
+      const work = await WorkerWork.findOne(scope);
+      if (work.deletedAt) return res.json({ _id: work._id, deleted: true, cancelled: Boolean(work.cancelledAt) });
+      await resumeWorkerMaterials(work);
+      return res.json(work.deletedAt ? { _id: work._id, deleted: true, cancelled: Boolean(work.cancelledAt) } : publicWork(work));
+    });
+  } catch (error) { sendError(res, error); }
+}
+export async function cancelWorkerWork(req, res) {
+  try {
+    const access = await workerAccessFor(req, 'cancelWork'), worker = await workerFor(req, access.idAdmin), scope = workScopeFor(req, worker, access.idAdmin);
+    const original = await WorkerWork.findOne(scope);
+    if (!original) throw fail('workNotFound', 404);
+    return await withOrderAssignmentLock(access.idAdmin, workLockKey(original), async () => {
+      const work = await WorkerWork.findOne(scope);
+      if (work.cancelledAt) return res.json({ _id: work._id, deleted: true, cancelled: true });
+      if (work.deletedAt) throw fail('workDeleted', 409);
+      const kind = work.tailoring ? tailoringGarmentType(work.tailoring) : work.garmentType;
+      // Previously saved client debits can still be returned when deleting that work.
+      if (!usesWorkerMaterials(work.category, work.workType, kind) && !(work.materialOperations?.length && supportsWorkerMaterialHistory(work.category, work.workType, kind))) throw fail('invalidMaterialSection', 400);
+      if (work.materialStatus !== 'returning') {
+        requireWorkVersion(req.body, work);
+        work.materialCancellation = { requestId: requestIdFor(req.body), createdBy: access.createdBy, date: new Date() };
+        work.materialStatus = 'returning'; await work.save();
+      }
+      await resumeWorkerMaterials(work);
+      return res.json({ _id: work._id, deleted: true, cancelled: true });
+    });
+  } catch (error) { sendError(res, error); }
 }

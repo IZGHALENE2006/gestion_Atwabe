@@ -1,3 +1,4 @@
+import { workerSfifaCreditsStock } from '../../shared/workerSfifa.js';
 import { workerCompletionEarning } from "../../shared/workerPayroll.js";
 import SfifaStock from "../models/SfifaStock.js";
 import WorkerWork from "../models/WorkerWork.js";
@@ -65,20 +66,23 @@ export async function completeSfifaWork({ scope, body, requestId, quantity, crea
       const remaining = remainingWorkQuantity(work);
       validateWorkerCompletion({ quantity }, remaining, "sfifa");
       if (await SfifaStock.findOne({ idAdmin: scope.idAdmin, "receipts.requestId": requestId })) throw fail("workRequestConflict", 409);
-      if (stock.unassignedQuantity === undefined) stock.unassignedQuantity = stock.quantity;
-      if (stock.variants === undefined) stock.variants = [];
-      const { code } = work.sfifa, variant = stock.variants.find(entry => entry.code === code);
-      const units = sfifaQuantityUnits(variant?.quantity ?? 0) + sfifaQuantityUnits(quantity);
-      if (units > SFIFA_STOCK_LIMIT * SFIFA_STOCK_SCALE) throw fail("sfifaStockLimit", 409);
-      if (variant) variant.quantity = units / SFIFA_STOCK_SCALE;
-      else stock.variants.push({ code, quantity });
-      stock.quantity = (sfifaQuantityUnits(stock.quantity, { max: SFIFA_STOCK_GROUP_LIMIT }) + sfifaQuantityUnits(quantity)) / SFIFA_STOCK_SCALE;
+      const stockCredited = workerSfifaCreditsStock(work), { code } = work.sfifa;
+      if (stockCredited) {
+        if (stock.unassignedQuantity === undefined) stock.unassignedQuantity = stock.quantity;
+        if (stock.variants === undefined) stock.variants = [];
+        const variant = stock.variants.find(entry => entry.code === code);
+        const units = sfifaQuantityUnits(variant?.quantity ?? 0) + sfifaQuantityUnits(quantity);
+        if (units > SFIFA_STOCK_LIMIT * SFIFA_STOCK_SCALE) throw fail("sfifaStockLimit", 409);
+        if (variant) variant.quantity = units / SFIFA_STOCK_SCALE;
+        else stock.variants.push({ code, quantity });
+        stock.quantity = (sfifaQuantityUnits(stock.quantity, { max: SFIFA_STOCK_GROUP_LIMIT }) + sfifaQuantityUnits(quantity)) / SFIFA_STOCK_SCALE;
+      }
       const date = new Date(), earning = workerCompletionEarning(work, quantity, date);
       work.completedQuantity = (workQuantityUnits(work.completedQuantity, "sfifa") + sfifaQuantityUnits(quantity)) / SFIFA_STOCK_SCALE;
-      work.completions.push({ requestId, quantity, before: remaining, after: (sfifaQuantityUnits(remaining) - sfifaQuantityUnits(quantity)) / SFIFA_STOCK_SCALE, ...earning, date, createdBy, sequence: nextWorkSequence(work) });
+      work.completions.push({ requestId, quantity, before: remaining, after: (sfifaQuantityUnits(remaining) - sfifaQuantityUnits(quantity)) / SFIFA_STOCK_SCALE, stockCredited, ...earning, date, createdBy, sequence: nextWorkSequence(work) });
       work.__v += 1; work.updatedAt = date;
-      stock.receipts.push({ requestId, code, quantity, createdBy, date, workId: work._id, workerId: work.workerId, workerName });
-      // One optimistic write persists the work, history, receipt and stock together.
+      if (stockCredited) stock.receipts.push({ requestId, code, quantity, createdBy, date, workId: work._id, workerId: work.workerId, workerName });
+      // One optimistic write persists completion and wages, plus stock for shop work.
       await stock.save();
       return { status: 201, work };
     } catch (error) {

@@ -1,15 +1,17 @@
+import { moduleOperationPermissions } from "../../shared/employeePermissions.js";
 import mongoose from "mongoose";
 import AdminModel from "../models/AdminModel.js";
 import EmployeModel from "../models/EmployeModele.js";
 import Fabric from "../models/Fabric.js";
 import FabricMovement from "../models/FabricMovement.js";
+import { protectWorkerMaterialDeletion } from '../utils/workerMaterials.js';
 import { validateFabric, validateFabricUpdate, calculateFabricReduction, isFabricBarcode } from "../../shared/fabrics.js";
 
 import { saveFabricPhoto, deleteFabricPhoto, fabricPhotoPath } from "../utils/fabricPhotos.js";
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
 const publicFabric = (fabric) => {
-  const { movements: _movements, photo, ...value } = typeof fabric.toObject === "function" ? fabric.toObject() : fabric;
+  const { movements: _movements, workerMaterialDebits: _workerMaterialDebits, photo, ...value } = typeof fabric.toObject === "function" ? fabric.toObject() : fabric;
   return { ...value, hasPhoto: Boolean(fabricPhotoPath(photo)) };
 };
 
@@ -25,12 +27,12 @@ async function archiveMovements(fabric, trim = true) {
 async function accessFor(req, action) {
   if (!["admin", "Employe"].includes(req.user?.role)) throw fail("forbidden", 403);
   const admin = req.user.role === "admin";
-  const actor = await (admin ? AdminModel : EmployeModel).findById(req.user.id).select("_id idAdmin isActive action");
+  const actor = await (admin ? AdminModel : EmployeModel).findById(req.user.id).select("_id idAdmin isActive action moduleAccess operationPermissions");
   if (!actor || (!admin && !actor.isActive)) throw fail("forbidden", 403);
   const idAdmin = admin ? actor._id : actor.idAdmin;
   if (!mongoose.isValidObjectId(idAdmin)) throw fail("forbidden", 403);
-  const permissions = { add: admin || actor.action?.add === true, update: admin || actor.action?.update === true, delete: admin || actor.action?.delete === true };
-  if (action && !permissions[action]) throw fail("forbidden", 403);
+  const permissions = moduleOperationPermissions(req.user.role, actor, 'fabrics');
+  if (action && !(Array.isArray(action) ? action.some(key => permissions[key]) : permissions[action])) throw fail("forbidden", 403);
   return { idAdmin, createdBy: actor._id, permissions };
 }
 
@@ -84,20 +86,36 @@ export async function addFabric(req, res) {
 export async function updateFabric(req, res) {
   let uploaded = "", committed = false;
   try {
-    const { idAdmin, permissions } = await accessFor(req, "update");
+    const { idAdmin, permissions } = await accessFor(req, ["update", "addColor", "addPiece"]);
     if (!mongoose.isObjectIdOrHexString(req.params.id)) throw fail("notFound", 404);
     const fabric = await Fabric.findOne({ _id: req.params.id, idAdmin });
     if (!fabric) throw fail("notFound", 404);
     if (req.body?.version !== undefined && (!Number.isInteger(req.body.version) || req.body.version !== fabric.__v)) throw fail("conflict", 409);
     const input = validateFabricUpdate(req.body, fabric.toObject());
-    if (!permissions.delete) {
-      const colorIds = new Set(input.colors.map((color) => String(color._id)));
-      const pieceIds = new Set(input.colors.flatMap((color) => color.pieces.map((piece) => String(piece._id))));
-      if (fabric.colors.some((color) => !colorIds.has(String(color._id)) || color.pieces.some((piece) => !pieceIds.has(String(piece._id))))) throw fail("forbidden", 403);
+    if (!permissions.addColor && input.colors.some(color => !color._id)) throw fail("forbidden", 403);
+    if (!permissions.addPiece && input.colors.some(color => color._id && color.pieces.some(piece => !piece._id))) throw fail("forbidden", 403);
+    if (!permissions.update) {
+      if (input.type !== fabric.type || (input.reference || '') !== (fabric.reference || '') || (input.salePricePerMeter ?? 0) !== (fabric.salePricePerMeter ?? 0) || req.file || req.body.removePhoto === true) throw fail("forbidden", 403);
+      for (const original of fabric.colors) {
+        const color = input.colors.find(row => String(row._id) === String(original._id));
+        if (!color) continue;
+        if (color.name !== original.name || (color.number || '') !== (original.number || '')) throw fail("forbidden", 403);
+        for (const stored of original.pieces) {
+          const piece = color.pieces.find(row => String(row._id) === String(stored._id));
+          if (piece && (piece.meters !== stored.meters || piece.barcode !== stored.barcode)) throw fail("forbidden", 403);
+        }
+      }
     }
+    const colorIds = new Set(input.colors.map(color => String(color._id)));
+    const pieceIds = new Set(input.colors.flatMap(color => color.pieces.map(piece => String(piece._id))));
+    if (!permissions.deleteColor && fabric.colors.some(color => !colorIds.has(String(color._id)))) throw fail("forbidden", 403);
+    if (!permissions.deletePiece && fabric.colors.some(color => colorIds.has(String(color._id)) && color.pieces.some(piece => !pieceIds.has(String(piece._id))))) throw fail("forbidden", 403);
     const barcodes = input.colors.flatMap((color) => color.pieces.map((piece) => piece.barcode));
     const exists = await Fabric.exists({ idAdmin, _id: { $ne: fabric._id }, "colors.pieces.barcode": { $in: barcodes } });
     if (exists) throw fail("duplicateBarcode", 409);
+    const retainedPieces = new Set(input.colors.flatMap(color => color.pieces.map(piece => String(piece._id))));
+    const removedPieces = new Set(fabric.colors.flatMap(color => color.pieces).filter(piece => !retainedPieces.has(String(piece._id))).map(piece => String(piece._id)));
+    if (removedPieces.size) await protectWorkerMaterialDeletion(fabric, removedPieces, 'fabric');
     const previousPhoto = fabric.photo;
     uploaded = await saveFabricPhoto(req.file);
     fabric.set(input);
@@ -112,12 +130,15 @@ export async function updateFabric(req, res) {
 
 async function removeFabricEntry(req, res, kind) {
   try {
-    const { idAdmin } = await accessFor(req, "delete");
+    const { idAdmin } = await accessFor(req, kind === "fabric" ? "delete" : kind === "color" ? "deleteColor" : "deletePiece");
     const ids = [req.params.id, ...(kind !== "fabric" ? [req.params.colorId] : []), ...(kind === "piece" ? [req.params.pieceId] : [])];
     if (ids.some((id) => !mongoose.isObjectIdOrHexString(id))) throw fail("notFound", 404);
     const fabric = await Fabric.findOne({ _id: req.params.id, idAdmin });
     if (!fabric) throw fail("notFound", 404);
     if (!Number.isInteger(req.body?.version) || req.body.version !== fabric.__v) throw fail("conflict", 409);
+
+    const removedIds = kind === 'fabric' ? null : new Set(kind === 'piece' ? [req.params.pieceId] : (fabric.colors.id(req.params.colorId)?.pieces || []).map(piece => String(piece._id)));
+    await protectWorkerMaterialDeletion(fabric, removedIds, 'fabric');
 
     if (kind !== "fabric") {
       const color = fabric.colors.id(req.params.colorId);
@@ -152,7 +173,7 @@ export const deleteFabricPiece = (req, res) => removeFabricEntry(req, res, "piec
 export async function reduceFabricPiece(req, res) {
   let scope, input;
   try {
-    const actor = await accessFor(req, "update");
+    const actor = await accessFor(req, "reduce");
     const ids = [req.params.id, req.params.colorId, req.params.pieceId];
     if (ids.some((id) => !mongoose.isObjectIdOrHexString(id))) throw fail("notFound", 404);
     if (!Number.isInteger(req.body?.version) || req.body.version < 0) throw fail("conflict", 409);

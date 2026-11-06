@@ -7,7 +7,7 @@ export const AddCategory = async(req,res)=>{
     const {name,DateCreate} = req.body
 try{
         const NewCategory = await CategoryModel.create({
-        idAdmin:req.user.id,
+        idAdmin:req.user.idAdmin,
         name,
         DateCreate
     })
@@ -26,7 +26,7 @@ export const GetCategory = async(req,res)=>{
 
  export const DeleteCategory  = async(req,res)=>{
     const {id} = req.params
-    const DeleteItem = await CategoryModel.findByIdAndDelete(id)
+    const DeleteItem = await CategoryModel.findOneAndDelete({ _id: id, idAdmin: req.user.idAdmin })
   if(!DeleteItem) return res.status(404).json({message:"Not Found"})
     res.status(201).json(DeleteItem)
 
@@ -39,7 +39,7 @@ export const GetCategory = async(req,res)=>{
         const {name} = req.body
 
 
-        const Newitem  = await CategoryModel.findByIdAndUpdate(id,
+        const Newitem  = await CategoryModel.findOneAndUpdate({ _id: id, idAdmin: req.user.idAdmin },
            {name},
            {new:true}
         )   

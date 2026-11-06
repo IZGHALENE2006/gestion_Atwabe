@@ -1,3 +1,4 @@
+import { moduleOperationPermissions } from "../../shared/employeePermissions.js";
 import mongoose from "mongoose";
 import { createHash } from "node:crypto";
 import AdminModel from "../models/AdminModel.js";
@@ -18,12 +19,12 @@ const sendError = (res, error, fallback) => {
 export async function workerAccessFor(req, action) {
   if (!["admin", "Employe"].includes(req.user?.role)) throw fail("forbidden", 403);
   const admin = req.user.role === "admin";
-  const actor = await (admin ? AdminModel : EmployeModel).findById(req.user.id).select("_id idAdmin isActive action");
+  const actor = await (admin ? AdminModel : EmployeModel).findById(req.user.id).select("_id idAdmin isActive action moduleAccess operationPermissions");
   if (!actor || (!admin && !actor.isActive)) throw fail("forbidden", 403);
   const idAdmin = admin ? actor._id : actor.idAdmin;
   if (!mongoose.isObjectIdOrHexString(idAdmin)) throw fail("forbidden", 403);
-  const permissions = { add: admin || actor.action?.add === true, update: admin || actor.action?.update === true, delete: admin || actor.action?.delete === true };
-  if (action && !permissions[action]) throw fail("forbidden", 403);
+  const permissions = moduleOperationPermissions(req.user.role, actor, 'workers');
+  if (action && !(Array.isArray(action) ? action.some(key => permissions[key]) : permissions[action])) throw fail("forbidden", 403);
   return { idAdmin, createdBy: actor._id, permissions };
 }
 export async function listTailoringWorkers(req, res) {

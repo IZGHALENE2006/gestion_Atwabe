@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { IoCloseOutline, IoTimeOutline, IoWalletOutline } from "react-icons/io5";
+import { IoCloseOutline, IoDownloadOutline, IoTimeOutline, IoWalletOutline } from "react-icons/io5";
 
-export default function WorkerPayrollHistoryDialog({ worker, canPay, onRecordPayment, onClose, children }) {
+export default function WorkerPayrollHistoryDialog({ worker, onExport, exporting, canPay, onRecordPayment, onClose, children }) {
   const { t, i18n } = useTranslation();
   const dialogRef = useRef(null);
   useEffect(() => {
@@ -22,6 +22,7 @@ export default function WorkerPayrollHistoryDialog({ worker, canPay, onRecordPay
     <div className="payroll-history-dialog-body">{children}</div>
     <footer className="work-dialog-footer">
       <button type="button" className="work-button work-button-quiet" onClick={onClose}>{t("dialog.close")}</button>
+      {onExport && <button type="button" data-export-worker-period className="work-button work-button-blue" disabled={exporting} onClick={onExport}><IoDownloadOutline />{t(exporting ? "workers.payroll.pdf.exporting" : "workers.payroll.pdf.periodAction")}</button>}
       {canPay && <button type="button" data-record-worker-payment-history className="work-button work-button-blue" onClick={onRecordPayment}><IoWalletOutline />{t("workers.payroll.recordPayment")}</button>}
     </footer>
   </dialog>;

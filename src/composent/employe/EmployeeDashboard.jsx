@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
 import React, { useState, useLayoutEffect, useRef, useEffect } from "react";
 import { gsap } from "gsap";
@@ -175,7 +176,7 @@ export const EmployeeDashboard = () => {
                       <td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">{emp.email}</td>
                       <td className="px-6 py-4 text-right">
                         <button type="button" data-edit-employee={emp._id} onClick={() => setEditingId(emp._id)} className="employee-edit-button"><IoPencil size={17}/>{t("employees.edit")}</button>
-                        <EmployeePermissionsButton employee={emp}/>
+                        <EmployeePermissionsButton employee={emp}/><Link data-employee-payroll-link={emp._id} className="ep-salary-link" to={`/Home/employees/${emp._id}/payroll`}>{t("employeePayroll.title")}</Link>
                         <button 
                           onClick={() => { setPendingDelete({ id: emp._id }); setConfirmOpen(true); }}
                           className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all"

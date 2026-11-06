@@ -217,6 +217,85 @@ test("stock deletion preserves worker production and old completion receipts; ne
 
 const stockHistory = stock => request(`/sfifa-stock/${stock.parentId}/variants/${stock._id}/history`);
 
+test("client sfifa records partial and full completion with wages but no stock or stock receipt", async t => {
+  const f = setup(t), work = await assign(f.worker, input({ workType: "client", unitWage: 2.5 }));
+  const response = await complete(f.worker, work, completionBody(work, 4)); assert.equal(response.status, 201);
+  const partial = await response.json();
+  assert.deepEqual([partial.completedQuantity, partial.remainingQuantity, partial.completions[0].earningAmount], [4, 8, 10]);
+  assert.equal(f.records[0].completions[0].stockCredited, false);
+  assert.equal(f.stocks[0].quantity, 0); assert.deepEqual(f.stocks[0].variants.toObject(), []); assert.equal(f.stocks[0].receipts.length, 0);
+  const last = await complete(f.worker, partial, completionBody(partial, 8)); assert.equal(last.status, 201);
+  const done = await last.json(); assert.deepEqual([done.completedQuantity, done.remainingQuantity], [12, 0]);
+  assert.equal(done.completions.reduce((sum, event) => sum + event.earningAmount, 0), 30);
+  assert.equal(f.stocks[0].quantity, 0); assert.equal(f.stocks[0].receipts.length, 0);
+  assert.deepEqual((await (await request("/sfifa-stock")).json()).items, []);
+  const listed = await (await request(`${workPath(f.worker)}?category=sfifa`)).json();
+  assert.equal(listed.works[0].workType, "client"); assert.equal(listed.works[0].completions.length, 2);
+});
+
+test("only shop work increases shared sfifa stock and its restock history", async t => {
+  const f = setup(t); f.seedStock({ quantity: 10 });
+  const shop = await assign(f.worker, input({ workType: "shop" }));
+  assert.equal((await complete(f.worker, shop, completionBody(shop, 4, { workType: "client", stockCredited: false }))).status, 201);
+  assert.equal(f.records[0].completions[0].stockCredited, true);
+  for (const code of [12, 13]) {
+    const client = await assign(f.worker, input({ workType: "client", sfifa: { width: "thick", family: "01-30", code } }));
+    assert.equal((await complete(f.worker, client, completionBody(client, 12, { workType: "shop", stockCredited: true }))).status, 201);
+  }
+  assert.equal(f.stocks[0].quantity, 14); assert.deepEqual(f.stocks[0].variants.map(row => [row.code, row.quantity]), [[12, 14]]);
+  assert.equal(f.stocks[0].receipts.length, 1);
+  const visible = (await (await request("/sfifa-stock")).json()).items;
+  assert.equal(visible.length, 1); const history = await (await stockHistory(visible[0])).json();
+  assert.equal(history.entries.length, 1); assert.equal(history.entries[0].quantity, 4); assert.equal(history.entries[0].source, "worker");
+});
+
+test("client completion ignores stock capacity and preserves unnumbered legacy inventory", async t => {
+  const f = setup(t);
+  for (const legacy of [false, true]) {
+    const family = legacy ? "8080-8097" : "01-30", code = legacy ? 8080 : 12;
+    const seeded = f.seedStock({ family, code, quantity: legacy ? 7 : 1000000, legacy });
+    const work = await assign(f.worker, input({ workType: "client", sfifa: { width: "thick", family, code } }));
+    assert.equal((await complete(f.worker, work, completionBody(work, 4))).status, 201);
+    const stock = f.stocks.find(row => String(row._id) === String(seeded._id));
+    assert.equal(stock.quantity, legacy ? 7 : 1000000); assert.equal(stock.receipts.length, 0);
+    if (legacy) { assert.equal(stock.variants, undefined); assert.equal(stock.unassignedQuantity, undefined); }
+    else assert.equal(stock.variants[0].quantity, 1000000);
+  }
+});
+
+test("failed saves and duplicate retries record client completion and wages exactly once", async t => {
+  const f = setup(t), work = await assign(f.worker, input({ workType: "client", unitWage: 2.5 })), body = completionBody(work, 4);
+  f.controls.failSave = true;
+  assert.equal((await complete(f.worker, work, body)).status, 500);
+  assert.equal(f.records[0].completedQuantity, 0); assert.equal(f.records[0].completions.length, 0);
+  const responses = await Promise.all([complete(f.worker, work, body), complete(f.worker, work, body)]);
+  assert.deepEqual(responses.map(response => response.status).sort(), [200, 201]);
+  assert.equal((await complete(f.worker, work, body)).status, 200);
+  assert.equal((await complete(f.worker, work, { ...body, quantity: 3 })).status, 409);
+  assert.equal(f.records[0].completedQuantity, 4); assert.equal(f.records[0].completions.length, 1);
+  assert.equal(f.records[0].completions[0].earningAmount, 10);
+  assert.equal(f.stocks[0].quantity, 0); assert.equal(f.stocks[0].receipts.length, 0);
+});
+
+test("legacy client stock receipts remain valid while later client completions do not credit inventory", async t => {
+  const f = setup(t), work = await assign(f.worker);
+  const partial = await (await complete(f.worker, work, completionBody(work, 4))).json();
+  f.records[0].workType = "client"; f.records[0].completions[0].stockCredited = undefined;
+  await f.stocks[0].validate();
+  const corrupt = new SfifaStock(f.stocks[0].toObject()); corrupt.receipts = [];
+  await assert.rejects(corrupt.validate());
+  assert.equal((await complete(f.worker, partial, completionBody(partial, 8))).status, 201);
+  assert.equal(f.stocks[0].quantity, 4); assert.equal(f.stocks[0].receipts.length, 1);
+  assert.deepEqual(f.records[0].completions.map(event => event.stockCredited), [undefined, false]);
+  await f.stocks[0].validate();
+  const creditedClient = new SfifaStock(f.stocks[0].toObject()); creditedClient.production[0].completions[0].stockCredited = false;
+  await assert.rejects(creditedClient.validate());
+  const missingMarker = new SfifaStock(f.stocks[0].toObject()); missingMarker.production[0].completions[1].stockCredited = undefined;
+  await assert.rejects(missingMarker.validate());
+  const falseShop = new SfifaStock(f.stocks[0].toObject()); falseShop.production[0].workType = "shop";
+  await assert.rejects(falseShop.validate());
+});
+
 test("history distinguishes manual restocks from worker production and saves the trusted worker name with each completion", async t => {
   const f = setup(t), work = await assign(f.worker), body = completionBody(work, 4, { workerName: "forged name" });
   const completed = await complete(f.worker, work, body); assert.equal(completed.status, 201);

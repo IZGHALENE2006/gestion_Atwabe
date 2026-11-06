@@ -60,7 +60,7 @@ async function prepare(input, fingerprint, user, owner, actorRole) {
     const line = totals.lines[index], snapshot = { batchId: batch.batchId, batchNumber: batch.number };
     sales.push({ _id: new mongoose.Types.ObjectId().toString(), ...snapshot, idProduct: product._id, name: product.name, price, priceType, quantite: qty, invoiceId,
       saleAmount: line.totalTTC, profite: roundMoney(line.totalHT - (Number(batch.prix_achat || 0) + Number(batch.frais_unitaire || 0)) * qty), DateVante: date });
-    products.push({ ...snapshot, idProduct: product._id, code: String(product.barcode || ''), name: product.name, price, priceType, quantite: qty,
+    products.push({ ...snapshot, idProduct: product._id, code: String(batch.barcode || product.barcode || ''), name: product.name, price, priceType, quantite: qty,
       subtotal: line.subtotal, discountType: line.discountType, discountValue: line.discountValue, discountAmount: line.discountAmount, TotalPrix: line.total,
       ...(hasVat ? { vatRate: line.vatRate, vatAmount: line.vatAmount, totalHT: line.totalHT, totalTTC: line.totalTTC, orderDiscountAmount: line.orderDiscountAmount } : {}) });
   }

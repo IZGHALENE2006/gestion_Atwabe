@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { FABRIC_LIMITS, validateFabric } from "../../shared/fabrics.js";
 import { fabricMovementSchema } from "./FabricMovement.js";
+import { workerMaterialDebitSchema } from './workerMaterialSchema.js';
 
 const pieceSchema = new mongoose.Schema({
   meters: { type: Number, required: true, min: 0, max: FABRIC_LIMITS.meters },
@@ -20,6 +21,7 @@ const fabricSchema = new mongoose.Schema({
   photo: { type: String, default: "" },
   colors: { type: [colorSchema], required: true },
   movements: { type: [fabricMovementSchema], default: [] },
+  workerMaterialDebits: { type: [workerMaterialDebitSchema], default: undefined },
 }, { timestamps: true, optimisticConcurrency: true });
 
 fabricSchema.pre("validate", function () {

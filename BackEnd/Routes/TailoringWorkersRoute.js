@@ -2,7 +2,7 @@ import { getWorkerPayroll, addWorkerPayment } from "../controlles/WorkerPayroll.
 import express from "express";
 import { auth } from "../middleware/auth.js";
 import { addTailoringWorker, listTailoringWorkers, updateTailoringWorker } from "../controlles/TailoringWorkers.js";
-import { addWorkerWork, completeWorkerWork, deleteWorkerWork, increaseWorkerWork, listWorkerWork, listWorkerOrderOptions } from "../controlles/WorkerWork.js";
+import { addWorkerWork, completeWorkerWork, deleteWorkerWork, increaseWorkerWork, listWorkerWork, listWorkerOrderOptions, listWorkerMaterialOptions, cancelWorkerWork, resumeWorkerWorkMaterials } from "../controlles/WorkerWork.js";
 
 const router = express.Router();
 router.use(auth);
@@ -12,9 +12,12 @@ router.get("/:id/payroll", getWorkerPayroll);
 router.post("/:id/payments", addWorkerPayment);
 router.get("/:id/work", listWorkerWork);
 router.get("/:id/work/orders", listWorkerOrderOptions);
+router.get('/:id/work/material-options', listWorkerMaterialOptions);
 router.post("/:id/work", addWorkerWork);
 router.post("/:id/work/:workId/completions", completeWorkerWork);
 router.post("/:id/work/:workId/increases", increaseWorkerWork);
+router.post('/:id/work/:workId/cancel', cancelWorkerWork);
+router.post('/:id/work/:workId/materials/resume', resumeWorkerWorkMaterials);
 router.delete("/:id/work/:workId", deleteWorkerWork);
 router.put("/:id", updateTailoringWorker);
 export default router;

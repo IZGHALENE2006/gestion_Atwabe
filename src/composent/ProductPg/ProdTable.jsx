@@ -1,7 +1,9 @@
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
+import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import { IoAddOutline, IoInformationCircleOutline } from "react-icons/io5";
 import { MdDeleteOutline } from "react-icons/md";
 import { CiEdit } from "react-icons/ci";
-import { useEffect, useState, useRef, forwardRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import ConfirmDelete from "../Dialog/ConfirmDelete";
 import Dialog from "../Dialog/Dialog";
 import {
@@ -14,7 +16,8 @@ import {
 import { FaPrint, FaLock } from "react-icons/fa";
 import toast, { Toaster } from "react-hot-toast";
 import { useReactToPrint } from "react-to-print";
-import JsBarcode from "jsbarcode";
+import BarcodeDisplay from "./ProductBarcode.jsx";
+import PrintContainer from "./ProductBatchLabels.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import { DeleteProduit, GetAllProduct } from "../../slices/SliceProduct";
 import UpdateProduit from "./updateProduit";
@@ -22,69 +25,10 @@ import { useTranslation } from "react-i18next";
 import ProductRestockDialog from './ProductRestockDialog.jsx';
 import ProductBatchesTable from './ProductBatchesTable.jsx';
 import ProductPrice from './ProductPrice.jsx';
-import { productBatches, hasProductBatches } from '../../../shared/productBatches.js';
+import { hasProductBatches } from '../../../shared/productBatches.js';
 import ProductCards from "./ProductCards";
 import ProductImage from "./ProductImage";
 import { hasWholesalePrice } from "../../../shared/productPricing.js";
-
-const PrintContainer = forwardRef(({ product }, ref) => {
-  if (!product) return null;
-  const labels = productBatches(product).flatMap(batch => Array.from({ length: batch.quantite || 0 }, () => batch));
-  return (
-    <div
-      ref={ref}
-      style={{ padding: "10px", display: "flex", flexWrap: "wrap", gap: "15px" }}
-    >
-      {labels.map((batch, i) => (
-        <div
-          key={i}
-          style={{ border: "1px solid #eee", padding: "10px", textAlign: "center", width: "180px" }}
-        >
-          <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "5px" }}>
-            {product.name}
-          </p>
-          <BarcodeDisplay value={product.barcode} />
-          <p style={{ fontSize: "12px", marginTop: "5px", fontWeight: "900" }}>
-            {batch.prix_vente} DH • #{batch.number}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-});
-
-const BarcodeDisplay = ({ value }) => {
-  const barcodeRef = useRef(null);
-  useEffect(() => {
-    const cleanValue = String(value || "").trim();
-    if (barcodeRef.current && cleanValue) {
-      const preferredFormat = /^\d{12,13}$/.test(cleanValue) ? "EAN13" : "CODE128";
-
-      try {
-        JsBarcode(barcodeRef.current, cleanValue, {
-          format: preferredFormat,
-          lineColor: document.documentElement.classList.contains("dark") ? "#fff" : "#000",
-          background: "transparent",
-          width: 1.2,
-          height: 40,
-          displayValue: true,
-          fontSize: 12,
-        });
-      } catch {
-        JsBarcode(barcodeRef.current, cleanValue, {
-          format: "CODE128",
-          lineColor: document.documentElement.classList.contains("dark") ? "#fff" : "#000",
-          background: "transparent",
-          width: 1.2,
-          height: 40,
-          displayValue: true,
-          fontSize: 12,
-        });
-      }
-    }
-  }, [value]);
-  return <svg ref={barcodeRef} className="mx-auto" />;
-};
 
 const InfoItem = ({ icon, label, value, color }) => (
   <div className="bg-slate-50/80 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 flex items-center gap-4">
@@ -99,6 +43,7 @@ const InfoItem = ({ icon, label, value, color }) => (
 );
 
 export default function ProdTable({ products, viewMode = 'table' }) {
+  const operations = useEmployeeOperations('products');
   const { t, i18n } = useTranslation();
   const locale = i18n.language === "ar" ? "ar-MA" : "fr-MA";
   const dispatch = useDispatch();
@@ -161,7 +106,7 @@ export default function ProdTable({ products, viewMode = 'table' }) {
       {products.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">{t('productList.empty')}</div>
       ) : viewMode === 'cards' ? (
-        <ProductCards products={products} onDetails={handleOpenInfo} onEdit={handleopenUpdate} onDelete={handleOpenDelete} canManage={role === 'admin'} onRestock={setRestockProduct} />
+        <ProductCards products={products} onDetails={handleOpenInfo} onEdit={handleopenUpdate} onDelete={handleOpenDelete} canManage={operations.restock || operations.update || operations.delete || operations.labels} onPrintLabels={handleOpenInfo} onRestock={setRestockProduct} />
       ) : (
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900" data-product-view="table">
         <table className="w-full text-left border-collapse">
@@ -194,10 +139,10 @@ export default function ProdTable({ products, viewMode = 'table' }) {
                 className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-all group"
               >
                 <td className="px-6 py-4 font-black text-slate-700 dark:text-slate-200 uppercase text-xs">
-                  <button type="button" onClick={() => handleOpenInfo(item)} className="flex items-center gap-3 text-start hover:text-primary-600">
+                  <EmployeeOperation module="products" operation="labels"><button type="button" data-print-product-labels={item._id} onClick={() => handleOpenInfo(item)} aria-label={t("productTable.print")} className="rounded-lg p-2 text-blue-600"><FaPrint aria-hidden="true" /></button></EmployeeOperation><EmployeeOperation module="products" operation="details"><button type="button" onClick={() => handleOpenInfo(item)} className="flex items-center gap-3 text-start hover:text-primary-600">
                     <ProductImage image={item.image} name={item.name} className="size-11 shrink-0 rounded-lg" contain />
                     {item.name}
-                  </button>
+                  </button></EmployeeOperation>
                 </td>
                 <td className="px-6 py-4">
                   <span
@@ -231,30 +176,30 @@ export default function ProdTable({ products, viewMode = 'table' }) {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex justify-center gap-2">
-                    {role === "admin" ? (
+                    {Object.values(operations).some(Boolean) ? (
                       <>
-                        <button type="button" data-restock-product={item._id} onClick={() => setRestockProduct(item)} aria-label={t('productBatches.restock') + ' — ' + item.name} className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"><IoAddOutline size={17} />{t('productBatches.restock')}</button>
-                        <button
+                        <EmployeeOperation module="products" operation="restock"><button type="button" data-restock-product={item._id} onClick={() => setRestockProduct(item)} aria-label={t('productBatches.restock') + ' — ' + item.name} className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"><IoAddOutline size={17} />{t('productBatches.restock')}</button></EmployeeOperation>
+                        <EmployeeOperation module="products" operation="update"><button
                           onClick={() => handleopenUpdate(item._id)}
                           aria-label={`${t('productTable.updateProduct')} — ${item.name}`}
                           className="p-2 hover:bg-primary-50 dark:hover:bg-primary-900/20 text-primary-500 rounded-lg transition-colors"
                         >
                           <CiEdit size={20} />
-                        </button>
-                        <button
+                        </button></EmployeeOperation>
+                        <EmployeeOperation module="products" operation="details"><button
                           onClick={() => handleOpenInfo(item)}
                           aria-label={t('productList.viewDetails', { name: item.name })}
                           className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 rounded-lg transition-colors"
                         >
                           <IoInformationCircleOutline size={20} />
-                        </button>
-                        <button
+                        </button></EmployeeOperation>
+                        <EmployeeOperation module="products" operation="delete"><button
                           onClick={() => handleOpenDelete(item._id)}
                           aria-label={`${t('productTable.deleteProduct')} — ${item.name}`}
                           className="p-2 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-400 rounded-lg transition-colors"
                         >
                           <MdDeleteOutline size={20} />
-                        </button>
+                        </button></EmployeeOperation>
                       </>
                     ) : (
                       <FaLock className="text-slate-200 dark:text-slate-700" />
@@ -286,16 +231,16 @@ export default function ProdTable({ products, viewMode = 'table' }) {
                   {selectedProduct.categorie?.name || t("productTable.notValid")}
                 </p>
 
-                <div className="p-3">
+                <div className="p-3 max-w-full overflow-x-auto">
                   <BarcodeDisplay value={selectedProduct.barcode} />
                 </div>
 
-                <button
+                <EmployeeOperation module="products" operation="labels"><button
                   onClick={handlePrint}
                   className="mt-6 w-full flex items-center justify-center gap-2 py-3 bg-slate-900 dark:bg-primary-600 hover:bg-primary-600 dark:hover:bg-primary-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"
                 >
                   <FaPrint size={14} /> {t("productTable.print")} ({selectedProduct.quantite})
-                </button>
+                </button></EmployeeOperation>
               </div>
 
               <div className="flex-1 grid grid-cols-1 gap-3 py-2">

@@ -1,3 +1,4 @@
+import { moduleOperationPermissions } from "../shared/employeePermissions.js";
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import process from "node:process";
@@ -77,7 +78,7 @@ test("six stock combinations persist independently with trusted owner and actor 
     assert.equal(stock.receipts, undefined); assert.equal(stock.idAdmin, undefined); assert.equal(stock.requestId, undefined);
   }
   assert.equal(f.records.length, 6); assert.ok(f.records.every(row => String(row.idAdmin) === owner && String(row.createdBy) === owner));
-  const listed = await (await request()).json(); assert.equal(listed.items.length, 6); assert.deepEqual(listed.permissions, { add: true, update: true, delete: true });
+  const listed = await (await request()).json(); assert.equal(listed.items.length, 6); assert.deepEqual(listed.permissions, moduleOperationPermissions('admin', { action: { add: true, update: true, delete: true } }, 'sfifa'));
 });
 
 test("restocking a combination increases one balance and preserves decimal precision", async t => {
@@ -135,7 +136,7 @@ test("current employee permissions control restock and correction independently"
   const f = setup(t), stock = await add(); f.staff.action.add = false; f.staff.action.update = false;
   assert.equal((await request({ body: input(), actor: staffClaims })).status, 403);
   assert.equal((await request({ suffix: `/${stock.parentId}/variants/${stock._id}`, method: "PUT", body: { quantity: 2, version: 0 }, actor: staffClaims })).status, 403);
-  const listed = await (await request({ actor: staffClaims })).json(); assert.deepEqual(listed.permissions, { add: false, update: false, delete: true });
+  const listed = await (await request({ actor: staffClaims })).json(); assert.deepEqual(listed.permissions, moduleOperationPermissions('Employe', { action: { add: false, update: false, delete: true } }, 'sfifa'));
   f.staff.action.add = true; await add(input({ quantity: 5 }), staffClaims); assert.equal(String(f.records[0].receipts[1].createdBy), employee); assert.equal(String(f.records[0].idAdmin), owner);
   f.staff.isActive = false; assert.equal((await request({ actor: staffClaims })).status, 403);
 });

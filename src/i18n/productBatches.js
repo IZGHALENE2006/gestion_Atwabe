@@ -1,4 +1,9 @@
 export const productBatchesArabic = {
+  printFailed: 'تعذّر فتح الطباعة. أعد المحاولة.',
+  barcode: 'باركود الدفعة', barcodeHint: 'لكل دفعة باركود خاص بها. مسحه في الصندوق يحدد الدفعة التي ستُخصم منها الكمية.',
+  scanHint: 'امسح الباركود أو اكتبه واضغط Enter لإضافة قطعة من الدفعة مباشرة.',
+  barcodeNotFound: 'لم يُعثر على دفعة أو منتج بهذا الباركود.', barcodeAmbiguous: 'الباركود مرتبط بأكثر من دفعة. اختر المنتج والدفعة يدويًا.',
+  scannedBatch: 'الدفعة المحددة: {{number}}', productBatchBarcodeReserved: 'هذا باركود مخصص للدفعات. استخدم باركود المنتج الأصلي.',
   latest: "أحدث دفعة", previous: "دفعة سابقة", currentRetail: "سعر البيع الحالي",
   pricePolicy: "يُطبّق سعر البيع الجديد على جميع الدفعات. تبقى تكلفة الشراء والمصاريف محفوظة لكل دفعة لحساب الربح.",
   choosePrice: 'اختر سعر البيع', samePriceHint: 'سعر البيع موحّد؛ اختر الدفعة التي ستُخصم منها الكمية.', choosePriceAction: 'إضافة بهذا السعر',
@@ -20,6 +25,11 @@ export const productBatchesArabic = {
   productCheckoutPending: 'لم يكتمل تأكيد البيع. أعد تأكيد العملية نفسها لاستكمالها دون تكرار خصم المخزون.', productCheckoutFailed: 'تعذر حفظ البيع. أعد المحاولة.',
 };
 export const productBatchesFrench = {
+  printFailed: 'Impossible de lancer l’impression. Réessayez.',
+  barcode: 'Code-barres du lot', barcodeHint: 'Chaque lot possède son code-barres. Le scanner en caisse sélectionne le lot à débiter.',
+  scanHint: 'Scannez le code ou saisissez-le puis appuyez sur Entrée pour ajouter un article de ce lot.',
+  barcodeNotFound: 'Aucun lot ou produit ne correspond à ce code.', barcodeAmbiguous: 'Ce code correspond à plusieurs lots. Choisissez le produit et le lot manuellement.',
+  scannedBatch: 'Lot sélectionné : {{number}}', productBatchBarcodeReserved: 'Ce code est réservé aux lots. Utilisez le code-barres original du produit.',
   latest: "Dernier lot", previous: "Lot précédent", currentRetail: "Prix de vente actuel",
   pricePolicy: "Le nouveau prix de vente s’applique à tous les lots. Les coûts d’achat et frais restent propres à chaque lot pour le calcul du bénéfice.",
   choosePrice: 'Choisir le prix de vente', samePriceHint: 'Le prix est commun ; choisissez le lot à débiter.', choosePriceAction: 'Ajouter à ce prix',

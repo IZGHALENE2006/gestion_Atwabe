@@ -1,5 +1,5 @@
+import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import { cashierCartRows } from '../../../shared/cashierBatches.js';
-import { hasModuleAccess } from '../../../shared/employeePermissions.js';
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
@@ -11,6 +11,8 @@ import { roundMoney } from "../../../shared/saleTotals.js";
 import "./checkout.css";
 
 export default function CheckoutDialog({ cart, total, discount, received, user, onCashPay, onCreditSaved, onClose }) {
+  const creditOperations = useEmployeeOperations('credit');
+  const operations = useEmployeeOperations('cashier');
   const { t, i18n } = useTranslation(), dispatch = useDispatch();
   const storageKey = `atwabe-credit-checkout:${user?._id}`;
   const [recovery] = useState(() => { try { return JSON.parse(sessionStorage.getItem(storageKey) || "null"); } catch { return null; } });
@@ -25,7 +27,7 @@ export default function CheckoutDialog({ cart, total, discount, received, user, 
   const [customers, setCustomers] = useState([]), [loading, setLoading] = useState(false), [loadError, setLoadError] = useState(false), [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const dialogRef = useRef(null), busyRef = useRef(false);
-  const creditAllowed = hasModuleAccess(user?.role, user, "credit"), locked = busy || Boolean(pending) && (mode !== "credit" || creditAllowed);
+  const creditAllowed = operations.creditSale && creditOperations.addDebt, locked = busy || Boolean(pending) && (mode !== "credit" || creditAllowed);
   const paid = initialPaid === "" ? 0 : Number(initialPaid);
   const invalidPaid = !Number.isFinite(paid) || paid < 0 || roundMoney(paid) > snapshot.total;
   const money = value => `${new Intl.NumberFormat(i18n.language === "ar" ? "ar-MA" : "fr-MA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)} ${i18n.language === "ar" ? "درهم" : "DH"}`;
@@ -42,7 +44,7 @@ export default function CheckoutDialog({ cart, total, discount, received, user, 
   async function submit(event) {
     event.preventDefault();
     if (busyRef.current) return;
-    if (mode === "credit" && !creditAllowed) { setError(t("creditAudit.accessDenied")); return; }
+    if (mode === "cash" && !operations.sell || mode === "credit" && !creditAllowed) { setError(t("creditAudit.accessDenied")); return; }
     if (mode === "credit" && !pending && (invalidPaid || (customerMode === "existing" && !customerId))) { setError(t(invalidPaid ? "creditCheckout.paymentInvalid" : "creditCheckout.customerRequired")); return; }
     busyRef.current = true; setBusy(true); setError("");
     try {
@@ -69,7 +71,7 @@ export default function CheckoutDialog({ cart, total, discount, received, user, 
     <form onSubmit={submit}>
       <div className="checkout-body">
         {mode === "choose" ? <div className="checkout-options">
-          <button type="button" data-checkout-mode="cash" onClick={() => setMode("cash")}><IoCashOutline size={36} /><strong>{t("creditCheckout.cash")}</strong><span>{t("creditCheckout.cashHint")}</span></button>
+          <button type="button" data-checkout-mode="cash" disabled={!operations.sell} onClick={() => setMode("cash")}><IoCashOutline size={36} /><strong>{t("creditCheckout.cash")}</strong><span>{t("creditCheckout.cashHint")}</span></button>
           <button type="button" data-checkout-mode="credit" disabled={!creditAllowed} onClick={() => setMode("credit")}><IoWalletOutline size={36} /><strong>{t("creditCheckout.credit")}</strong><span>{t(creditAllowed ? "creditCheckout.creditHint" : "creditAudit.accessDenied")}</span></button>
         </div> : <>
           <div className="checkout-summary"><div><span>{t("creditCheckout.total")}</span><strong data-checkout-total>{money(snapshot.total)}</strong></div>{mode === "credit" && <div><span>{t("creditCheckout.remaining")}</span><strong data-checkout-remaining>{money(Math.max(0, roundMoney(snapshot.total - (Number.isFinite(paid) ? paid : 0))))}</strong></div>}</div>
@@ -78,7 +80,7 @@ export default function CheckoutDialog({ cart, total, discount, received, user, 
           {mode === "cash" ? <label className="checkout-field" htmlFor="checkout-cash">{t("cashier.totalReceived")}<input id="checkout-cash" type="number" required min={snapshot.total} step="0.01" inputMode="decimal" disabled={locked} value={pending?.amountPaid ?? cashPaid} onChange={event => setCashPaid(event.target.value)} autoFocus /></label> : <>
             {pending && <p role="status" className="checkout-notice">{t(busy ? "creditCheckout.saving" : "creditCheckout.pending")}</p>}
             <fieldset disabled={locked} className="checkout-fields">
-              <div className="checkout-customer-tabs"><button type="button" aria-pressed={customerMode === "existing"} onClick={() => setCustomerMode("existing")}>{t("creditCheckout.existing")}</button><button type="button" aria-pressed={customerMode === "new"} onClick={() => setCustomerMode("new")}><IoPersonAddOutline size={19} />{t("creditCheckout.new")}</button></div>
+              <div className="checkout-customer-tabs"><button type="button" aria-pressed={customerMode === "existing"} onClick={() => setCustomerMode("existing")}>{t("creditCheckout.existing")}</button><button type="button" aria-pressed={customerMode === "new"} disabled={!creditOperations.add} onClick={() => setCustomerMode("new")}><IoPersonAddOutline size={19} />{t("creditCheckout.new")}</button></div>
               {customerMode === "existing" ? <>
                 {loading && <p role="status">{t("common.loading")}</p>}
                 {loadError && <div className="checkout-error" role="alert"><p>{t("creditCheckout.loadFailed")}</p><button type="button" onClick={() => setReload(value => value + 1)}>{t("creditCheckout.retryLoad")}</button></div>}
@@ -86,7 +88,7 @@ export default function CheckoutDialog({ cart, total, discount, received, user, 
                 {!loading && !loadError && !customers.length && <p className="checkout-muted">{t("creditCheckout.empty")}</p>}
                 {customers.find(entry => entry._id === customerId) && <p className="checkout-muted">{t("creditCheckout.previousBalance")}: <bdi>{money(customers.find(entry => entry._id === customerId).summary?.remaining || 0)}</bdi></p>}
               </> : <div className="checkout-customer-form">{[["name", "text", 160], ["phone", "tel", 40], ["cin", "text", 80], ["email", "email", 254]].map(([key, type, max]) => <label className="checkout-field" key={key} htmlFor={`checkout-new-${key}`}>{t(`creditCheckout.${key}`)}{key === "name" && " *"}<input id={`checkout-new-${key}`} type={type} required={key === "name"} maxLength={max} autoComplete={key === "cin" ? "off" : key === "phone" ? "tel" : key} dir={key === "phone" || key === "email" ? "ltr" : "auto"} value={customer[key]} onChange={event => setCustomer(previous => ({ ...previous, [key]: event.target.value }))} /></label>)}<p className="checkout-muted">{t("creditCheckout.newHint")}</p></div>}
-              <label className="checkout-field" htmlFor="checkout-initial-paid">{t("creditCheckout.initialPaid")}<input id="checkout-initial-paid" type="number" min="0" max={snapshot.total} step="0.01" inputMode="decimal" placeholder="0.00" value={initialPaid} onChange={event => setInitialPaid(event.target.value)} aria-invalid={invalidPaid} /></label>
+              <label className="checkout-field" htmlFor="checkout-initial-paid">{t("creditCheckout.initialPaid")}<input id="checkout-initial-paid" disabled={!creditOperations.payment} type="number" min="0" max={snapshot.total} step="0.01" inputMode="decimal" placeholder="0.00" value={initialPaid} onChange={event => setInitialPaid(event.target.value)} aria-invalid={invalidPaid} /></label>
               {invalidPaid && <p role="alert" className="checkout-error">{t("creditCheckout.paymentInvalid")}</p>}
             </fieldset>
           </>}

@@ -1,3 +1,4 @@
+import { moduleOperationPermissions } from "../shared/employeePermissions.js";
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import process from "node:process";
@@ -268,7 +269,7 @@ test("current add and update permissions are independent and employee identity c
   f.staff.action.update = true;
   assert.equal((await complete(f.worker, work, completionBody(work, 10), staffClaims)).status, 201);
   assert.equal(String(f.records[0].completions[0].createdBy), employee); assert.equal(String(f.records[0].createdBy), owner); assert.equal(String(f.records[0].idAdmin), owner);
-  const listed = await (await request(f.worker, { actor: staffClaims })).json(); assert.deepEqual(listed.permissions, { add: false, update: true, delete: false });
+  const listed = await (await request(f.worker, { actor: staffClaims })).json(); assert.deepEqual(listed.permissions, moduleOperationPermissions('Employe', { action: { add: false, update: true, delete: false } }, 'workers'));
   f.staff.isActive = false; assert.equal((await request(f.worker, { actor: staffClaims })).status, 403);
 });
 

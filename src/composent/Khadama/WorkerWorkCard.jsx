@@ -1,6 +1,6 @@
+import { workerSfifaFamilyLabel, workerSfifaNumberLabel } from './workerSfifaLabels.js';
 import { useTranslation } from "react-i18next";
 import { IoAddCircleOutline, IoCalendarOutline, IoCheckmarkCircleOutline, IoChevronDownOutline, IoTimeOutline } from "react-icons/io5";
-import { SFIFA_STOCK_FAMILIES, formatSfifaCode } from "../../../shared/sfifaStock.js";
 
 export default function WorkerWorkCard({ work, canComplete, onComplete }) {
   const { t, i18n } = useTranslation();
@@ -14,8 +14,8 @@ export default function WorkerWorkCard({ work, canComplete, onComplete }) {
     <header className="work-card-heading">
       <div className="work-card-identity">{isSfifa ? <>
         <span className={`work-width-badge work-width-badge-${work.sfifa.width}`}>{t(`sfifaStock.widths.${work.sfifa.width}`)}</span>
-        <p className="work-code-label">{t("sfifaStock.code")}</p><h2><bdi dir="ltr">{formatSfifaCode(work.sfifa.code, work.sfifa.family)}</bdi></h2>
-        <p className="work-family">{t("sfifaStock.family")} <bdi dir="ltr">{SFIFA_STOCK_FAMILIES.find(family => family.value === work.sfifa.family)?.label}</bdi></p>
+        {work.sfifa.code !== undefined && <p className="work-code-label">{t("sfifaStock.code")}</p>}<h2><bdi dir="auto">{workerSfifaNumberLabel(work.sfifa, t)}</bdi></h2>
+        {work.sfifa.code !== undefined && <p className="work-family">{t("sfifaStock.family")} <bdi dir="ltr">{workerSfifaFamilyLabel(work.sfifa.family, t)}</bdi></p>}
       </> : <h2 dir="auto" className="work-product-name">{work.productName}</h2>}</div>
       <span className={`work-status-badge ${done ? "work-status-done" : "work-status-pending"}`}>{done ? <IoCheckmarkCircleOutline /> : <IoTimeOutline />}{t(done ? "workers.work.done" : "workers.work.inProgress")}</span>
     </header>

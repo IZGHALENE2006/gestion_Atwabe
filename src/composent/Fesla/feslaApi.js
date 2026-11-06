@@ -13,7 +13,7 @@ export const saveTailoringOrder = async (input, selection, removeImage, token, o
     const file = selection.find(entry => entry.lineId === item.lineId)?.selection?.file;
     return { ...item, ...(file ? { imageIndex: images.push(file) - 1 } : {}) };
   }) } : input;
-  for (const [key, value] of Object.entries(payload)) body.append(key, ["sfifa", "items"].includes(key) ? JSON.stringify(value) : value ?? "");
+  for (const [key, value] of Object.entries(payload)) body.append(key, ["sfifa", "items", "measurements"].includes(key) ? JSON.stringify(value) : value ?? "");
   for (const image of images) body.append("images", image);
   if (!input.items && selection?.file) body.append("image", selection.file);
   if (order) { body.append("version", String(order.__v)); body.append("removeImage", String(removeImage)); }

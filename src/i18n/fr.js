@@ -1,3 +1,4 @@
+import { employeePayrollFrench } from './employeePayroll.js';
 import { productBatchesFrench } from "./productBatches.js";
 import { sideExpensesFrench } from "./sideExpenses.js";
 import { salesRevenueFrench } from "./salesRevenue.js";
@@ -11,6 +12,7 @@ import { workersFrench } from "./workers.js";
 import { sfifaStockFrench } from "./sfifaStock.js";
 
 export default {
+  employeePayroll: employeePayrollFrench,
   creditDocuments: creditDocumentsFrench,
   employeePermissions: employeePermissionsFrench,
   creditCheckout: creditCheckoutFrench,

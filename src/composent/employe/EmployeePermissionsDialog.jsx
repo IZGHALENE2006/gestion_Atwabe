@@ -4,16 +4,16 @@ import { useDispatch } from "react-redux";
 import { IoShieldCheckmarkOutline, IoCloseOutline } from "react-icons/io5";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { employeeModules } from "../../../shared/employeePermissions.js";
+import { employeePermissionValue } from "../../../shared/employeePermissions.js";
 import { GetAllEmploye } from "../../slices/sliceEmploye.jsx";
 import EmployeePermissionsFields from "./EmployeePermissionsFields.jsx";
 
 function EmployeePermissionsDialog({ employee, onClose }) {
   const { t, i18n } = useTranslation(), dispatch = useDispatch();
-  const [value, setValue] = useState(() => ({ moduleAccess: employeeModules(employee), action: { add: employee.action?.add === true, update: employee.action?.update === true, delete: employee.action?.delete === true } }));
+  const [value, setValue] = useState(() => employeePermissionValue(employee));
   const [saving, setSaving] = useState(false), [error, setError] = useState("");
   const dialogRef = useRef(null), savingRef = useRef(false);
-  useEffect(() => { const dialog = dialogRef.current; dialog.showModal(); return () => dialog.close(); }, []);
+  useEffect(() => { const dialog = dialogRef.current, opener = document.activeElement; dialog.showModal(); return () => { dialog.close(); if (opener?.isConnected) opener.focus({ preventScroll: true }); }; }, []);
   const close = () => { if (!savingRef.current) { dialogRef.current.close(); onClose(); } };
   const save = async event => {
     event.preventDefault(); if (savingRef.current) return;

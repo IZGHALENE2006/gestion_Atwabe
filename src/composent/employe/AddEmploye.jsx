@@ -1,3 +1,6 @@
+import EmployeeCompensationFields from './EmployeeCompensationFields.jsx';
+import { payrollMonth, validateCompensation } from '../../../shared/employeePayroll.js';
+import { employeePermissionValue } from '../../../shared/employeePermissions.js';
 import { useTranslation } from "react-i18next";
 import { employeeErrorKey } from "../../i18n/employeeErrors.js";
 import { useState } from "react";
@@ -12,7 +15,7 @@ import {
 } from "react-icons/io5";
 import { addEmploye } from "../../slices/sliceEmploye";
 import { useDispatch, useSelector } from "react-redux";
-import toast from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 import EmployeePermissionsFields from './EmployeePermissionsFields.jsx';
 
 function AddEmploye({ open, onClose }) {
@@ -26,13 +29,14 @@ function AddEmploye({ open, onClose }) {
     password: "",
     color: "#10b981", // Default to Emerald
     isActive: true,
-    moduleAccess: ["cashier"],
-    action: { add: true, update: false, delete: false },
+    compensation: { type: "monthly", monthlyAmount: "", effectiveMonth: payrollMonth() },
+    ...employeePermissionValue({ moduleAccess: ["cashier"], action: { add: true, update: false, delete: false } }),
   });
 
   const { loading } = useSelector((state) => state.Employe);
 
   function HandelAddEmploye() {
+    try { validateCompensation(infoEmp.compensation); } catch { toast.error(t("employeePayroll.errors.employeeCompensationInvalid")); return; }
     dispatch(addEmploye(infoEmp))
       .unwrap()
       .then(() => {
@@ -170,6 +174,7 @@ function AddEmploye({ open, onClose }) {
             </div>
           </div>
 
+          <EmployeeCompensationFields value={infoEmp.compensation} onChange={compensation => setInfoEmp({ ...infoEmp, compensation })} disabled={loading}/>
           <EmployeePermissionsFields value={infoEmp} onChange={setInfoEmp} disabled={loading}/>
           {/* Status Toggle */}
           <div className="pt-2">

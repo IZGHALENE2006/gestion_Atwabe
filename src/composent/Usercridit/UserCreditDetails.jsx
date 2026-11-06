@@ -1,3 +1,5 @@
+import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import CreditActivity from "./CreditActivity.jsx";
 import { apiErrorMessage } from "../../i18n/apiErrors.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -39,6 +41,7 @@ const defaultLineForm = {
 };
 
 export default function UserCreditDetails() {
+  const operations = useEmployeeOperations('credit');
   const { t, i18n } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -67,7 +70,7 @@ export default function UserCreditDetails() {
   );
   const selectedUser = loadedUser?._id === id ? loadedUser : null;
   const { Produts } = useSelector((state) => state.Product);
-  const canDelete = useSelector(state => state.LoginAdmin.role === "admin");
+  const canDelete = operations.deleteDebt;
 
   useEffect(() => {
     if (!id) return;
@@ -164,6 +167,7 @@ export default function UserCreditDetails() {
   const openDocument = (user, selection = { kind: "statement" }) => {
     const payment = selection.kind === "payment" ? user.paymentHistory.find(entry => entry.reference === selection.reference) : null;
     if (selection.kind === "payment" && !payment) { toast.error(t("creditDocuments.errors.unavailable")); return; }
+    if (!operations.print) return;
     setDocumentView({ user, selection: { ...selection, ...(payment ? { payment } : {}) } });
   };
   const requestFor = (ref, payload) => {
@@ -297,24 +301,24 @@ export default function UserCreditDetails() {
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-300" data-credit-created-by>{t("creditAudit.createdBy")}: <span dir="auto">{selectedUser.createdBy?.name || t("creditAudit.unrecorded")}</span>{selectedUser.createdBy && <small className="block text-xs text-slate-500 dark:text-slate-400">{t(selectedUser.createdBy.role === "admin" ? "creditAudit.admin" : "creditAudit.employee")}</small>}</p>
           <div className="flex flex-wrap items-center gap-3">
-            <button type="button" data-credit-statement onClick={() => openDocument(selectedUser)} className="credit-document-button"><IoDocumentTextOutline size={19} />{t("creditDocuments.printInvoice")}</button>
-            <button type="button" data-share-credit onClick={() => setShareOpen(true)} className="credit-document-button"><IoShareSocialOutline size={19} />{t("creditDocuments.share.title")}</button>
-            <button data-add-credit-line
+            <EmployeeOperation module="credit" operation="print"><button type="button" data-credit-statement onClick={() => openDocument(selectedUser)} className="credit-document-button"><IoDocumentTextOutline size={19} />{t("creditDocuments.printInvoice")}</button></EmployeeOperation>
+            <EmployeeOperation module="credit" operation="share"><button type="button" data-share-credit onClick={() => setShareOpen(true)} className="credit-document-button"><IoShareSocialOutline size={19} />{t("creditDocuments.share.title")}</button></EmployeeOperation>
+            <EmployeeOperation module="credit" operation="addDebt"><button data-add-credit-line
               onClick={handleOpenLineModal}
               className="flex items-center gap-2 px-5 py-3 bg-slate-900 dark:bg-primary-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all"
             >
               <IoAddCircleOutline size={18} /> {t("creditDetails.addCredit")}
-            </button>
-            <button
+            </button></EmployeeOperation>
+            <EmployeeOperation module="credit" operation="payment"><button
               data-add-credit-payment onClick={handleOpenPaymentModal}
               className="flex items-center gap-2 px-5 py-3 bg-primary-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all"
             >
               <IoCashOutline size={18} /> {t("creditDetails.addPayment")}
-            </button>
+            </button></EmployeeOperation>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <EmployeeOperation module="credit" operation="details"><div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
               <tr>
@@ -370,7 +374,7 @@ export default function UserCreditDetails() {
                   <td className="px-6 py-4" data-credit-line-actor><span dir="auto">{line.actor?.name || t("creditAudit.unrecorded")}</span>{line.actor && <small className="block text-xs text-slate-500 dark:text-slate-400">{t(line.actor.role === "admin" ? "creditAudit.admin" : "creditAudit.employee")}</small>}</td>
                   <td className="px-6 py-4">
                     <div className="flex justify-center gap-2">
-                      <button type="button" data-credit-line-invoice={line.id} onClick={() => openDocument(selectedUser, { kind: "invoice", line })} className="credit-document-icon" title={t("creditDocuments.printInvoice")} aria-label={t("creditDocuments.printInvoice")}><IoDocumentTextOutline size={18} /></button>
+                      <EmployeeOperation module="credit" operation="print"><button type="button" data-credit-line-invoice={line.id} onClick={() => openDocument(selectedUser, { kind: "invoice", line })} className="credit-document-icon" title={t("creditDocuments.printInvoice")} aria-label={t("creditDocuments.printInvoice")}><IoDocumentTextOutline size={18} /></button></EmployeeOperation>
                       {canDelete && <button
                         disabled={actionLoading}
                         onClick={() => handleDeleteLine(line.id)}
@@ -384,7 +388,7 @@ export default function UserCreditDetails() {
               ))}
             </tbody>
           </table>
-        </div>
+        </div></EmployeeOperation>
 
         {produit.length === 0 && (
           <div className="py-10 text-center text-slate-400 font-black uppercase tracking-widest text-xs">
@@ -393,7 +397,7 @@ export default function UserCreditDetails() {
         )}
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      <EmployeeOperation module="credit" operation="history"><div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-100 dark:border-slate-800">
           <h3 className="font-black text-slate-800 dark:text-white uppercase tracking-tight">
             {t("creditDetails.paymentHistory")}
@@ -431,7 +435,7 @@ export default function UserCreditDetails() {
                   </td>
                   <td className="px-6 py-4" data-credit-payment-actor><span dir="auto">{payment.actor?.name || t("creditAudit.unrecorded")}</span>{payment.actor && <small className="block text-xs text-slate-500 dark:text-slate-400">{t(payment.actor.role === "admin" ? "creditAudit.admin" : "creditAudit.employee")}</small>}</td>
                   <td className="px-6 py-4 text-sm font-bold">{payment.balanceSnapshot ? formatMoney(payment.balanceSnapshot.remainingAfter) : "—"}</td>
-                  <td className="px-6 py-4"><button type="button" data-credit-payment-receipt={payment.reference} onClick={() => openDocument(selectedUser, { kind: "payment", reference: payment.reference })} className="credit-document-icon" title={t("creditDocuments.printReceipt")} aria-label={t("creditDocuments.printReceipt")}><IoDocumentTextOutline size={20} /></button></td>
+                  <td className="px-6 py-4"><EmployeeOperation module="credit" operation="print"><button type="button" data-credit-payment-receipt={payment.reference} onClick={() => openDocument(selectedUser, { kind: "payment", reference: payment.reference })} className="credit-document-icon" title={t("creditDocuments.printReceipt")} aria-label={t("creditDocuments.printReceipt")}><IoDocumentTextOutline size={20} /></button></EmployeeOperation></td>
                 </tr>
               ))}
             </tbody>
@@ -442,11 +446,11 @@ export default function UserCreditDetails() {
             {t("creditDetails.noPaymentsYet")}
           </div>
         )}
-      </div>
+      </div></EmployeeOperation>
 
-      {shareOpen && <CreditShareDialog key={id} userId={id} onClose={() => setShareOpen(false)} />}
-      {documentView?.user._id === id && <CreditDocumentDialog user={documentView.user} selection={documentView.selection} onClose={() => setDocumentView(null)} />}
-      <CreditActivity user={selectedUser} />
+      {shareOpen && <EmployeeOperation module="credit" operation="share"><CreditShareDialog key={id} userId={id} onClose={() => setShareOpen(false)} /></EmployeeOperation>}
+      {documentView?.user._id === id && <EmployeeOperation module="credit" operation="print"><CreditDocumentDialog user={documentView.user} selection={documentView.selection} onClose={() => setDocumentView(null)} /></EmployeeOperation>}
+      <EmployeeOperation module="credit" operation="history"><CreditActivity user={selectedUser} /></EmployeeOperation>
 
       {isLineModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
@@ -579,7 +583,7 @@ export default function UserCreditDetails() {
                   type="number"
                   min="0"
                   step="0.01"
-                  value={lineForm.Paiement}
+                  disabled={!operations.payment} value={lineForm.Paiement}
                   onChange={(e) =>
                     setLineForm((prev) => ({ ...prev, Paiement: e.target.value }))
                   }

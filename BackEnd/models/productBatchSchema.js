@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 export const productBatchSchema = new mongoose.Schema({
   batchId: { type: String, required: true }, number: { type: Number, required: true, min: 1 },
   requestHash: { type: String },
+  barcode: { type: String, trim: true, default: undefined },
   initialQuantity: { type: Number, required: true, min: 0 }, quantite: { type: Number, required: true, min: 0 },
   prix_achat: { type: Number, required: true, min: 0 }, prix_vente: { type: Number, required: true, min: 0 },
   prix_gros: { type: Number, default: null, min: 0 },

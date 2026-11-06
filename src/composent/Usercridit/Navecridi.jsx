@@ -1,3 +1,4 @@
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 
 import { NavLink } from "react-router-dom";
 import { IoPeopleOutline, IoBarChartOutline } from "react-icons/io5";
@@ -12,7 +13,7 @@ export default function NaveProfite() {
     <div className="flex justify-start gap-4 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-sm p-2 rounded-2xl mb-8 backdrop-blur-md transition-all">
 
       {/* Ventes Link */}
-      <NavLink
+      <EmployeeOperation module="credit" operation="add"><NavLink
         to="/Home/cridit/add"
         className={({ isActive }) => `
           flex items-center gap-3 px-6 py-3 rounded-[1.2rem] text-xs font-black uppercase tracking-widest transition-all duration-300
@@ -24,7 +25,7 @@ export default function NaveProfite() {
       >
         <IoPersonAddOutline size={18} />
         <span className="relative z-10">{t("creditNav.addUser")}</span>
-      </NavLink>
+      </NavLink></EmployeeOperation>
 
       {/* Facture Link */}
       <NavLink

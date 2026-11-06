@@ -1,3 +1,6 @@
+import Employee from '../models/EmployeModele.js';
+import { canEmployeeOperation } from '../../shared/employeePermissions.js';
+import { generatedProductBatchBarcode } from "../../shared/productBarcodes.js";
 import { createHash } from 'node:crypto';
 import mongoose from 'mongoose';
 import Product from '../models/productModel.js';
@@ -9,9 +12,9 @@ export async function restockProduct(req, res) {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) throw batchFail('productBatchUnavailable', 404);
     const input = normalizeRestock(req.body);
-    const actor = await Admin.findById(req.user.id);
-    if (!actor || req.user.role !== 'admin') throw batchFail('Forbidden', 403);
-    const owner = actor._id;
+    const actor = await (req.user.role === 'admin' ? Admin : Employee).findById(req.user.id);
+    if (!actor || !canEmployeeOperation(req.user.role, actor, 'products', 'restock')) throw batchFail('Forbidden', 403);
+    const owner = req.user.role === 'admin' ? actor._id : actor.idAdmin;
     const fingerprint = createHash('sha256').update(JSON.stringify(input)).digest('hex');
     for (let attempt = 0; attempt < 12; attempt++) {
       const product = await Product.findOne({ _id: req.params.id, idAdmin: owner });
@@ -25,7 +28,8 @@ export async function restockProduct(req, res) {
       if (!Number.isSafeInteger(Number(product.quantite)) || product.quantite < 0 || !Number.isSafeInteger(product.quantite + input.quantite)) throw batchFail('productRestockInvalidQuantity');
       if (batches.length >= 1000) throw batchFail('productRestockLimit');
       const { requestId, ...values } = input;
-      batches.push({ ...values, batchId: requestId, number: Math.max(...batches.map(batch => batch.number)) + 1, initialQuantity: input.quantite,
+      const number = Math.max(...batches.map(batch => batch.number)) + 1;
+      batches.push({ ...values, barcode: generatedProductBatchBarcode(product, number), batchId: requestId, number, initialQuantity: input.quantite,
         receivedAt: new Date(), createdBy: actor._id, createdByName: actor.name, requestHash: fingerprint });
       const saved = await Product.findOneAndUpdate({ _id: product._id, idAdmin: owner, ...productVersionScope(product), quantite: product.quantite,
         stockBatches: hasProductBatches(product) ? product.stockBatches : { $exists: false },

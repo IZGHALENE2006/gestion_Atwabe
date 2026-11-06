@@ -1,3 +1,4 @@
+import { moduleOperationPermissions } from "../../shared/employeePermissions.js";
 import mongoose from 'mongoose';
 import Admin from '../models/AdminModel.js';
 import Employee from '../models/EmployeModele.js';
@@ -9,11 +10,11 @@ const publicExpense = expense => ({ _id: expense._id, type: expense.type, otherN
 async function accessFor(req, adding = false) {
   if (!['admin', 'Employe'].includes(req.user?.role) || !mongoose.isObjectIdOrHexString(req.user?.id)) throw fail('forbidden', 403);
   const admin = req.user.role === 'admin';
-  const account = await (admin ? Admin : Employee).findById(req.user.id).select('_id role idAdmin isActive action');
+  const account = await (admin ? Admin : Employee).findById(req.user.id).select('_id role idAdmin isActive action moduleAccess operationPermissions');
   if (!account || account.role !== req.user.role || (!admin && account.isActive !== true)) throw fail('forbidden', 403);
   const idAdmin = admin ? account._id : account.idAdmin;
   if (!mongoose.isObjectIdOrHexString(idAdmin) || (!admin && !(await Admin.findById(idAdmin).select('_id')))) throw fail('forbidden', 403);
-  const permissions = { add: admin || account.action?.add === true };
+  const permissions = moduleOperationPermissions(req.user.role, account, 'expenses');
   if (adding && !permissions.add) throw fail('forbidden', 403);
   return { idAdmin, createdBy: account._id, permissions };
 }

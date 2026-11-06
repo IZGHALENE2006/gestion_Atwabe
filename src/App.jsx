@@ -1,3 +1,4 @@
+import EmployeePayrollPage from './composent/employe/EmployeePayrollPage.jsx';
 
 import './App.css'
 import { Navigate, Route, Routes, useLocation } from 'react-router'
@@ -128,6 +129,7 @@ const toggleLanguage = () => {
         <Route path='history' element={""} />
         <Route path="employees" element={<EmployeesPage />}>
         <Route path="EmployeeDashboard" element={<EmployeeDashboard/>} />
+        <Route path=":id/payroll" element={<EmployeePayrollPage/>} />
         <Route path="statistique" element={""} />
       </Route>
          < Route path='pagination' element={<PageNave/>}/>

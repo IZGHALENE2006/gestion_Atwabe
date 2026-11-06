@@ -1,14 +1,17 @@
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
+import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import ProductBatchPicker from '../ProductPg/ProductBatchPicker.jsx';
 import ProductPrice from '../ProductPg/ProductPrice.jsx';
-import { cashierBatchChoices, cashierCartRows } from '../../../shared/cashierBatches.js';
-import { hasProductBatches } from '../../../shared/productBatches.js';
+import { cashierBatchChoices, cashierCartRows, cashierAvailableQuantity, cashierBarcodeMatches } from '../../../shared/cashierBatches.js';
+import { normalizedProductBarcode } from "../../../shared/productBarcodes.js";
+import { hasProductBatches, productBatches } from '../../../shared/productBatches.js';
 import { IoSearchOutline, IoCartOutline, IoCameraOutline, IoClose } from "react-icons/io5";
 import toast from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { getMe, addVentes } from "../../slices/SliceLoginAdmin";
 import { GetAllProduct } from "../../slices/SliceProduct";
 import LiveClock from "./DateTime";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Quagga from "quagga";
 import FacturePrint from "./CashierReceipt";
 import { useReactToPrint } from "react-to-print";
@@ -22,6 +25,7 @@ import CreditDocumentDialog from "../Usercridit/CreditDocumentDialog.jsx";
 import "../Usercridit/creditDocuments.css";
 
 export default function CaisseSection({ cart, onAddToCart, onClearCart, discount, onDiscountChange }) {
+  const operations = useEmployeeOperations('cashier');
   const { t, i18n } = useTranslation();
   const locale = i18n.language === "ar" ? "ar-MA" : "fr-FR";
   const [batchProduct, setBatchProduct] = useState(null);
@@ -43,14 +47,40 @@ export default function CaisseSection({ cart, onAddToCart, onClearCart, discount
   const printRef = useRef();
 
   const startScan = () => setOpen(true);
-  const stopScan = () => {
+  const stopScan = useCallback(() => {
     try {
       Quagga.stop();
     } catch {
       // scanner already stopped
     }
     setOpen(false);
-  };
+  }, []);
+
+  const addScannedBatch = useCallback((product, batch) => {
+    const choice = cashierBatchChoices(product).find(entry => entry.batchId === batch.batchId);
+    if (!choice || cashierAvailableQuantity(product, choice, cart) < 1) {
+      toast.error(t("productBatches.unavailable")); return false;
+    }
+    onAddToCart(product, choice); setSearchTerm(""); return true;
+  }, [cart, onAddToCart, t]);
+  const handleBarcodeScan = useCallback(code => {
+    if (!normalizedProductBarcode(code)) return;
+    const matches = cashierBarcodeMatches(Produts, code);
+    if (matches.length === 1) { setSearchTerm(code); addScannedBatch(matches[0].product, matches[0].batch); return; }
+    setSearchTerm(code);
+    if (matches.length > 1) { toast.error(t("productBatches.barcodeAmbiguous")); return; }
+    const products = (Produts || []).filter(product => normalizedProductBarcode(product.barcode) === normalizedProductBarcode(code));
+    if (products.length === 1) {
+      const choices = cashierBatchChoices(products[0]);
+      if (!choices.length) toast.error(t("cashier.productOutOfStock"));
+      else if (choices.length === 1) addScannedBatch(products[0], choices[0]);
+      else setBatchProduct(products[0]);
+      return;
+    }
+    toast.error(t(products.length > 1 ? "productBatches.barcodeAmbiguous" : "productBatches.barcodeNotFound"));
+  }, [Produts, addScannedBatch, t]);
+  const barcodeScanRef = useRef(handleBarcodeScan);
+  useEffect(() => { barcodeScanRef.current = handleBarcodeScan; }, [handleBarcodeScan]);
 
   useEffect(() => {
     if (!open) return;
@@ -59,7 +89,7 @@ export default function CaisseSection({ cart, onAddToCart, onClearCart, discount
         inputStream: {
           type: "LiveStream",
           target: scannerRef.current,
-          constraints: { facingMode: "user" },
+          constraints: { facingMode: "environment" },
         },
         decoder: { readers: ["ean_reader", "code_128_reader"] },
         locate: true,
@@ -72,15 +102,18 @@ export default function CaisseSection({ cart, onAddToCart, onClearCart, discount
         Quagga.start();
       }
     );
+    let detected = false;
     Quagga.onDetected((result) => {
-      setSearchTerm(result.codeResult.code);
+      if (detected || !result.codeResult?.code) return;
+      detected = true;
+      barcodeScanRef.current(result.codeResult.code);
       stopScan();
     });
     return () => {
       stopScan();
       Quagga.offDetected();
     };
-  }, [open, t]);
+  }, [open, t, stopScan]);
 
   useEffect(() => {
     if (token && !user) dispatch(getMe());
@@ -94,11 +127,10 @@ export default function CaisseSection({ cart, onAddToCart, onClearCart, discount
     { label: "200 DH", value: 200, img: "/200dh.png", color: "#065f46" },
   ];
 
-  const filteredProducts = Produts?.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.barcode?.includes(searchTerm)
-  );
+  const barcodeMatches = cashierBarcodeMatches(Produts, searchTerm);
+  const filteredProducts = (Produts || []).filter(product => barcodeMatches.length
+    ? barcodeMatches.some(match => String(match.product._id) === String(product._id))
+    : product.name?.toLowerCase().includes(searchTerm.toLowerCase()) || normalizedProductBarcode(product.barcode).includes(normalizedProductBarcode(searchTerm)) || productBatches(product).some(batch => normalizedProductBarcode(batch.barcode).includes(normalizedProductBarcode(searchTerm))));
 
   const subtotal = roundMoney(cart.reduce((acc, item) => acc + roundMoney(item.price * item.qty), 0));
   let totals = calculateSaleTotals(subtotal);
@@ -168,16 +200,19 @@ export default function CaisseSection({ cart, onAddToCart, onClearCart, discount
   });
 
   useEffect(() => {
-    if (facture) {
+    if (facture && operations.print) {
       handlePrint();
     }
-  }, [facture, handlePrint]);
+  }, [facture, handlePrint, operations.print]);
 
   const handleQuickPay = (val) => {
     setAmountPaid(val.toString());
   };
 
   const handleAddToCartWithCheck = (product) => {
+    const matches = barcodeMatches.filter(match => String(match.product._id) === String(product._id));
+    if (matches.length === 1) { addScannedBatch(product, matches[0].batch); return; }
+    if (matches.length > 1) { setBatchProduct(product); return; }
     if (product.quantite <= 0) {
       return toast.error(t("cashier.productOutOfStock"));
     }
@@ -218,6 +253,8 @@ export default function CaisseSection({ cart, onAddToCart, onClearCart, discount
           <IoSearchOutline className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
           <input
             type="text"
+            data-cashier-barcode-search
+            onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); if (!event.repeat) handleBarcodeScan(searchTerm); } }}
             placeholder={t("cashier.searchProduct")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -232,16 +269,24 @@ export default function CaisseSection({ cart, onAddToCart, onClearCart, discount
         </button>
       </div>
 
+      <p className="cashier-batch-scan-hint">{t("productBatches.scanHint")}</p>
       <div className="flex-1 p-4 overflow-y-auto min-h-87.5 bg-slate-50/50 dark:bg-slate-950/20">
         <div className="flex flex-col gap-3">
-          {(searchTerm.length > 0 ? filteredProducts : Produts)?.map((item) => (
+          {(searchTerm.length > 0 ? filteredProducts : Produts)?.map((item) => {
+            const matches = barcodeMatches.filter(match => String(match.product._id) === String(item._id));
+            const batch = matches.length === 1 ? matches[0].batch : null;
+            const choice = batch && cashierBatchChoices(item).find(entry => entry.batchId === batch.batchId);
+            const available = batch ? choice ? cashierAvailableQuantity(item, choice, cart) : 0 : item.quantite;
+            return (
             <button
               type="button"
               key={item._id}
+              data-cashier-product={item._id}
+              disabled={available <= 0}
               aria-label={`${t('cashier.cart')}: ${item.name}`}
               onClick={() => handleAddToCartWithCheck(item)}
               className={`product-item flex justify-between items-center p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 cursor-pointer transition-all group shadow-sm ${
-                item.quantite > 0
+                available > 0
                   ? "hover:bg-primary-50 dark:hover:bg-primary-500/5 hover:border-primary-300 dark:hover:border-primary-700"
                   : "opacity-60 grayscale cursor-not-allowed"
               }`}
@@ -252,20 +297,21 @@ export default function CaisseSection({ cart, onAddToCart, onClearCart, discount
                   <span className="font-black text-slate-900 dark:text-slate-100 text-sm uppercase tracking-tight group-hover:text-primary-600 transition-colors">
                     {item.name}
                   </span>
+                  {batch && <span className="cashier-scanned-batch" data-scanned-batch={batch.batchId}>{t("productBatches.scannedBatch", { number: batch.number })}</span>}
                   <div className="flex items-center gap-2 mt-1">
                     <span
                       className={`text-[8px] font-black px-2 py-0.5 rounded-md ${
-                        item.quantite > 0
+                        available > 0
                           ? "bg-primary-100 text-primary-700"
                           : "bg-rose-100 text-rose-700"
                       }`}
                     >
-                      {item.quantite > 0
+                      {available > 0
                         ? t("cashier.available")
                         : t("cashier.outOfStock")}
                     </span>
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                      {t("cashier.stockLabel")}: {item.quantite}
+                      {t("cashier.stockLabel")}: {available}
                     </span>
                   </div>
                 </div>
@@ -286,7 +332,7 @@ export default function CaisseSection({ cart, onAddToCart, onClearCart, discount
                 </div>
               </div>
             </button>
-          ))}
+          ); })}
 
           {(!Produts || Produts.length === 0) && (
             <div className="flex flex-col items-center justify-center py-24 opacity-20 dark:text-white">
@@ -300,7 +346,7 @@ export default function CaisseSection({ cart, onAddToCart, onClearCart, discount
       </div>
 
       <div className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
-        <fieldset disabled={cart.length === 0 || isSubmitting} className="mb-6 rounded-2xl border border-primary-100 dark:border-primary-900 bg-primary-50/50 dark:bg-primary-950/20 p-4 disabled:opacity-50">
+        <EmployeeOperation module="cashier" operation="discount"><fieldset disabled={cart.length === 0 || isSubmitting} className="mb-6 rounded-2xl border border-primary-100 dark:border-primary-900 bg-primary-50/50 dark:bg-primary-950/20 p-4 disabled:opacity-50">
           <legend className="px-2 text-xs font-black text-primary-700 dark:text-primary-400">
             {t("discount.label")}
           </legend>
@@ -345,7 +391,7 @@ export default function CaisseSection({ cart, onAddToCart, onClearCart, discount
             )}
           </div>
           {discountError && <p id="sale-discount-error" role="alert" className="mt-2 text-xs font-bold text-rose-500">{discountError}</p>}
-        </fieldset>
+        </fieldset></EmployeeOperation>
 
         <div className="mb-5 space-y-2 text-sm font-bold" aria-live="polite">
           <div className="flex justify-between gap-3 text-slate-500 dark:text-slate-400">
@@ -437,8 +483,9 @@ export default function CaisseSection({ cart, onAddToCart, onClearCart, discount
 
       <div className="p-6 bg-white dark:bg-slate-900">
         <button
+          data-open-checkout
           onClick={() => setCheckoutOpen(true)}
-          disabled={isSubmitting || Boolean(discountError) || cart.length === 0}
+          disabled={!operations.sell && !operations.creditSale || isSubmitting || Boolean(discountError) || cart.length === 0}
           className="w-full py-5 bg-primary-600 hover:bg-primary-500 text-white rounded-4xl font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-[0.98] shadow-2xl shadow-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? t("common.loading") : t("cashier.confirmSale")}
@@ -473,7 +520,7 @@ export default function CaisseSection({ cart, onAddToCart, onClearCart, discount
       {batchProduct && <ProductBatchPicker product={batchProduct} cart={cart} onChoose={batch => { onAddToCart(batchProduct, batch); setSearchTerm(''); }} onClose={() => setBatchProduct(null)} />}
       {checkoutOpen && <CheckoutDialog cart={cart} total={totalOrder} discount={discount} received={amountPaid} user={user} onCashPay={handlePay} onClose={() => setCheckoutOpen(false)} onCreditSaved={result => {
         setCheckoutOpen(false); onClearCart(); setAmountPaid(""); dispatch(GetAllProduct());
-        toast.success(t("creditCheckout.saved")); setCreditDocument(result);
+        toast.success(t("creditCheckout.saved")); if (operations.print) setCreditDocument(result);
       }} />}
       {creditDocument && <CreditDocumentDialog user={creditDocument.creditUser} selection={creditDocument.document} onClose={() => setCreditDocument(null)} />}
       <div style={{ display: "none" }}>

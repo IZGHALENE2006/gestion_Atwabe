@@ -11,13 +11,13 @@ export async function getDjellabaCostSettings(req, res) {
   try {
     const Settings = tailoringCostSettingsModel(req.query.garment);
     const { idAdmin, permissions } = await tailoringAccessFor(req);
-    res.json({ ...publicSettings(await Settings.findOne({ idAdmin }), req.query.garment), canEdit: permissions.update });
+    res.json({ ...publicSettings(await Settings.findOne({ idAdmin }), req.query.garment), canEdit: permissions.settings });
   } catch (error) { errorReply(res, error); }
 }
 export async function saveDjellabaCostSettings(req, res) {
   try {
     const Settings = tailoringCostSettingsModel(req.query.garment);
-    const { idAdmin, createdBy } = await tailoringAccessFor(req, "update");
+    const { idAdmin, createdBy } = await tailoringAccessFor(req, "settings");
     const rates = validateDjellabaRates(req.body?.rates, req.query.garment), version = req.body?.version;
     if (version !== null && (!Number.isInteger(version) || version < 0)) throw Object.assign(new Error("invalidCostSettings"), { fields: { version: "costSettingsConflict" } });
     let document = await Settings.findOne({ idAdmin });

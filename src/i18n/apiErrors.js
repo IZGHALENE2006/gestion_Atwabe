@@ -1,4 +1,4 @@
-const batchErrors = ['productBatchRequired','productBatchInvalid','productBatchUnavailable','productBatchStockChanged','productBatchEditLocked','productRestockInvalidRequest','productRestockInvalidQuantity','productRestockInvalidDetails','productRestockRequestConflict','productRestockLimit','productRestockFailed','productCheckoutPending','productCheckoutFailed'];
+const batchErrors = ['productBatchBarcodeReserved','productBatchRequired','productBatchInvalid','productBatchUnavailable','productBatchStockChanged','productBatchEditLocked','productRestockInvalidRequest','productRestockInvalidQuantity','productRestockInvalidDetails','productRestockRequestConflict','productRestockLimit','productRestockFailed','productCheckoutPending','productCheckoutFailed'];
 const keys = {
   ...Object.fromEntries(batchErrors.map(code => [code, 'productBatches.' + code])),
   creditAccessDenied: "creditAudit.accessDenied",

@@ -14,3 +14,7 @@
 .payroll-history-dialog .payroll-table-scroll:focus-visible{outline:3px solid #7da8ff;outline-offset:2px}
 body:has(.payroll-history-dialog[open]){overflow:hidden}
 @media(max-width:650px){.work-dialog.payroll-history-dialog{width:calc(100dvw - 16px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);border-radius:18px}.payroll-history-dialog-body{padding:16px 12px}.payroll-history-dialog .work-dialog-header h2{font-size:18px}.payroll-history-dialog .work-dialog-worker{font-size:12px}.payroll-history-dialog .work-dialog-header{padding:16px 14px}}
+
+.payroll-period-note{display:grid;gap:.35rem;font-size:.82rem;line-height:1.7;margin:.6rem 0;color:#526e86}.payroll-period-note strong{color:#215dae}.dark .payroll-period-note{color:#a5bbcf}.dark .payroll-period-note strong{color:#a0ccff}
+
+@media(max-width:650px){.payroll-history-dialog .work-dialog-footer{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.payroll-history-dialog .work-dialog-footer .work-button{width:100%;min-height:42px}.payroll-history-dialog .work-dialog-footer [data-export-worker-period]{grid-column:1/-1;order:-1;min-height:44px}.payroll-history-dialog .work-dialog-footer:has(>button:only-child){grid-template-columns:1fr}}

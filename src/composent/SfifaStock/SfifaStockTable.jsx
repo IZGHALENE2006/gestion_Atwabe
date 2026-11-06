@@ -1,3 +1,4 @@
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import { useTranslation } from "react-i18next";
 import { IoAddOutline, IoBarcodeOutline, IoCreateOutline, IoTimeOutline, IoTrashOutline } from "react-icons/io5";
 import { SFIFA_STOCK_FAMILIES, formatSfifaCode, sfifaStockBarcode } from "../../../shared/sfifaStock.js";
@@ -16,10 +17,10 @@ export default function SfifaStockTable({ items, permissions, onAction }) {
           <td><span className={`sfifa-width-badge is-${stock.width}`}>{t(`sfifaStock.widths.${stock.width}`)}</span></td>
           <td><bdi dir="ltr">{SFIFA_STOCK_FAMILIES.find(family => family.value === stock.family)?.label}</bdi></td>
           <td className="sfifa-table-quantity" data-sfifa-quantity data-value={stock.quantity}><bdi>{number(stock.quantity)} {t("sfifaStock.unit")}</bdi></td>
-          <td><bdi className="sfifa-table-barcode" dir="ltr">{sfifaStockBarcode(stock)}</bdi><button type="button" className="sfifa-barcode-button" data-barcode-sfifa onClick={() => onAction("barcode", stock)}><IoBarcodeOutline size={18} />{t("sfifaStock.showBarcode")}</button></td>
+          <td><bdi className="sfifa-table-barcode" dir="ltr">{sfifaStockBarcode(stock)}</bdi><EmployeeOperation module="sfifa" operation="labels"><button type="button" className="sfifa-barcode-button" data-barcode-sfifa onClick={() => onAction("barcode", stock)}><IoBarcodeOutline size={18} />{t("sfifaStock.showBarcode")}</button></EmployeeOperation></td>
           <td className="sfifa-table-actions"><div>
-            <button type="button" className="sfifa-action is-history" data-history-sfifa onClick={() => onAction("history", stock)}><IoTimeOutline size={18} />{t("sfifaStock.history")}</button>
-            {!stock.isUnassigned && permissions.add && <button type="button" className="sfifa-action is-blue" data-restock-sfifa onClick={() => onAction("restock", stock)}><IoAddOutline size={18} />{t("sfifaStock.restock")}</button>}
+            <EmployeeOperation module="sfifa" operation="history"><button type="button" className="sfifa-action is-history" data-history-sfifa onClick={() => onAction("history", stock)}><IoTimeOutline size={18} />{t("sfifaStock.history")}</button></EmployeeOperation>
+            {!stock.isUnassigned && permissions.restock && <button type="button" className="sfifa-action is-blue" data-restock-sfifa onClick={() => onAction("restock", stock)}><IoAddOutline size={18} />{t("sfifaStock.restock")}</button>}
             {permissions.update && <button type="button" className="sfifa-action" data-edit-sfifa onClick={() => onAction("edit", stock)}><IoCreateOutline size={18} />{t(stock.isUnassigned ? "sfifaStock.classify" : "sfifaStock.edit")}</button>}
             {permissions.delete && <button type="button" className="sfifa-action is-danger" data-delete-sfifa onClick={() => onAction("delete", stock)}><IoTrashOutline size={18} />{t("sfifaStock.delete")}</button>}
           </div></td>

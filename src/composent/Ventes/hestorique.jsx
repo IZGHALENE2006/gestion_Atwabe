@@ -1,3 +1,5 @@
+import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import SalesSummaryCards from "./SalesSummaryCards.jsx";
 import { salesWithRevenue, summarizeSales, saleRevenue, salesPeriodKey } from "../../../shared/salesRevenue.js";
 import { useDispatch } from "react-redux";
@@ -23,6 +25,7 @@ import { useTranslation } from "react-i18next";
 import { usePdfExport } from "../../utils/usePdfExport.js";
 
 function HestoriqueProfit() {
+  const operations = useEmployeeOperations('profits');
   const { t, i18n } = useTranslation();
   const { exportPdf, isExporting, exportError } = usePdfExport(generateFactureVentesPDF);
   const [filterType, setFilterType] = useState("day");
@@ -135,7 +138,7 @@ function HestoriqueProfit() {
         </div>
 
         <div className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${isRtl ? "md:flex-row-reverse" : ""}`}>
-            <button
+            <EmployeeOperation module="profits" operation="download"><button
               onClick={() => exportPdf(displayData)}
               disabled={isExporting}
               aria-busy={isExporting}
@@ -143,7 +146,7 @@ function HestoriqueProfit() {
             >
               <IoReceiptOutline size={20} />
               {isExporting ? t("salesPdf.exporting") : t("historyPage.printSalesInvoice")}
-            </button>
+            </button></EmployeeOperation>
         </div>
 
         {exportError && <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">{exportError}</p>}
@@ -175,7 +178,7 @@ function HestoriqueProfit() {
                     <tr
                       key={idx}
                       className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-all cursor-pointer"
-                      onClick={() => handleOpenInfo(item)}
+                      onClick={() => { if (operations.details) handleOpenInfo(item); }}
                     >
                       <td className="px-8 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase">
                         {new Date(item.DateVante).toLocaleDateString(locale)}

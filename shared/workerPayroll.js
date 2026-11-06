@@ -1,5 +1,6 @@
 import { tailoringMoneyCents } from "./tailoring.js";
 import { workQuantityUnits, workerWageCents } from "./workerWork.js";
+import { workerHasPieceWages, workerMaterialRows, workerPieceWageCents, validateWorkerPieceCompletion } from './workerMaterials.js';
 
 export const WORKER_PAYROLL_TIMEZONE = "Europe/Paris";
 export const workerPayrollMonthValid = value => typeof value === "string" && /^(?:19|[2-9]\d)\d{2}-(?:0[1-9]|1[0-2])$/.test(value);
@@ -11,7 +12,13 @@ export function workerPayrollDay(value = new Date()) {
 }
 export const workerPayrollMonth = value => workerPayrollDay(value)?.slice(0, 7) || null;
 
-export function workerCompletionEarning(work, quantity, date = new Date()) {
+export function workerCompletionEarning(work, quantity, date = new Date(), selection) {
+  if (workerHasPieceWages(work)) {
+    const lineIds = new Set(validateWorkerPieceCompletion(work, quantity, selection));
+    const cents = workerPieceWageCents(workerMaterialRows(work).filter(row => lineIds.has(row.lineId)));
+    if (cents === null) throw new Error('invalidWage');
+    return { earningAmount: cents / 100, earningMonth: workerPayrollMonth(date) };
+  }
   if (work.unitWage === undefined) return {};
   const scale = work.category === "sfifa" ? 1000 : 1;
   const after = (workQuantityUnits(work.completedQuantity, work.category) + workQuantityUnits(quantity, work.category)) / scale;
@@ -40,10 +47,13 @@ export function buildWorkerPayroll(works, payments) {
   for (const work of works) {
     for (const event of work.completions || []) {
       const known = event.earningAmount !== undefined;
-      entries.push({ id: `${work._id}:${event.requestId}`, kind: known ? "earning" : "unpriced", workId: String(work._id), category: work.category, workType: work.workType || "shop", productName: work.productName, ...(work.sfifa ? { sfifa: work.sfifa } : {}), barcode: (work.tailoring || work.archivedTailoring)?.barcode || "", quantity: event.quantity, unitWage: work.unitWage, amount: known ? event.earningAmount : null, month: event.earningMonth || workerPayrollMonth(event.date), date: event.date, deletedWork: Boolean(work.deletedAt) });
+      entries.push({ id: `${work._id}:${event.requestId}`, kind: known ? "earning" : "unpriced", workId: String(work._id), category: work.category, workType: work.workType || "shop", productName: work.productName, ...(work.sfifa ? { sfifa: work.sfifa } : {}), ...(event.lineIds?.length ? { pieceWages: true, lineIds: event.lineIds } : {}), barcode: (work.tailoring || work.archivedTailoring)?.barcode || "", quantity: event.quantity, unitWage: work.unitWage, amount: known ? event.earningAmount : null, month: event.earningMonth || workerPayrollMonth(event.date), date: event.date, deletedWork: Boolean(work.deletedAt) });
     }
   }
   for (const payment of payments) entries.push({ id: String(payment._id), kind: "payment", paymentType: payment.type, amount: payment.amount, month: payment.month, paidOn: payment.paidOn, date: payment.createdAt, note: payment.note || "", createdByName: payment.createdByName || "" });
+  return { entries: entries.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id.localeCompare(a.id)), ...workerPayrollSummary(entries) };
+}
+export function workerPayrollSummary(entries) {
   const groups = new Map();
   for (const entry of entries) {
     if (!groups.has(entry.month)) groups.set(entry.month, { month: entry.month, earnedCents: 0, paidCents: 0, unpriced: 0 });
@@ -55,7 +65,7 @@ export function buildWorkerPayroll(works, payments) {
     if (!Number.isSafeInteger(row.earnedCents) || !Number.isSafeInteger(row.paidCents)) throw new Error("payrollOverflow");
     return { month: row.month, earned: row.earnedCents / 100, paid: row.paidCents / 100, balance: (row.earnedCents - row.paidCents) / 100, due: Math.max(0, row.earnedCents - row.paidCents) / 100, advance: Math.max(0, row.paidCents - row.earnedCents) / 100, unpriced: row.unpriced };
   }).sort((a, b) => b.month.localeCompare(a.month));
-  return { entries: entries.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id.localeCompare(a.id)), months, totals: workerPayrollTotals(months) };
+  return { months, totals: workerPayrollTotals(months) };
 }
 export function workerPayrollTotals(months) {
   return Object.fromEntries(["earned", "paid", "balance", "due", "advance", "unpriced"].map(key => {

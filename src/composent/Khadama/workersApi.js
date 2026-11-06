@@ -9,9 +9,12 @@ export const saveTailoringWorker = async (input, token, requestId, worker) => (w
 export const loadWorkerWork = async (token, workerId, category, signal) => (await axios.get(`${api}/${encodeURIComponent(workerId)}/work`, { params: { category }, headers: headers(token), signal })).data;
 export const loadWorkerOrderOptions = async (token, workerId, category, signal, garmentType) => (await axios.get(`${api}/${encodeURIComponent(workerId)}/work/orders`, { params: { category, ...(garmentType ? { garmentType } : {}) }, headers: headers(token), signal })).data;
 export const assignWorkerWork = async (token, workerId, input, requestId) => (await axios.post(`${api}/${encodeURIComponent(workerId)}/work`, { ...input, requestId }, { headers: headers(token) })).data;
-export const completeWorkerWork = async (token, workerId, work, quantity, requestId) => (await axios.post(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}/completions`, { quantity, requestId, version: work.__v }, { headers: headers(token) })).data;
+export const completeWorkerWork = async (token, workerId, work, quantity, requestId, lineIds) => (await axios.post(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}/completions`, { quantity, requestId, version: work.__v, ...(lineIds ? { lineIds } : {}) }, { headers: headers(token) })).data;
 export const increaseWorkerWork = async (token, workerId, work, input, requestId) => (await axios.post(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}/increases`, { ...input, requestId, version: work.__v }, { headers: headers(token) })).data;
-export const deleteWorkerWork = async (token, workerId, work) => (await axios.delete(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}`, { data: { version: work.__v }, headers: headers(token) })).data;
+export const deleteWorkerWork = async (token, workerId, work, requestId) => (await axios.delete(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}`, { data: { version: work.__v, requestId }, headers: headers(token) })).data;
+export const loadWorkerMaterialOptions = async (token, workerId, signal) => (await axios.get(`${api}/${encodeURIComponent(workerId)}/work/material-options`, { headers: headers(token), signal })).data;
+export const cancelWorkerWork = async (token, workerId, work, requestId) => (await axios.post(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}/cancel`, { version: work.__v, requestId }, { headers: headers(token) })).data;
+export const resumeWorkerWorkMaterials = async (token, workerId, work) => (await axios.post(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}/materials/resume`, {}, { headers: headers(token) })).data;
 
 export async function loadWorkerPayroll(token, workerId, signal) {
   return (await axios.get(api + "/" + workerId + "/payroll", { headers: headers(token), signal })).data;

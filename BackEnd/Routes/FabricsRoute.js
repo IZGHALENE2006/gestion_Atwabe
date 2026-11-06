@@ -10,7 +10,7 @@ router.get("/", listFabrics);
 router.get("/movements", listFabricMovements);
 router.get("/:id/photo", getFabricPhoto);
 router.post("/", fabricWriteAccess("add"), uploadFabricPhoto, addFabric);
-router.put("/:id", fabricWriteAccess("update"), uploadFabricPhoto, updateFabric);
+router.put("/:id", fabricWriteAccess(["update", "addColor", "addPiece"]), uploadFabricPhoto, updateFabric);
 router.delete("/:id", deleteFabric);
 router.delete("/:id/colors/:colorId", deleteFabricColor);
 router.delete("/:id/colors/:colorId/pieces/:pieceId", deleteFabricPiece);

@@ -1,3 +1,4 @@
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import SalesSummaryCards from "./SalesSummaryCards.jsx";
 import { salesWithRevenue, summarizeSales, saleRevenue, salesPeriodKey } from "../../../shared/salesRevenue.js";
 import { IoWalletOutline, IoSearchOutline, IoPersonOutline } from "react-icons/io5";
@@ -132,14 +133,14 @@ function Ventes() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <button
+            <EmployeeOperation module="profits" operation="download"><button
               className="px-8 rounded-2xl bg-primary-600 hover:bg-primary-700 text-white shadow-lg transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em]"
               onClick={() => exportPdf(displayData)}
               disabled={isExporting}
               aria-busy={isExporting}
             >
               <FaPrint size={18} /> {isExporting ? t("salesPdf.exporting") : t("salesPage.print")}
-            </button>
+            </button></EmployeeOperation>
           </div>
         </div>
 
@@ -198,12 +199,12 @@ function Ventes() {
                     </td>
                     <td className="px-8 py-5">
                       <div className="flex justify-center">
-                        <button
+                        <EmployeeOperation module="profits" operation="details"><button
                           className="px-6 py-2.5 rounded-xl bg-white dark:bg-slate-800 text-[9px] font-black uppercase border border-slate-200 hover:border-primary-500 hover:text-primary-600 transition-all shadow-sm"
                           onClick={() => handleOpenDialog(entry)}
                         >
                           {t("salesPage.details")}
-                        </button>
+                        </button></EmployeeOperation>
                       </div>
                     </td>
                   </tr>

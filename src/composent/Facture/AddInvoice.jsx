@@ -1,3 +1,4 @@
+import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import { productBatches, batchRowKey, stockPriceRange } from '../../../shared/productBatches.js';
 import { apiErrorMessage } from "../../i18n/apiErrors.js";
 import { useEffect, useRef, useState } from "react";
@@ -18,6 +19,7 @@ import DocumentClientFields from "./DocumentClientFields.jsx";
 const inputClass = "w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10";
 
 export default function AddInvoice({ documentType = "invoice", onCancel, onSaved }) {
+  const operations = useEmployeeOperations('invoices');
   const isNote = isSalesDocument({ documentType });
   const canUpdateStock = isStockNote({ documentType });
   const { t, i18n } = useTranslation();
@@ -158,7 +160,7 @@ export default function AddInvoice({ documentType = "invoice", onCancel, onSaved
             </div>
             {canUpdateStock && <div className="rounded-2xl border border-primary-200 bg-primary-50/50 p-4 dark:border-primary-900 dark:bg-primary-950/30">
               <label className="flex items-center gap-3 font-bold cursor-pointer">
-                <input id="document-update-stock" type="checkbox" checked={updateStock} onChange={(event) => setUpdateStock(event.target.checked)} aria-describedby="document-stock-hint" className="size-5 accent-primary-600" />
+                <input id="document-update-stock" type="checkbox" disabled={!operations.stockMove} checked={updateStock} onChange={(event) => setUpdateStock(event.target.checked)} aria-describedby="document-stock-hint" className="size-5 accent-primary-600" />
                 {t("salesDocuments.updateStock")}
               </label>
               <p id="document-stock-hint" aria-live="polite" className="mt-2 text-sm text-slate-600 dark:text-slate-300">{t(updateStock ? `salesDocuments.stockEffects.${documentType}` : "salesDocuments.noStockEffect")}</p>
@@ -207,8 +209,8 @@ export default function AddInvoice({ documentType = "invoice", onCancel, onSaved
                         <td className="p-4 whitespace-nowrap font-semibold">{money(line.price)}</td>
                         <td className="p-4 min-w-52">
                           <div className="flex gap-2">
-                            <input aria-label={`${t("discount.label")} — ${line.name}`} type="number" min="0" max={line.discountType === "percent" ? 100 : roundMoney(line.price * Number(line.qty))} step="0.01" placeholder="0" value={line.discountValue} onChange={(event) => updateLine(batchRowKey(line), { discountValue: event.target.value })} className={inputClass} />
-                            <select aria-label={`${t("discount.type")} — ${line.name}`} value={line.discountType} onChange={(event) => updateLine(batchRowKey(line), { discountType: event.target.value })} className={`${inputClass} max-w-20`}><option value="percent">%</option><option value="amount">DH</option></select>
+                            <input aria-label={`${t("discount.label")} — ${line.name}`} type="number" min="0" max={line.discountType === "percent" ? 100 : roundMoney(line.price * Number(line.qty))} step="0.01" placeholder="0" disabled={!operations.discount} value={line.discountValue} onChange={(event) => updateLine(batchRowKey(line), { discountValue: event.target.value })} className={inputClass} />
+                            <select aria-label={`${t("discount.type")} — ${line.name}`} disabled={!operations.discount} value={line.discountType} onChange={(event) => updateLine(batchRowKey(line), { discountType: event.target.value })} className={`${inputClass} max-w-20`}><option value="percent">%</option><option value="amount">DH</option></select>
                           </div>
                           {lineTotals?.discountAmount > 0 && <p className="text-xs text-primary-600 mt-1">-{money(lineTotals.discountAmount)}</p>}
                         </td>

@@ -119,6 +119,7 @@ export const fabricsFrench = {
   retry: "Réessayer",
   limits: "Jusqu’à {{colors}} couleurs et {{pieces}} pièces par tissu.",
   errors: {
+    workerMaterialsInUse: "Cette matière est affectée à un travail annulable. Annulez le travail avant de la supprimer.",
     required: "Ce champ est obligatoire.",
     imageTooLarge: "La photo doit faire 5 Mo maximum.",
     imageTypeInvalid: "Choisissez une image JPG, PNG ou WebP valide.",
@@ -273,6 +274,7 @@ export const fabricsArabic = {
   retry: "إعادة المحاولة",
   limits: "بحد أقصى {{colors}} لونًا و{{pieces}} قطعة لكل ثوب.",
   errors: {
+    workerMaterialsInUse: "هذه المادة مرتبطة بعمل قابل للإلغاء. ألغِ العمل أولًا قبل حذفها.",
     required: "هذا الحقل مطلوب.",
     imageTooLarge: "يجب ألا يتجاوز حجم الصورة 5 ميغابايت.",
     imageTypeInvalid: "اختر صورة صحيحة بصيغة JPG أو PNG أو WebP.",

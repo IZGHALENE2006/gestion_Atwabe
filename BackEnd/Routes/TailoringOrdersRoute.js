@@ -16,6 +16,6 @@ router.get("/:id/photo", getTailoringPhoto);
 router.get("/:id/items/:lineId/photo", getTailoringPhoto);
 router.post("/", tailoringWriteAccess("add"), uploadTailoringImages, addTailoringOrder);
 router.put("/:id", tailoringWriteAccess("update"), uploadTailoringImages, updateTailoringOrder);
-router.post("/:id/payments", tailoringWriteAccess("update"), addTailoringPayment);
-router.post("/:id/deliver", tailoringWriteAccess("update"), deliverTailoringOrder);
+router.post("/:id/payments", tailoringWriteAccess("payment"), addTailoringPayment);
+router.post("/:id/deliver", tailoringWriteAccess("deliver"), deliverTailoringOrder);
 export default router;

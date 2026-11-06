@@ -1,8 +1,10 @@
+import { moduleOperationPermissions } from "../../shared/employeePermissions.js";
 import mongoose from "mongoose";
 import AdminModel from "../models/AdminModel.js";
 import EmployeModel from "../models/EmployeModele.js";
 import SfifaStock from "../models/SfifaStock.js";
 import TailoringWorker from "../models/TailoringWorker.js";
+import { protectWorkerMaterialDeletion } from '../utils/workerMaterials.js';
 import { SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, SFIFA_STOCK_SCALE, sfifaQuantityUnits, sfifaStockBarcode, validateSfifaClassification, validateSfifaStock } from "../../shared/sfifaStock.js";
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
@@ -35,12 +37,12 @@ const sendError = (res, error, fallback = "saveFailed") => {
 async function accessFor(req, action) {
   if (!["admin", "Employe"].includes(req.user?.role)) throw fail("forbidden", 403);
   const admin = req.user.role === "admin";
-  const actor = await (admin ? AdminModel : EmployeModel).findById(req.user.id).select("_id idAdmin isActive action");
+  const actor = await (admin ? AdminModel : EmployeModel).findById(req.user.id).select("_id idAdmin isActive action moduleAccess operationPermissions");
   if (!actor || (!admin && !actor.isActive)) throw fail("forbidden", 403);
   const idAdmin = admin ? actor._id : actor.idAdmin;
   if (!mongoose.isObjectIdOrHexString(idAdmin)) throw fail("forbidden", 403);
-  const permissions = { add: admin || actor.action?.add === true, update: admin || actor.action?.update === true, delete: admin || actor.action?.delete === true };
-  if (action && !permissions[action]) throw fail("forbidden", 403);
+  const permissions = moduleOperationPermissions(req.user.role, actor, 'sfifa');
+  if (action && !(Array.isArray(action) ? action.some(key => permissions[key]) : permissions[action])) throw fail("forbidden", 403);
   return { idAdmin, createdBy: actor._id, permissions };
 }
 export async function listSfifaStock(req, res) {
@@ -142,6 +144,7 @@ export async function deleteSfifaStock(req, res) {
     requireVersion(req.body, stock);
     prepareStock(stock);
     const removed = variant ? variant.quantity : stock.unassignedQuantity;
+    await protectWorkerMaterialDeletion(stock, new Set([String(variant?._id || stock._id)]), 'sfifa');
     if (variant) stock.variants = stock.variants.filter(entry => String(entry._id) !== String(variant._id));
     else stock.unassignedQuantity = 0;
     stock.quantity = (groupUnits(stock.quantity) - sfifaQuantityUnits(removed)) / SFIFA_STOCK_SCALE;
@@ -152,7 +155,7 @@ export async function deleteSfifaStock(req, res) {
 
 export async function restockSfifaVariant(req, res) {
   try {
-    const { idAdmin, createdBy } = await accessFor(req, "add");
+    const { idAdmin, createdBy } = await accessFor(req, "restock");
     if (!mongoose.isObjectIdOrHexString(req.params.id) || !mongoose.isObjectIdOrHexString(req.params.variantId)) throw fail("notFound", 404);
     const requestId = typeof req.body.requestId === "string" ? req.body.requestId.toLowerCase() : "";
     if (!/^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/.test(requestId)) throw fail("invalidRequest", 400);

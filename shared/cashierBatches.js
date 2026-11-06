@@ -1,11 +1,12 @@
-﻿import { productBatches, batchRowKey, batchFail } from './productBatches.js';
+import { normalizedProductBarcode } from "./productBarcodes.js";
+import { productBatches, batchRowKey, batchFail } from './productBatches.js';
 import { getProductSalePrice, hasWholesalePrice } from './productPricing.js';
 
 export const cashierRowKey = batchRowKey;
 export function cashierBatchChoices(product, priceType = 'retail') {
   return productBatches(product)
     .filter(batch => batch.quantite > 0 && (priceType !== 'wholesale' || hasWholesalePrice(batch)))
-    .map(batch => ({ id: String(product._id), batchId: batch.batchId, batchNumber: batch.number, receivedAt: batch.receivedAt,
+    .map(batch => ({ id: String(product._id), batchId: batch.batchId, batchNumber: batch.number, barcode: batch.barcode, receivedAt: batch.receivedAt,
       price: getProductSalePrice(batch, priceType), priceType, quantite: batch.quantite,
       retailPrice: Number(batch.prix_vente), wholesalePrice: hasWholesalePrice(batch) ? Number(batch.prix_gros) : null,
       key: batchRowKey({ id: product._id, batchId: batch.batchId, priceType }) }));
@@ -54,4 +55,13 @@ export function setCashierRowQuantity(cart, product, key, quantity) {
   if (!row) return cart;
   if (quantity > row.qty) return addCashierBatch(cart, product, row, quantity - row.qty);
   return cart.flatMap(item => cashierRowKey(item) === key ? quantity ? [{ ...item, qty: quantity }] : [] : [{ ...item }]);
+}
+
+// Include exhausted lots so a scanned code can never silently use another lot.
+export function cashierBarcodeMatches(products, code) {
+  const value = normalizedProductBarcode(code);
+  if (!value) return [];
+  return (products || []).flatMap(product => productBatches(product)
+    .filter(batch => normalizedProductBarcode(batch.barcode) === value)
+    .map(batch => ({ product, batch })));
 }

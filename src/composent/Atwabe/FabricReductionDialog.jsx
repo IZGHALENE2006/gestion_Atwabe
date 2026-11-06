@@ -1,3 +1,4 @@
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IoCloseOutline, IoSearchOutline, IoRemoveCircleOutline, IoTimeOutline } from "react-icons/io5";
@@ -157,6 +158,6 @@ export default function FabricReductionDialog({ fabrics, token, canReduce, onClo
     </form>}
     {success && <p role="status" data-reduction-success className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">{t("fabrics.reductionSaved", { removed: format(success.meters), remaining: format(success.remainingMeters) })}</p>}
     {error && <div className="mt-4 text-sm text-rose-600 dark:text-rose-400"><p role="alert">{t(`fabrics.errors.${error}`)}</p>{["conflict", "notFound", "insufficientMeters", "loadFailed"].includes(error) && <button type="button" disabled={saving} onClick={reload} className="mt-2 font-bold underline">{t("fabrics.reloadStock")}</button>}</div>}
-    <footer className="mt-5 flex flex-wrap justify-end gap-3"><button type="button" disabled={saving} onClick={() => onHistory(selected?.piece.barcode || (complete ? search.trim() : ""))} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold dark:border-slate-700"><IoTimeOutline size={19} />{t("fabrics.movementsTitle")}</button><button type="button" disabled={saving} onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold dark:border-slate-700">{t("dialog.close")}</button></footer>
+    <footer className="mt-5 flex flex-wrap justify-end gap-3"><EmployeeOperation module="fabrics" operation="history"><button type="button" disabled={saving} onClick={() => onHistory(selected?.piece.barcode || (complete ? search.trim() : ""))} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold dark:border-slate-700"><IoTimeOutline size={19} />{t("fabrics.movementsTitle")}</button></EmployeeOperation><button type="button" disabled={saving} onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold dark:border-slate-700">{t("dialog.close")}</button></footer>
   </dialog>;
 }

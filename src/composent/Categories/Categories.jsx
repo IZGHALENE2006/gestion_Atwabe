@@ -1,3 +1,5 @@
+import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import {
   IoSearchOutline,
   IoAddOutline,
@@ -23,12 +25,13 @@ import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 
 function Categories() {
+  const operations = useEmployeeOperations('categories');
   const { t, i18n } = useTranslation();
   const locale = i18n.language === "ar" ? "ar-MA" : "fr-MA";
   const dispatch = useDispatch();
   const { Category } = useSelector((state) => state.category);
   const { Produts } = useSelector((state) => state.Product);
-  const { role, token } = useSelector((state) => state.LoginAdmin);
+  const { token } = useSelector((state) => state.LoginAdmin);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -127,14 +130,14 @@ function Categories() {
             />
           </div>
 
-          {role === "admin" && (
-            <button
+          {Object.values(operations).some(Boolean) && (
+            <EmployeeOperation module="categories" operation="add"><button
               onClick={() => setOpenAdd(true)}
               className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-[#19b393] text-white text-sm font-bold hover:bg-primary-600 shadow-lg shadow-primary-500/20 active:scale-95 transition-all"
             >
               <IoAddOutline size={20} />
               {t("categories.newCategory")}
-            </button>
+            </button></EmployeeOperation>
           )}
         </div>
       </div>
@@ -171,7 +174,7 @@ function Categories() {
                   <th className="px-8 py-5 text-[11px] font-black uppercase tracking-widest text-slate-400 text-center">
                     {t("categories.createdAt")}
                   </th>
-                  {role === "admin" && (
+                  {Object.values(operations).some(Boolean) && (
                     <th className="px-8 py-5 text-[11px] font-black uppercase tracking-widest text-slate-400 text-right">
                       {t("categories.actions")}
                     </th>
@@ -218,23 +221,23 @@ function Categories() {
                           })}
                         </div>
                       </td>
-                      {role === "admin" && (
+                      {Object.values(operations).some(Boolean) && (
                         <td className="px-8 py-5">
                           <div className="flex justify-end gap-2">
-                            <button
+                            <EmployeeOperation module="categories" operation="update"><button
                               onClick={() => handleUpdate(item._id)}
                               className="p-2.5 rounded-xl bg-primary-50 dark:bg-primary-500/10 text-primary-600 hover:bg-primary-100 hover:text-primary-700 dark:hover:bg-primary-500/20 transition-all active:scale-90"
                               title={t("categories.edit")}
                             >
                               <IoCreateOutline size={18} />
-                            </button>
-                            <button
+                            </button></EmployeeOperation>
+                            <EmployeeOperation module="categories" operation="delete"><button
                               onClick={() => handleDelete(item._id)}
                               className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-600 hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-500/20 transition-all active:scale-90"
                               title={t("categories.delete")}
                             >
                               <IoTrashOutline size={18} />
-                            </button>
+                            </button></EmployeeOperation>
                           </div>
                         </td>
                       )}

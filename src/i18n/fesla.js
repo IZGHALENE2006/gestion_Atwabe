@@ -1,4 +1,8 @@
 export const feslaFrench = {
+  measurements: {
+    title: "Mensurations", unit: "cm", hint: "Facultatives, propres à chaque pièce. Laissez vides les mesures non utilisées.",
+    fields: { shoulder: "Épaule", sleeve: "Manche", chest: "Poitrine", length: "Longueur", sleevePlacement: "Placement de la manche", sleeveHead: "Tête de manche", jlail: "Jlaïl", collar: "Col" },
+  },
   receipts: {
     orderAction: "Reçu de commande", paymentAction: "Reçu de paiement", orderTitle: "Reçu de commande", paymentTitle: "Reçu de paiement",
     previewHint: "Vérifiez le reçu puis lancez l’impression.", print: "Imprimer le reçu", printing: "Impression…", reference: "Référence du reçu",
@@ -192,6 +196,8 @@ export const feslaFrench = {
   garmentsCount: "Nombre de djellabas : {{count}}",
   moreGarments: "Autres : {{count}}",
   errors: {
+    invalidMeasurements: "Vérifiez les mensurations de cette pièce.",
+    invalidMeasurement: "Saisissez une mesure supérieure à 0 et inférieure ou égale à 1 000 cm, avec deux décimales maximum.",
     costSettingsRequired: "Enregistrez les tarifs de la sfifa et des artisans dans les réglages de cette section.",
     costSettingsChanged: "Les tarifs ont changé. Actualisez les prix puis vérifiez les frais avant de réessayer.",
     costSettingsConflict: "Les réglages ont été modifiés ailleurs. Rechargez les tarifs.", costSettingsFailed: "Impossible de charger ou d’enregistrer les tarifs. Réessayez.",
@@ -239,6 +245,10 @@ export const feslaFrench = {
 };
 
 export const feslaArabic = {
+  measurements: {
+    title: "القياسات", unit: "سم", hint: "قياسات اختيارية خاصة بكل قطعة. اترك القياسات غير المطلوبة فارغة.",
+    fields: { shoulder: "الكتف", sleeve: "الكم", chest: "الصدر", length: "الطول", sleevePlacement: "تركيز الكم", sleeveHead: "رأس الكم", jlail: "الجلايل", collar: "الكول" },
+  },
   receipts: {
     orderAction: "وصل الطلب", paymentAction: "وصل الدفعة", orderTitle: "وصل طلب تفصيل", paymentTitle: "وصل استلام دفعة",
     previewHint: "راجع بيانات الوصل ثم اطبعه.", print: "طباعة الوصل", printing: "جارٍ الطباعة…", reference: "مرجع الوصل",
@@ -269,7 +279,7 @@ export const feslaArabic = {
   costs: {
     settingsTitle: "إعدادات أسعار الجلابيب", settingsHint: "تُضاف السفيفة وإجمالي أجور العمال مرة واحدة لكل جلابة. تُطبّق الأسعار الجديدة على الطلبات الجديدة.",
     saveSettings: "حفظ الأسعار", settingsSaved: "تم حفظ أسعار الجلابيب.", reloadPrices: "تحديث الأسعار",
-    rates: { thinSfifaPrice: "سعر السفيفة الرقيقة لكل جلابة", thickSfifaPrice: "سعر السفيفة الغليظة لكل جلابة", laborPrice: "إجمالي أجور العمال لكل جلابة" },
+    rates: { thinSfifaPrice: "سعر السفيفة الرقيقة لكل جلابة", thickSfifaPrice: "سعر السفيفة العريضة لكل جلابة", laborPrice: "إجمالي أجور العمال لكل جلابة" },
     fabricMeters: "عدد أمتار الثوب المستعملة", metersUnit: "م", clientFabricFree: "لا تُحتسب تكلفة الثوب الذي أحضره الزبون: 0 درهم.", fabricPriceHint: "يُؤخذ سعر المتر من نوع الثوب المسجل في قسم الأثواب.",
     breakdown: "مصاريف هذه الجلابة", fabricAmount: "تكلفة الثوب", sfifaAmount: "تكلفة السفيفة", laborAmount: "أجور العمال", totalAmount: "مجموع المصاريف",
     automaticHint: "تُحسب مصاريف كل جلابة من تكلفة الثوب والسفيفة وأجور العمال.", savedPricesHint: "تبقى الأسعار المسجلة مع هذا الطلب محفوظة عند تغيير الإعدادات.",
@@ -286,7 +296,7 @@ export const feslaArabic = {
     costs: {
       settingsTitle: "إعدادات أسعار الملكية", settingsHint: "تُضاف السفيفة وإجمالي أجور العمال مرة واحدة لكل ملكية. هذه الأسعار خاصة بالملكية وتُطبّق على الطلبات الجديدة.",
       settingsSaved: "تم حفظ أسعار الملكية.",
-      rates: { thinSfifaPrice: "سعر السفيفة الرقيقة لكل ملكية", thickSfifaPrice: "سعر السفيفة الغليظة لكل ملكية", laborPrice: "إجمالي أجور العمال لكل ملكية" },
+      rates: { thinSfifaPrice: "سعر السفيفة الرقيقة لكل ملكية", thickSfifaPrice: "سعر السفيفة العريضة لكل ملكية", laborPrice: "إجمالي أجور العمال لكل ملكية" },
       breakdown: "مصاريف هذه الملكية", automaticHint: "تُحسب مصاريف كل ملكية من تكلفة الثوب والسفيفة وأجور العمال.",
       expenseHint: "مجموع مصاريف جميع قطع الملكية في الطلب.", legacyUnknown: "لم تُسجّل مصاريف هذا الطلب. أدخل أمتار كل ملكية عند تعديله لحسابها.",
     },
@@ -300,7 +310,7 @@ export const feslaArabic = {
     costs: {
       settingsTitle: "إعدادات أسعار الجبادور", settingsHint: "تُضاف السفيفة وإجمالي أجور العمال مرة واحدة لكل جبادور. هذه الأسعار خاصة بالجبادور وتُطبّق على الطلبات الجديدة.",
       settingsSaved: "تم حفظ أسعار الجبادور.",
-      rates: { thinSfifaPrice: "سعر السفيفة الرقيقة لكل جبادور", thickSfifaPrice: "سعر السفيفة الغليظة لكل جبادور", laborPrice: "إجمالي أجور العمال لكل جبادور" },
+      rates: { thinSfifaPrice: "سعر السفيفة الرقيقة لكل جبادور", thickSfifaPrice: "سعر السفيفة العريضة لكل جبادور", laborPrice: "إجمالي أجور العمال لكل جبادور" },
       breakdown: "مصاريف هذا الجبادور", automaticHint: "تُحسب مصاريف كل جبادور من تكلفة الثوب والسفيفة وأجور العمال.",
       expenseHint: "مجموع مصاريف جميع قطع الجبادور في الطلب.", legacyUnknown: "لم تُسجّل مصاريف هذا الطلب. أدخل أمتار كل جبادور عند تعديله لحسابها.",
     },
@@ -375,7 +385,7 @@ export const feslaArabic = {
   loadFabricsFailed: "تعذر تحميل أثواب المحل. حاول مجددًا.",
   sfifa: "السفيفة",
   sfifaWidth: "نوع السفيفة",
-  widths: { thin: "سفيفة رقيقة", thick: "سفيفة غليظة" },
+  widths: { thin: "سفيفة رقيقة", thick: "سفيفة عريضة" },
   sfifaStyle: "ألوان السفيفة",
   styles: { fabric: "لون الثوب نفسه", twoTone: "لونان", gradient: "تدرّج لوني" },
   color1: "اللون الأول",
@@ -432,6 +442,8 @@ export const feslaArabic = {
   garmentsCount: "عدد الجلابيب: {{count}}",
   moreGarments: "إضافية: {{count}}",
   errors: {
+    invalidMeasurements: "تحقق من قياسات هذه القطعة.",
+    invalidMeasurement: "أدخل قياسًا أكبر من صفر ولا يتجاوز ١٬٠٠٠ سم، مع منزلتين عشريتين كحد أقصى.",
     costSettingsRequired: "احفظ أسعار السفيفة وأجور العمال في إعدادات هذا القسم.",
     costSettingsChanged: "تغيّرت أسعار الإعدادات. حدّث الأسعار وراجع المصاريف قبل إعادة المحاولة.",
     costSettingsConflict: "عُدّلت الإعدادات من مكان آخر. أعد تحميل الأسعار.", costSettingsFailed: "تعذر تحميل الأسعار أو حفظها. حاول مجددًا.",
@@ -458,7 +470,7 @@ export const feslaArabic = {
     invalidSource: "اختر مصدر الثوب.",
     chooseFabric: "اختر ثوبًا من المحل.",
     chooseColor: "اختر لونًا صحيحًا.",
-    invalidWidth: "اختر سفيفة رقيقة أو غليظة.",
+    invalidWidth: "اختر سفيفة رقيقة أو عريضة.",
     invalidStyle: "اختر لون الثوب أو لونين أو تدرّجًا لونيًا.",
     invalidOrder: "راجع الحقول المشار إليها قبل الحفظ.",
     invalidRequest: "أعد تحميل النموذج قبل المحاولة.",

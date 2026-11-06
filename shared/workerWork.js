@@ -1,6 +1,8 @@
+import { validateWorkerSfifa } from './workerSfifa.js';
 import { TAILORING_GARMENT_TYPES, TAILORING_SFIFA_GARMENT_TYPES, tailoringGarmentType, tailoringMoneyCents } from "./tailoring.js";
 import { WORKER_CATEGORIES } from "./workers.js";
-import { SFIFA_STOCK_SCALE, sfifaQuantityUnits, validateSfifaStock } from "./sfifaStock.js";
+import { usesWorkerMaterials, workerHasPieceWages, workerMaterialRows, workerPieceWageCents, validateWorkerPieceCompletion, validateShopWorkerMaterials, validateWorkerMaterialSelection } from './workerMaterials.js';
+import { SFIFA_STOCK_SCALE, sfifaQuantityUnits } from "./sfifaStock.js";
 
 export const WORK_TRACKING_CATEGORIES = [...WORKER_CATEGORIES];
 export const WORK_QUANTITY_LIMIT = 1000000;
@@ -40,6 +42,7 @@ export function remainingWorkQuantity(work) {
 export const nextWorkSequence = work => (work.completions?.length || 0) + (work.additions?.length || 0) + 1;
 
 export function validateWorkerIncrease(input, work, { checkLimits = true } = {}) {
+  if (work.materialOperations?.length && workerWorkType(work) === 'shop' && input?.materials === undefined) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'chooseMaterials' } });
   let quantity, lineIds;
   if (work.tailoring && work.category !== "sfifa") {
     const selection = orderSelection({ orderId: String(work.tailoring.orderId), lineIds: input?.lineIds });
@@ -51,7 +54,12 @@ export function validateWorkerIncrease(input, work, { checkLimits = true } = {})
   const total = workQuantityUnits(work.quantity, work.category) + workQuantityUnits(quantity, work.category);
   if (checkLimits && total > WORK_QUANTITY_LIMIT * (work.category === "sfifa" ? SFIFA_STOCK_SCALE : 1)) throw Object.assign(new Error("invalidWork"), { fields: { quantity: "increaseLimit" } });
   if (checkLimits && work.unitWage !== undefined && workerWageCents(work.unitWage, total / (work.category === "sfifa" ? SFIFA_STOCK_SCALE : 1), work.category) === null) throw Object.assign(new Error("invalidWork"), { fields: { quantity: "invalidWage" } });
-  return { quantity, ...(lineIds ? { lineIds } : {}) };
+  if (input?.materials !== undefined && !usesWorkerMaterials(work.category, workerWorkType(work), workerWorkGarmentType(work))) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'invalidMaterialSection' } });
+  const materials = input?.materials === undefined ? undefined : lineIds ? validateWorkerMaterialSelection(input.materials, lineIds) : validateShopWorkerMaterials(input.materials, quantity);
+  if (materials && materials.some(row => row.unitWage !== undefined) !== workerHasPieceWages(work)) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'invalidWage' } });
+  if (checkLimits && materials && workerHasPieceWages(work) && workerPieceWageCents([...workerMaterialRows(work), ...materials]) === null) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'invalidWage' } });
+  if (checkLimits && materials && materials.some(row => (work.materials || work.materialOperations?.filter(operation => operation.state !== 'failed').flatMap(operation => operation.rows) || []).some(previous => previous.lineId === row.lineId))) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'chooseMaterials' } });
+  return { quantity, ...(lineIds ? { lineIds } : {}), ...(materials ? { materials } : {}) };
 }
 
 export function applyWorkerIncrease(work, input, requestId, createdBy, date = new Date()) {
@@ -89,8 +97,10 @@ function orderSelection(input) {
 }
 
 export function validateWorkerWork(input, { allowLegacyTrouserClient = false } = {}) {
+  if (input?.materials !== undefined && (input.category !== 'machine' || input.workType !== 'shop')) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'invalidMaterialSection' } });
   if (input?.workType !== undefined && !WORK_TYPES.includes(input.workType)) throw Object.assign(new Error("invalidWork"), { fields: { workType: "invalidWorkType" } });
   const withWage = result => {
+    if (workerHasPieceWages(result) && input?.unitWage !== undefined) throw Object.assign(new Error('invalidWork'), { fields: { unitWage: 'invalidWage' } });
     if (input?.unitWage === undefined) return result;
     const cents = tailoringMoneyCents(input.unitWage);
     if (cents === null || workerWageCents(input.unitWage, result.quantity, result.category) === null) throw Object.assign(new Error("invalidWork"), { fields: { unitWage: "invalidWage" } });
@@ -100,11 +110,11 @@ export function validateWorkerWork(input, { allowLegacyTrouserClient = false } =
   if (input?.workType === "client" && input.category !== "sfifa" && !(input.category === "trousers" && allowLegacyTrouserClient)) {
     if (!WORK_TRACKING_CATEGORIES.includes(input.category)) throw Object.assign(new Error("invalidWork"), { fields: { category: "invalidWorkCategory" } });
     const selection = orderSelection(input);
-    return withWage({ workType: "client", ...selection, quantity: selection.lineIds.length, category: input.category });
+    return withWage({ workType: "client", ...selection, quantity: selection.lineIds.length, category: input.category, ...(input.materials !== undefined ? { materials: validateWorkerMaterialSelection(input.materials, selection.lineIds) } : {}) });
   }
   if (input?.category === "sfifa") {
     try {
-      const { quantity, ...sfifa } = validateSfifaStock({ ...input.sfifa, quantity: input.quantity });
+      const { quantity, ...sfifa } = validateWorkerSfifa({ ...input.sfifa, quantity: input.quantity });
       const selection = input.workType === "client" && (input.linkOrder === true || input.orderId || input.lineIds?.length) ? orderSelection(input) : {};
       return withWage({ productName: "Sfifa", quantity, category: "sfifa", sfifa, ...type, ...selection });
     } catch (error) {
@@ -116,7 +126,8 @@ export function validateWorkerWork(input, { allowLegacyTrouserClient = false } =
   const fields = {};
   const isTrouserClient = input?.category === "trousers" && input.workType === "client";
   if (isTrouserClient && !TROUSER_TYPES.includes(input.trouserType)) fields.trouserType = "invalidTrouserType";
-  const productName = typeof input?.productName === "string" ? input.productName.trim() : "";
+  const suppliedName = typeof input?.productName === "string" ? input.productName.trim() : "";
+  const productName = suppliedName || (input?.category === "brim" && input.workType !== "client" ? "Brim" : "");
   if (!productName) fields.productName = "required";
   else if (productName.length > 160 || [...productName].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)) fields.productName = isTrouserClient ? "invalidClientName" : "invalidProductName";
   const quantity = parseWorkQuantity(input?.quantity);
@@ -125,14 +136,15 @@ export function validateWorkerWork(input, { allowLegacyTrouserClient = false } =
   if (Object.keys(fields).length) throw Object.assign(new Error("invalidWork"), { fields });
   const garmentType = input.category === "machine" && input.garmentType !== undefined ? input.garmentType : undefined;
   if (garmentType !== undefined && !TAILORING_SFIFA_GARMENT_TYPES.includes(garmentType)) throw Object.assign(new Error("invalidWork"), { fields: { garmentType: "invalidGarmentType" } });
-  return withWage({ productName, quantity, category: input.category, ...type, ...(garmentType ? { garmentType } : {}), ...(isTrouserClient ? { trouserType: input.trouserType } : {}) });
+  if (input.materials !== undefined && !usesWorkerMaterials(input.category, input.workType, garmentType)) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'invalidMaterialSection' } });
+  return withWage({ productName, quantity, category: input.category, ...type, ...(garmentType ? { garmentType } : {}), ...(isTrouserClient ? { trouserType: input.trouserType } : {}), ...(input.materials !== undefined ? { materials: validateShopWorkerMaterials(input.materials, quantity) } : {}) });
 }
 
-export function validateWorkerCompletion(input, remaining, category) {
+export function validateWorkerCompletion(input, remaining, category, work) {
   const quantity = parseWorkQuantity(input?.quantity, category);
   const fields = {};
   if (quantity === null) fields.quantity = category === "sfifa" ? "invalidMeters" : "invalidQuantity";
   else if (remaining !== undefined && workQuantityUnits(quantity, category) > workQuantityUnits(remaining, category)) fields.quantity = category === "sfifa" ? "exceedsRemainingMeters" : "exceedsRemaining";
   if (Object.keys(fields).length) throw Object.assign(new Error("invalidWork"), { fields });
-  return { quantity };
+  return { quantity, ...(work && workerHasPieceWages(work) ? { lineIds: validateWorkerPieceCompletion(work, quantity, input?.lineIds) } : {}) };
 }

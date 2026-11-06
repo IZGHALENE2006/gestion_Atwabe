@@ -1,3 +1,4 @@
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import { FaFileInvoice, FaSearch, FaUserTie, FaThLarge, FaListUl, FaRegUserCircle } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
 import InvoiceDetailsDialog from "./InvoiceDetailsDialog";
@@ -120,7 +121,7 @@ function Invoices() {
           <div className="space-y-4">
             <nav aria-label={t("invoicePage.cashierInvoices")} className="flex flex-wrap gap-2">
               <NavLink to="/Home/Facture/caisse" onClick={resetFilters} className={tabClass(cashierView)}>{t("invoicePage.today")}</NavLink>
-              <NavLink to="/Home/Facture/history" onClick={resetFilters} className={tabClass(historyView)}>{t("invoicePage.cashierHistory")}</NavLink>
+              <EmployeeOperation module="invoices" operation="history"><NavLink to="/Home/Facture/history" onClick={resetFilters} className={tabClass(historyView)}>{t("invoicePage.cashierHistory")}</NavLink></EmployeeOperation>
             </nav>
             {historyView && (
               <div className="flex flex-wrap gap-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -282,12 +283,12 @@ function Invoices() {
                       {Number(item.TotalPrix || 0).toLocaleString(locale)} <span className="text-sm font-bold opacity-60">DH</span>
                     </span>
                   </div>
-                  <button
+                  <EmployeeOperation module="invoices" anyOf={["details", "print", "download"]}><button
                     onClick={() => handleOpenInfo(item)}
                     className="px-6 py-4 rounded-2xl bg-slate-900 dark:bg-primary-600 text-white font-black text-[10px] uppercase tracking-[0.2em] hover:bg-primary-600 dark:hover:bg-primary-500 shadow-xl shadow-slate-200 dark:shadow-none transition-all active:scale-95"
                   >
                     {t("invoicePage.details")}
-                  </button>
+                  </button></EmployeeOperation>
                 </div>
               </div>
             ))}
@@ -319,12 +320,12 @@ function Invoices() {
                         {Number(item.TotalPrix || 0).toLocaleString(locale)} <span className="text-xs opacity-50">DH</span>
                       </p>
                     </div>
-                    <button
+                    <EmployeeOperation module="invoices" operation="details"><button
                       onClick={() => handleOpenInfo(item)}
                       className="px-8 py-4 rounded-2xl bg-slate-900 dark:bg-slate-800 text-white dark:text-slate-300 font-black text-[10px] uppercase tracking-widest hover:bg-primary-600 transition-all active:scale-95"
                     >
                       {t("invoicePage.open")}
-                    </button>
+                    </button></EmployeeOperation>
                   </div>
                 </div>
               ))}

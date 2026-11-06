@@ -1,3 +1,4 @@
+import { moduleOperationPermissions } from "../shared/employeePermissions.js";
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import process from "node:process";
@@ -93,7 +94,7 @@ test("listing is scoped to the current shop and retains every category list", as
   for (const category of WORKER_CATEGORIES) await createWorker(input({ category }));
   await createWorker(input({ name: "Other shop" }), stranger);
   const response = await request(); assert.equal(response.status, 200); const listed = await response.json();
-  assert.equal(listed.workers.length, WORKER_CATEGORIES.length); assert.deepEqual(listed.permissions, { add: true, update: true, delete: true });
+  assert.equal(listed.workers.length, WORKER_CATEGORIES.length); assert.deepEqual(listed.permissions, moduleOperationPermissions('admin', { action: { add: true, update: true, delete: true } }, 'workers'));
   assert.ok(listed.workers.every(worker => worker.name === "أمينة"));
   const other = await (await request({ actor: stranger })).json(); assert.equal(other.workers.length, 1); assert.equal(other.workers[0].name, "Other shop");
 });
@@ -103,7 +104,7 @@ test("employees use their stored shop and current add permission, ignoring JWT p
   const worker = await createWorker(input({ category: "sfifa" }), staffClaims);
   assert.equal(worker.category, "sfifa"); assert.equal(String(f.records[0].idAdmin), owner); assert.equal(String(f.records[0].createdBy), employee);
   f.staff.action.add = false;
-  const listed = await (await request({ actor: staffClaims })).json(); assert.deepEqual(listed.permissions, { add: false, update: false, delete: false }); assert.equal(listed.workers.length, 1);
+  const listed = await (await request({ actor: staffClaims })).json(); assert.deepEqual(listed.permissions, moduleOperationPermissions('Employe', { action: { add: false, update: false, delete: false } }, 'workers')); assert.equal(listed.workers.length, 1);
   assert.equal((await request({ body: input(), actor: staffClaims })).status, 403);
   assert.equal(f.records.length, 1);
 });

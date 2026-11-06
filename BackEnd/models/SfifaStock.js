@@ -1,6 +1,8 @@
+import { WORKER_SFIFA_FAMILIES, SFIFA_CUSTOMER_FAMILY, workerSfifaCreditsStock } from '../../shared/workerSfifa.js';
 import mongoose from "mongoose";
 import WorkerWork from "./WorkerWork.js";
-import { SFIFA_STOCK_FAMILIES, SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, SFIFA_STOCK_WIDTHS, sfifaCodeNumber, sfifaQuantityUnits } from "../../shared/sfifaStock.js";
+import { workerMaterialDebitSchema } from './workerMaterialSchema.js';
+import { SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, SFIFA_STOCK_WIDTHS, sfifaCodeNumber, sfifaQuantityUnits } from "../../shared/sfifaStock.js";
 
 const receiptSchema = new mongoose.Schema({
   requestId: { type: String, required: true, match: /^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/ },
@@ -24,14 +26,16 @@ const schema = new mongoose.Schema({
   idAdmin: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Admin" },
   createdBy: { type: mongoose.Schema.Types.ObjectId, required: true },
   width: { type: String, enum: SFIFA_STOCK_WIDTHS, required: true },
-  family: { type: String, enum: SFIFA_STOCK_FAMILIES.map(family => family.value), required: true },
+  family: { type: String, enum: WORKER_SFIFA_FAMILIES.map(family => family.value), required: true },
   quantity: { type: Number, required: true, min: 0, max: SFIFA_STOCK_GROUP_LIMIT, validate: value => sfifaQuantityUnits(value, { max: SFIFA_STOCK_GROUP_LIMIT }) !== null },
   unassignedQuantity: { type: Number, default: undefined, min: 0, max: SFIFA_STOCK_LIMIT, validate: value => value === undefined || sfifaQuantityUnits(value) !== null },
   variants: { type: [variantSchema], default: undefined },
   receipts: { type: [receiptSchema], default: [] },
   production: { type: [productionSchema], default: undefined },
+  workerMaterialDebits: { type: [workerMaterialDebitSchema], default: undefined },
 }, { timestamps: true, optimisticConcurrency: true });
 schema.pre("validate", function () {
+  if (this.family === SFIFA_CUSTOMER_FAMILY && (this.quantity !== 0 || (this.unassignedQuantity ?? 0) !== 0 || this.variants?.length || this.receipts.length || this.workerMaterialDebits?.length)) this.invalidate("family", "Customer-owned sfifa cannot enter shop stock");
   const requests = new Set();
   const receipts = new Map(this.receipts.map(receipt => [receipt.requestId, receipt]));
   for (const work of this.production || []) {
@@ -39,6 +43,11 @@ schema.pre("validate", function () {
     requests.add(work.requestId);
     for (const event of work.completions) {
       const receipt = receipts.get(event.requestId);
+      // Older completions always credited stock, including client work.
+      if (event.stockCredited === false) {
+        if (workerSfifaCreditsStock(work) || receipt) this.invalidate("production", "Client completion must not credit stock");
+        continue;
+      }
       if (!receipt || String(receipt.workId) !== String(work._id) || String(receipt.workerId) !== String(work.workerId) || receipt.code !== work.sfifa?.code || receipt.quantity !== event.quantity) this.invalidate("production", "Missing or inconsistent production receipt");
     }
   }

@@ -134,7 +134,7 @@ test("an order reports only its actual linked workers and sections, across diffe
   assert.equal(rows.find(row=>row.category==="machine").items[0].lineId,order.items[0].lineId);
 });
 
-test("completing the machine and assigning sfifa shows the new section, while meters still credit stock atomically",async t=>{
+test("completing the machine and client sfifa updates order tracking without crediting shop stock",async t=>{
   const f=setup(t),order=f.seedOrder(),before=JSON.stringify(order.toObject());
   const machine=await assign(f.worker,orderWork(order));const partial=await complete(f.worker,machine,completionBody(machine,1));assert.equal(partial.status,201);
   assert.equal((await assignedFor(order))[0].remainingQuantity,1);
@@ -142,9 +142,9 @@ test("completing the machine and assigning sfifa shows the new section, while me
   const sfifa=await assign(f.worker,orderWork(order,"sfifa"));assert.equal(sfifa.quantity,12);assert.equal(sfifa.tailoring.items.length,2);
   const done=await complete(f.worker,sfifa,completionBody(sfifa,4));assert.equal(done.status,201);
   let rows=await assignedFor(order);assert.equal(rows.find(row=>row.category==="machine").remainingQuantity,0);assert.ok(rows.find(row=>row.category==="machine").completedAt);
-  assert.equal(rows.find(row=>row.category==="sfifa").remainingQuantity,8);assert.equal(rows.find(row=>row.category==="sfifa").completedQuantity,4);assert.equal(f.stocks.find(row=>row.width==="thin").quantity,4);
+  assert.equal(rows.find(row=>row.category==="sfifa").remainingQuantity,8);assert.equal(rows.find(row=>row.category==="sfifa").completedQuantity,4);assert.equal(f.stocks.find(row=>row.width==="thin").quantity,0);
   const sfifaPartial=await done.json();assert.equal((await complete(f.worker,sfifaPartial,completionBody(sfifaPartial,8))).status,201);
-  rows=await assignedFor(order);assert.ok(rows.every(row=>row.remainingQuantity===0));assert.equal(f.stocks.find(row=>row.width==="thin").quantity,12);
+  rows=await assignedFor(order);assert.ok(rows.every(row=>row.remainingQuantity===0));assert.equal(f.stocks.find(row=>row.width==="thin").quantity,0);assert.equal(f.stocks.find(row=>row.width==="thin").receipts.length,0);
   assert.equal(JSON.stringify(order.toObject()),before);assert.equal(order.deliveredAt,null);
 });
 
@@ -163,7 +163,7 @@ test("linked sfifa retries remain idempotent after the source order changes or i
   const f=setup(t),order=f.seedOrder(),body=orderWork(order,"sfifa"),first=await assign(f.worker,body);
   f.orders.length=0;const replay=await request(workPath(f.worker),{body:{...body,lineIds:[...body.lineIds].reverse()}});assert.equal(replay.status,200);assert.equal((await replay.json())._id,first._id);
   assert.equal(f.stocks.flatMap(row=>row.production||[]).length,1);assert.equal((await complete(f.worker,first,completionBody(first,1.125))).status,201);
-  assert.equal(f.stocks[0].quantity,1.125);assert.equal((await tracking()).status,200);
+  assert.equal(f.stocks[0].quantity,0);assert.equal(f.stocks[0].receipts.length,0);assert.equal(f.stocks[0].production[0].completedQuantity,1.125);assert.equal((await tracking()).status,200);
 });
 
 test("tracking checks current account ownership and read access, and hides private request and payment data",async t=>{
@@ -215,9 +215,9 @@ test("linked sfifa cannot receive a garment still at the machine, and incomplete
   const rejected=await request(workPath(f.worker),{body:orderWork(order,"sfifa")});assert.equal(rejected.status,409);assert.equal((await rejected.json()).blockers[0].category,"machine");assert.equal(f.stocks.length,0);
   assert.equal((await complete(f.worker,machine,completionBody(machine,2))).status,201);
   const sfifa=await assign(f.worker,orderWork(order,"sfifa"));const first=await complete(f.worker,sfifa,completionBody(sfifa,4));assert.equal(first.status,201);
-  const blocked=await request(workPath(f.worker),{body:orderWork(order,"finishing")});assert.equal(blocked.status,409);assert.equal((await blocked.json()).blockers[0].category,"sfifa");assert.equal(f.stocks[0].quantity,4);
+  const blocked=await request(workPath(f.worker),{body:orderWork(order,"finishing")});assert.equal(blocked.status,409);assert.equal((await blocked.json()).blockers[0].category,"sfifa");assert.equal(f.stocks[0].quantity,0);
   const options=await orderOptions(f.worker,"finishing");assert.ok(options.orders[0].items.every(item=>!item.available&&item.blockedBy[0].category==="sfifa"));
-  const partial=await first.json();assert.equal((await complete(f.worker,partial,completionBody(partial,8))).status,201);assert.equal(f.stocks[0].quantity,12);
+  const partial=await first.json();assert.equal((await complete(f.worker,partial,completionBody(partial,8))).status,201);assert.equal(f.stocks[0].quantity,0);assert.equal(f.stocks[0].receipts.length,0);
   await assign(f.worker,orderWork(order,"finishing"));
 });
 

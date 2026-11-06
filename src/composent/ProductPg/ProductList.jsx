@@ -1,3 +1,5 @@
+import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
+import { productBatches } from "../../../shared/productBatches.js";
 import {
   IoSearchOutline,
   IoAddOutline,
@@ -19,6 +21,7 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 export default function ProductList() {
+  const operations = useEmployeeOperations('products');
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
@@ -37,7 +40,6 @@ export default function ProductList() {
 
   const { Category } = useSelector((state) => state.category);
   const { Produts } = useSelector((state) => state.Product);
-  const { role } = useSelector((state) => state.LoginAdmin);
 
   useEffect(() => {
     dispatch(GetAllCatefory());
@@ -87,7 +89,7 @@ export default function ProductList() {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
       product.name?.toLowerCase().includes(searchLower) ||
-      product.barcode?.toString().includes(searchTerm);
+      product.barcode?.toString().includes(searchTerm) || productBatches(product).some(batch => batch.barcode?.toLowerCase().includes(searchLower.trim()));
     const matchesCategory =
       selectedCat === "" || product.categorie?.name === selectedCat;
     return matchesSearch && matchesCategory;
@@ -164,7 +166,7 @@ export default function ProductList() {
           </div>
         </div>
 
-        {role === "admin" && (
+        {operations.add && (
           <button
             onClick={() => setOpen(true)}
             className="flex items-center gap-2 px-6 py-3 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/40 text-[#19b393] border border-primary-300 dark:border-primary-800/50 rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-sm"

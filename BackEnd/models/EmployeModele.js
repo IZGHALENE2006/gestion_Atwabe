@@ -1,12 +1,14 @@
 import mongoose from 'mongoose'
 
-import bcrypt from "bcryptjs";
+import { employeeCompensationSchema } from './EmployeePayroll.js';
 import { PAYMENT_METHOD_VALUES } from "../../shared/paymentMethods.js";
-import { EMPLOYEE_MODULES } from "../../shared/employeePermissions.js";
+import { EMPLOYEE_MODULES, EMPLOYEE_OPERATIONS } from "../../shared/employeePermissions.js";
 
+const operationSchema = new mongoose.Schema(Object.fromEntries(EMPLOYEE_MODULES.map(module => [module, { type: [{ type: String, enum: EMPLOYEE_OPERATIONS[module] }], default: undefined }])), { _id: false, strict: 'throw', minimize: false });
 const ShemaEmploye = new mongoose.Schema(
     {
         idAdmin:Object,
+        compensation: { type: employeeCompensationSchema, default: undefined },
         name:String,
         phone:String,
         cin:String,
@@ -15,6 +17,7 @@ const ShemaEmploye = new mongoose.Schema(
         isActive:Boolean,
         color:String,
         moduleAccess: { type: [{ type: String, enum: EMPLOYEE_MODULES }], default: undefined },
+        operationPermissions: { type: operationSchema, default: undefined },
         action:{
             delete:{
                 type:Boolean,

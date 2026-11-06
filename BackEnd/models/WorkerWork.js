@@ -1,8 +1,11 @@
+import { WORKER_SFIFA_FAMILIES, SFIFA_CUSTOMER_FAMILY, workerSfifaCreditsStock } from '../../shared/workerSfifa.js';
 import { tailoringMoneyCents } from "../../shared/tailoring.js";
 import { workerCompletionEarning, workerPayrollMonthValid } from "../../shared/workerPayroll.js";
 import mongoose from "mongoose";
+import { workerMaterialOperationSchema, workerMaterialCancellationSchema } from './workerMaterialSchema.js';
+import { supportsWorkerMaterialHistory, workerMaterialRows, workerHasPieceWages, workerPieceWageCents } from '../../shared/workerMaterials.js';
 import { WORK_QUANTITY_LIMIT, WORK_TRACKING_CATEGORIES, WORK_TYPES, TROUSER_TYPES, workerOrderGarmentTypes, workQuantityUnits } from "../../shared/workerWork.js";
-import { SFIFA_STOCK_FAMILIES, SFIFA_STOCK_WIDTHS, sfifaCodeNumber } from "../../shared/sfifaStock.js";
+import { SFIFA_STOCK_WIDTHS, sfifaCodeNumber } from "../../shared/sfifaStock.js";
 
 import { TAILORING_SFIFA_GARMENT_TYPES, TAILORING_GARMENT_TYPES, tailoringGarmentType } from "../../shared/tailoring.js";
 
@@ -11,10 +14,12 @@ const validQuantity = function (value) { return workQuantityUnits(value, this.ca
 const quantityField = min => ({ type: Number, required: true, min, max: WORK_QUANTITY_LIMIT, validate: validQuantity });
 const sfifaSchema = new mongoose.Schema({
   width: { type: String, enum: SFIFA_STOCK_WIDTHS, required: true },
-  family: { type: String, enum: SFIFA_STOCK_FAMILIES.map(family => family.value), required: true },
-  code: { type: Number, required: true, validate: function (value) { return sfifaCodeNumber(value, this.family) !== null; } },
+  family: { type: String, enum: WORKER_SFIFA_FAMILIES.map(family => family.value), required: true },
+  code: { type: Number, required: function () { return this.family !== SFIFA_CUSTOMER_FAMILY; }, validate: function (value) { return this.family === SFIFA_CUSTOMER_FAMILY ? value === undefined : sfifaCodeNumber(value, this.family) !== null; } },
 }, { _id: false });
 const completionSchema = new mongoose.Schema({
+  lineIds: { type: [String], default: undefined },
+  stockCredited: { type: Boolean, default: undefined },
   earningAmount: { type: Number, default: undefined, validate: value => value === undefined || tailoringMoneyCents(value) !== null },
   earningMonth: { type: String, default: undefined, validate: value => value === undefined || workerPayrollMonthValid(value) },
   sequence: { type: Number, min: 1, validate: Number.isSafeInteger, default: undefined },
@@ -67,6 +72,10 @@ const schema = new mongoose.Schema({
   deletedBy: { type: mongoose.Schema.Types.ObjectId, default: undefined },
   productName: { type: String, required: true, trim: true, maxlength: 160 },
   sfifa: { type: sfifaSchema, default: undefined },
+  materialOperations: { type: [workerMaterialOperationSchema], default: undefined },
+  materialStatus: { type: String, enum: ['pending', 'ready', 'returning'], default: undefined },
+  materialCancellation: { type: workerMaterialCancellationSchema, default: undefined },
+  cancelledAt: { type: Date, default: undefined },
   unitWage: { type: Number, default: undefined, immutable: true, validate: value => value === undefined || tailoringMoneyCents(value) !== null },
   quantity: quantityField(0.001),
   initialQuantity: { ...quantityField(0.001), required: false, default: undefined },
@@ -77,9 +86,21 @@ const schema = new mongoose.Schema({
   requestFingerprint: { type: String, required: true },
 }, { timestamps: true, optimisticConcurrency: true });
 schema.pre("validate", function () {
+  if (this.materialOperations?.length) {
+    const order = this.tailoring || this.archivedTailoring, rows = workerMaterialRows(this);
+    if (!supportsWorkerMaterialHistory(this.category, this.workType, order ? tailoringGarmentType(order) : this.garmentType) || new Set(rows.map(row => row.lineId)).size !== rows.length || rows.length > this.quantity || (order && rows.some(row => !order.lineIds.includes(row.lineId)))) this.invalidate('materialOperations', 'Invalid garment materials');
+  }
+  const pieceWages = workerHasPieceWages(this), rows = workerMaterialRows(this), pricedEvents = [];
+  if (pieceWages && (this.unitWage !== undefined || rows.length !== this.quantity || workerPieceWageCents(rows) === null)) this.invalidate('materialOperations', 'Invalid per-piece wages');
   let pricedCompleted = 0;
   for (const event of this.completions) {
-    if (this.unitWage === undefined) {
+    if (event.stockCredited !== undefined && (this.category !== "sfifa" || typeof event.stockCredited !== "boolean" || (event.stockCredited === false && workerSfifaCreditsStock(this)) || (event.stockCredited === true && this.sfifa?.family === SFIFA_CUSTOMER_FAMILY))) this.invalidate("completions", "Invalid completion stock effect");
+    if (pieceWages) {
+      try {
+        const expected = workerCompletionEarning({ category: this.category, workType: this.workType, materials: rows, completions: pricedEvents }, event.quantity, event.date, event.lineIds);
+        if (event.earningAmount !== expected.earningAmount || event.earningMonth !== expected.earningMonth) this.invalidate('completions', 'Inconsistent per-piece earnings');
+      } catch { this.invalidate('completions', 'Invalid completed pieces'); }
+    } else if (this.unitWage === undefined) {
       if (event.earningAmount !== undefined || event.earningMonth !== undefined) this.invalidate("completions", "Unpriced work cannot have earnings");
     } else {
       try {
@@ -88,6 +109,8 @@ schema.pre("validate", function () {
       } catch { this.invalidate("completions", "Invalid completion earnings"); }
     }
     const scale = this.category === "sfifa" ? 1000 : 1;
+    if (!pieceWages && event.lineIds !== undefined) this.invalidate('completions', 'Unexpected completed pieces');
+    pricedEvents.push(event);
     pricedCompleted = Math.round((pricedCompleted + event.quantity) * scale) / scale;
   }
   const linked = Boolean(this.tailoring);

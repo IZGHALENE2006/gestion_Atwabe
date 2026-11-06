@@ -1,3 +1,4 @@
+import { productBatchBarcode } from "./productBarcodes.js";
 import { roundMoney } from './saleTotals.js';
 import { resolveProductFees } from './productFees.js';
 
@@ -9,8 +10,8 @@ export const batchFail = (message, status = 400) => Object.assign(new Error(mess
 
 // Receipt data retains each batch's original purchase cost, fees and quantity.
 export function receivedProductBatches(product) {
-  if (hasProductBatches(product)) return product.stockBatches.map(batch => batch.toObject ? batch.toObject() : { ...batch });
-  return [{ batchId: INITIAL_BATCH_ID, number: 1, initialQuantity: Number(product?.quantite || 0), quantite: Number(product?.quantite || 0),
+  if (hasProductBatches(product)) return product.stockBatches.map(batch => ({ ...(batch.toObject ? batch.toObject() : batch), barcode: productBatchBarcode(product, batch) }));
+  return [{ batchId: INITIAL_BATCH_ID, number: 1, barcode: productBatchBarcode(product, { batchId: INITIAL_BATCH_ID, number: 1 }), initialQuantity: Number(product?.quantite || 0), quantite: Number(product?.quantite || 0),
     prix_achat: Number(product?.prix_achat || 0), prix_vente: Number(product?.prix_vente || 0), prix_gros: product?.prix_gros ?? null,
     frais_total: Number(product?.frais_total || 0), frais_quantite: Number(product?.frais_quantite || 0), frais_unitaire: Number(product?.frais_unitaire || 0),
     fournisseur: product?.fournisseur || '', receivedAt: product?.datecreate || null }];

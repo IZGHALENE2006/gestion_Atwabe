@@ -1,3 +1,5 @@
+import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import { useEffect } from "react";
 import {
   IoCreateOutline,
@@ -10,9 +12,9 @@ import { GetAllProduct } from "../../slices/SliceProduct";
 import { useTranslation } from "react-i18next";
 
 function CardCategories({ name, Datee, btn, id, update }) {
+  const operations = useEmployeeOperations('categories');
   const { t, i18n } = useTranslation();
   const locale = i18n.language === "ar" ? "ar-MA" : "fr-MA";
-  const { role } = useSelector((state) => state.LoginAdmin);
   const { Produts } = useSelector((state) => state.Product);
   const dispatch = useDispatch();
 
@@ -78,9 +80,9 @@ function CardCategories({ name, Datee, btn, id, update }) {
         </span>
       </div>
 
-      {role === "admin" && (
+      {Object.values(operations).some(Boolean) && (
         <div className="flex items-center gap-3 border-t border-[#e2e8f0] dark:border-slate-800 pt-5">
-          <button
+          <EmployeeOperation module="categories" operation="update"><button
             onClick={() => update(id)}
             className="
               flex-1 flex items-center justify-center gap-2 py-2.5
@@ -92,9 +94,9 @@ function CardCategories({ name, Datee, btn, id, update }) {
           >
             <IoCreateOutline size={16} />
             {t("categories.edit")}
-          </button>
+          </button></EmployeeOperation>
 
-          <button
+          <EmployeeOperation module="categories" operation="delete"><button
             onClick={() => btn(id)}
             className="
               flex-1 flex items-center justify-center gap-2 py-2.5
@@ -106,7 +108,7 @@ function CardCategories({ name, Datee, btn, id, update }) {
           >
             <IoTrashOutline size={16} />
             {t("categories.delete")}
-          </button>
+          </button></EmployeeOperation>
         </div>
       )}
     </div>

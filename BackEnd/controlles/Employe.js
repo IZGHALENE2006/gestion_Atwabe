@@ -2,14 +2,18 @@ import EmployeModel from '../models/EmployeModele.js'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import productModel from '../models/productModel.js'
+import { validateCompensation } from '../../shared/employeePayroll.js';
 import { validateEmployeePermissions } from '../../shared/employeePermissions.js';
 
 //Add Employe 
 
 export const AddEmploye= async(req,res)=>{
     const {name,phone,cin,email,password,color,isActive} =req.body
+    let compensation;
+    try { if (req.body.compensation !== undefined) compensation = validateCompensation(req.body.compensation); }
+    catch { return res.status(400).json({ message: 'employeeCompensationInvalid' }); }
     let permissions = {};
-    try { if (req.body.moduleAccess !== undefined || req.body.action !== undefined) permissions = validateEmployeePermissions(req.body); }
+    try { if (req.body.moduleAccess !== undefined || req.body.action !== undefined || req.body.operationPermissions !== undefined) permissions = validateEmployeePermissions(req.body); }
     catch { return res.status(400).json({ message: 'invalidPermissions' }); }
     const item  = await EmployeModel.findOne({email})
      if(item) return res.status(400).json({message:"email if exite"})
@@ -44,7 +48,8 @@ if (cinExist) {
         password,
         color,
         isActive,
-        ...permissions
+        ...permissions,
+        ...(compensation ? { compensation } : {})
         
     })
     if(!newEmploye) return res.status(404).json({message:"Not Found"})
@@ -90,6 +95,7 @@ export const LoginEmploye = async (req, res) => {
         email: employe.email,
         role: employe.role,
         moduleAccess: employe.moduleAccess,
+        operationPermissions: employe.operationPermissions,
         action: employe.action
       }
     });

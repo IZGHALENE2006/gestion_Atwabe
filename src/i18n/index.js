@@ -1,3 +1,4 @@
+import { employeePayrollArabic } from './employeePayroll.js';
 import { productBatchesArabic } from "./productBatches.js";
 import { sideExpensesArabic } from "./sideExpenses.js";
 import { salesRevenueArabic } from "./salesRevenue.js";
@@ -18,6 +19,7 @@ const resources = {
   ar: {
     translation: {
       creditDocuments: creditDocumentsArabic,
+      employeePayroll: employeePayrollArabic,
       employeePermissions: employeePermissionsArabic,
       creditCheckout: creditCheckoutArabic,
       creditAudit: creditAuditArabic,

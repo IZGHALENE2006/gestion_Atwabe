@@ -428,3 +428,5 @@
 .workers-directory [data-worker-category="mesbanto"] { border-top-color: #4f46e5; background: #eef2ff; }
 .dark .workers-directory [data-worker-category="mesbanto"] { background: #282651; }
 .workers-directory [data-worker-tone="mesbanto"] { border-top-color: #4f46e5; }
+
+.work-family-choice:has(input[value="customer"]) { grid-column: 1 / -1; }

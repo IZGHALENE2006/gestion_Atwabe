@@ -268,7 +268,7 @@ export const AddUserPayment = async (req, res) => {
 
 export const DeleteCreditProduct = async (req, res) => {
   try {
-    const { ownerId } = await creditAccessFor(req, { adminOnly: true });
+    const { ownerId } = await creditAccessFor(req);
     if (!ownerId) throw creditFailure("Unauthorized", 401);
     const result = await mutateCredit(req.params.id, ownerId, user => {
       const index = user.produit.findIndex(item => item.id === req.params.productId);
@@ -285,7 +285,7 @@ export const DeleteCreditProduct = async (req, res) => {
 export const DeleteUsercridite = async (req, res) => {
   const { id } = req.params;
   try {
-    const { ownerId } = await creditAccessFor(req, { adminOnly: true });
+    const { ownerId } = await creditAccessFor(req);
     if (!ownerId) {
       return res.status(401).json({ message: "Unauthorized" });
     }

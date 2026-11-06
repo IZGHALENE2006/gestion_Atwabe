@@ -1,3 +1,4 @@
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import { NavLink } from "react-router-dom";
 import { IoPeopleOutline, IoBarChartOutline } from "react-icons/io5";
 import { useTranslation } from "react-i18next";
@@ -25,7 +26,7 @@ export default function NaveProfite() {
         <span>{t("salesNav.sales")}</span>
       </NavLink>
 
-      <NavLink
+      <EmployeeOperation module="profits" operation="history"><NavLink
         to="/Home/Profit/Hestorique"
         className={({ isActive }) => `
           flex items-center gap-3 px-6 py-3 rounded-[1.2rem] text-xs font-black uppercase tracking-widest transition-all duration-300
@@ -37,7 +38,7 @@ export default function NaveProfite() {
       >
         <IoBarChartOutline size={18} />
         <span>{t("salesNav.history")}</span>
-      </NavLink>
+      </NavLink></EmployeeOperation>
     </div>
   );
 }

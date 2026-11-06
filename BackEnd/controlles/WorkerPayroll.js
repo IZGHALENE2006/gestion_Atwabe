@@ -35,7 +35,7 @@ const sendError = (res, error, fallback) => {
 };
 export async function getWorkerPayroll(req, res) {
   try {
-    const { idAdmin, permissions } = await workerAccessFor(req), worker = await workerFor(req, idAdmin);
+    const { idAdmin, permissions } = await workerAccessFor(req, ["payroll", "pay", "advance", "download"]), worker = await workerFor(req, idAdmin);
     res.json({ worker: publicWorker(worker), permissions, ...await accountFor(worker, idAdmin) });
   } catch (error) { sendError(res, error, "loadFailed"); }
 }
@@ -48,7 +48,7 @@ export async function addWorkerPayment(req, res) {
     return previous;
   };
   try {
-    access = await workerAccessFor(req, "update");
+    access = await workerAccessFor(req, req.body?.type === "advance" ? "advance" : "pay");
     const worker = await workerFor(req, access.idAdmin);
     requestId = typeof req.body?.requestId === "string" ? req.body.requestId.toLowerCase() : "";
     if (!/^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/.test(requestId)) throw fail("invalidRequest", 400);

@@ -1,3 +1,5 @@
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
+import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import React, { useState, useEffect } from "react";
 import {
   IoFlashOutline,
@@ -25,6 +27,7 @@ const FunctionBtn = ({ label, isActive, onClick, activeColor }) => (
 );
 
 export default function RightSidebar({ panierItems = [], onUpdateQty, onRemoveItem, onPriceTypeChange }) {
+  const operations = useEmployeeOperations('cashier');
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("panier");
   const { user, role } = useSelector((state) => state.LoginAdmin);
@@ -69,17 +72,17 @@ export default function RightSidebar({ panierItems = [], onUpdateQty, onRemoveIt
             onClick={() => setActiveTab("panier")}
             activeColor="bg-amber-400 shadow-amber-500/20"
           />
-          <FunctionBtn
+          <EmployeeOperation module="cashier" operation="history"><FunctionBtn
             label={t("cashier.orders")}
             isActive={activeTab === "commandes"}
             onClick={() => setActiveTab("commandes")}
             activeColor="bg-sky-600 shadow-sky-500/20"
-          />
+          /></EmployeeOperation>
         </div>
       </div>
 
       <div className="bg-white dark:bg-slate-900 flex-1 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 overflow-hidden min-h-125 flex flex-col shadow-sm transition-colors">
-        {activeTab === "panier" ? (
+        {activeTab === "panier" || !operations.history ? (
           <>
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
               <h3 className="font-black text-sm flex items-center gap-2 text-slate-900 dark:text-white uppercase tracking-tight">
@@ -137,7 +140,7 @@ export default function RightSidebar({ panierItems = [], onUpdateQty, onRemoveIt
                           {item.price} DH / {t("cashier.unit")}
                         </p>
                         <div role="group" aria-label={t('pricing.priceTypeFor', { name: item.name })} className="mt-2 flex flex-wrap gap-1">
-                          {['retail', 'wholesale'].map((type) => (
+                          {['retail', 'wholesale'].filter(type => type === 'retail' || operations.wholesale).map((type) => (
                             <button
                               key={type}
                               type="button"

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { TAILORING_MEASUREMENT_FIELDS, tailoringMeasurement } from "../../shared/tailoringMeasurements.js";
 import { tailoringReceiptSchema } from './tailoringReceiptSchema.js';
 import { SFIFA_STYLES, SFIFA_WIDTHS, TAILORING_SOURCES, TAILORING_GARMENT_TYPES, TAILORING_TROUSER_TYPES, validTailoringDate, tailoringMoneyCents, tailoringHasExpenses, tailoringFabricMeters, tailoringGarmentType, tailoringUsesSfifa } from "../../shared/tailoring.js";
 
@@ -28,7 +29,9 @@ const paymentReceiptSchema = new mongoose.Schema({
   paidAt: { type: Date, required: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, required: true },
 }, { _id: false });
+const measurementsSchema = new mongoose.Schema(Object.fromEntries(TAILORING_MEASUREMENT_FIELDS.map(key => [key, { type: Number, validate: value => tailoringMeasurement(value) !== null }])), { _id: false });
 const itemSchema = new mongoose.Schema({
+  measurements: { type: measurementsSchema },
   lineId: { type: String, required: true, match: /^[a-f\d]{24}$/ },
   fabricMeters: { type: Number, validate: value => tailoringFabricMeters(value) !== null },
   costs: { type: itemCostsSchema },
@@ -55,6 +58,7 @@ const schema = new mongoose.Schema({
   expenseAmount: { type: Number, required: function () { return tailoringHasExpenses(this); }, validate: value => tailoringMoneyCents(value) !== null },
   requestId: { type: String, required: true },
   requestFingerprint: { type: String, required: true },
+  measurements: { type: measurementsSchema },
   clientName: { type: String, required: true, maxlength: 160 },
   phone: { type: String, required: true, maxlength: 40 },
   orderDate: { type: String, required: true, validate: validTailoringDate },

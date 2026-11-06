@@ -1,3 +1,4 @@
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import { useTranslation } from "react-i18next";
 import { IoBarcodeOutline, IoCreateOutline, IoPrintOutline, IoTrashOutline } from "react-icons/io5";
 import Barcode from "react-barcode";
@@ -27,7 +28,7 @@ export default function FabricPieceResult({ match, token, canEdit, canDelete, on
     <footer className="flex flex-wrap gap-2">
       {canDelete && <button type="button" onClick={() => onDelete(fabric, color, piece)} aria-label={t("fabrics.deletePieceNamed", { number: pieceNumber })} className="inline-flex items-center gap-2 rounded-xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-900 dark:text-rose-400 dark:hover:bg-rose-950/30"><IoTrashOutline size={19} />{t("fabrics.deleteAction")}</button>}
       {canEdit && <button type="button" onClick={() => onEdit(fabric)} aria-label={t("fabrics.editNamed", { type: fabric.type })} className="inline-flex items-center gap-2 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-semibold text-primary-700 hover:bg-primary-100 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300"><IoCreateOutline size={19} />{t("fabrics.editAction")}</button>}
-      <button type="button" onClick={() => onPrint(fabric, piece.barcode)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"><IoPrintOutline size={19} />{t("fabrics.printPiece", { number: pieceNumber })}</button>
+      <EmployeeOperation module="fabrics" operation="labels"><button type="button" onClick={() => onPrint(fabric, piece.barcode)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"><IoPrintOutline size={19} />{t("fabrics.printPiece", { number: pieceNumber })}</button></EmployeeOperation>
     </footer>
   </article>;
 }

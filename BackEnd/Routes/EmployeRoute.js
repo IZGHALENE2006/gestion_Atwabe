@@ -2,7 +2,12 @@ import express from 'express'
 import { AddEmploye,LoginEmploye,AllEmploye,DeleteEmploye,UpdateEmploye,UpdateEmployeePermissions } from '../controlles/Employe.js'
 import { auth } from '../middleware/auth.js'
 import { onlyAdmin } from '../middleware/authorize.js'
+import { getEmployeePayroll, setEmployeeCompensation, addEmployeePayment } from '../controlles/EmployeePayroll.js'
 const router = express.Router()
+
+router.get('/:id/payroll',auth,onlyAdmin,getEmployeePayroll)
+router.post('/:id/compensation',auth,onlyAdmin,setEmployeeCompensation)
+router.post('/:id/payments',auth,onlyAdmin,addEmployeePayment)
 
 router.post('/add',auth,onlyAdmin,AddEmploye)
 router.post('/Login',LoginEmploye)

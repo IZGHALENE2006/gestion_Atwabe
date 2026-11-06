@@ -1,0 +1,121 @@
+.work-dialog.work-details-dialog { width: min(1180px, calc(100dvw - 48px)); height: min(880px, calc(100dvh - 40px)); max-height: calc(100dvh - 40px); }
+body:has(.work-details-dialog[open]) { overflow: hidden; }
+.work-details-header { padding: 20px 26px; background: linear-gradient(110deg, #edf3ff, #f3fbf8); }
+.work-details-header .work-dialog-icon { width: 46px; height: 46px; margin-top: 4px; }
+.work-detail-eyebrow { margin: 0 0 3px; color: #315aaf; font-size: 11px; font-weight: 700; }
+.work-details-header h2 { font-size: 22px; overflow-wrap: anywhere; }
+.work-details-header .work-dialog-worker { font-size: 12px; line-height: 1.8; }
+.work-details-tabs { display: flex; gap: 6px; flex-shrink: 0; padding: 10px 26px 0; border-bottom: 1px solid var(--work-border); background: var(--work-surface); }
+.work-details-tabs button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 49px; padding: 10px 16px 12px; border: 0; border-bottom: 3px solid transparent; border-radius: 10px 10px 0 0; background: transparent; color: var(--work-muted); font-size: 13px; font-weight: 700; cursor: pointer; }
+.work-details-tabs button[aria-selected="true"] { border-bottom-color: #2563eb; color: #1d4ed8; background: #eff5ff; }
+.work-details-tabs button:hover { background: var(--work-background); }
+.work-details-tabs button > svg { flex-shrink: 0; font-size: 18px; }
+.work-details-tabs button > bdi { min-width: 23px; padding: 1px 6px; border-radius: 6px; background: var(--work-background); font-size: 11px; text-align: center; }
+.work-details-tabs button[aria-selected="true"] > bdi { background: #dbe8ff; }
+.work-details-dialog :is(button, [tabindex]):focus-visible { outline: 3px solid #84aaff; outline-offset: -3px; }
+.work-details-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 24px 26px 30px; background: var(--work-background); }
+.work-detail-section-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 15px; }
+.work-details-body h3 { margin: 0; color: var(--work-ink); font-size: 15px; font-weight: 800; line-height: 1.8; }
+.work-detail-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.work-detail-stat { min-width: 0; padding: 17px; border: 1px solid var(--work-border); border-radius: 15px; background: var(--work-surface); }
+.work-detail-stat dt { display: flex; align-items: center; gap: 7px; color: var(--work-muted); font-size: 12px; font-weight: 700; line-height: 1.8; }
+.work-detail-stat dt > svg { font-size: 17px; }
+.work-detail-stat dd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; margin: 7px 0 0; color: #1d4ed8; font-size: 26px; font-weight: 800; line-height: 1.6; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.work-detail-stat dd small { font-size: 12px; }
+.work-detail-stat-completedQuantity, .work-detail-stat-earned { border-color: #c7e9dc; background: #effaf5; }
+.work-detail-stat-completedQuantity dd, .work-detail-stat-earned dd { color: #08744f; }
+.work-detail-stat-earned dd { font-size: 21px; }
+.work-detail-stat-remainingQuantity { border-color: #d0ddf8; background: #edf3ff; }
+.work-detail-stat dd .work-detail-unpriced { font-size: 13px; font-weight: 600; }
+.work-detail-note { margin: 12px 0 0; color: var(--work-muted); font-size: 11px; line-height: 1.9; }
+.work-detail-progress { margin: 18px 0 22px; }
+.work-detail-progress > div { display: flex; justify-content: space-between; gap: 12px; color: var(--work-muted); font-size: 12px; }
+.work-detail-progress strong { color: #08744f; }
+.work-detail-progress progress { display: block; width: 100%; height: 8px; margin-top: 9px; border: 0; border-radius: 9px; overflow: hidden; background: var(--work-border); accent-color: #16a36e; }
+.work-detail-progress progress::-webkit-progress-bar { background: var(--work-border); border-radius: 9px; }
+.work-detail-progress progress::-webkit-progress-value { background: #16a36e; border-radius: 9px; }
+.work-detail-progress progress::-moz-progress-bar { background: #16a36e; border-radius: 9px; }
+.work-detail-section { margin-top: 18px; padding: 20px; border: 1px solid var(--work-border); border-radius: 16px; background: var(--work-surface); }
+.work-detail-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 17px 26px; margin: 16px 0 0; }
+.work-detail-field { min-width: 0; }
+.work-detail-field dt { margin: 0 0 5px; color: var(--work-muted); font-size: 11px; font-weight: 500; line-height: 1.8; }
+.work-detail-field dd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 9px; margin: 0; color: var(--work-ink); font-size: 13px; font-weight: 700; line-height: 1.9; overflow-wrap: anywhere; }
+.work-detail-field dd small { color: var(--work-muted); font-size: 11px; font-weight: 500; }
+.work-detail-barcode { max-width: 100%; padding: 4px 8px; border: 1px solid var(--work-border); border-radius: 7px; background: var(--work-background); color: var(--work-ink); font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.work-detail-count { color: var(--work-muted); font-size: 11px; font-weight: 600; }
+.work-detail-sfifa { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; padding: 14px; border-radius: 10px; background: var(--work-background); font-size: 13px; font-weight: 700; }
+.work-detail-sfifa > span { color: #6d28d9; }
+.work-detail-pieces { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 18px 0 0; padding: 0; list-style: none; }
+.work-detail-piece { min-width: 0; padding: 16px; border: 1px solid var(--work-border); border-radius: 13px; background: var(--work-surface); }
+.work-detail-piece-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.work-detail-piece-number { display: grid; place-items: center; min-width: 28px; height: 28px; padding: 0 5px; border-radius: 8px; background: #eaf1ff; color: #1d4ed8; font-size: 12px; font-weight: 800; }
+.work-detail-piece-heading h4 { flex: 1; margin: 0; color: var(--work-ink); font-size: 13px; font-weight: 800; }
+.work-detail-piece > p { margin: 10px 0 0; color: var(--work-muted); font-size: 12px; line-height: 1.9; overflow-wrap: anywhere; }
+.work-detail-piece > p.work-detail-fabric-name { color: var(--work-ink); font-size: 14px; font-weight: 700; }
+.work-detail-piece-fields { display: grid; gap: 12px; margin: 15px 0 0; }
+.work-detail-piece-wage { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--work-border); color: #08744f; font-size: 12px; }
+.work-detail-piece-wage strong { font-size: 16px; }
+.work-detail-timeline { display: grid; gap: 16px; margin: 22px 0 0; padding: 0; list-style: none; }
+.work-detail-timeline > li { position: relative; display: flex; gap: 12px; min-width: 0; }
+.work-detail-timeline > li:not(:last-child)::after { position: absolute; top: 38px; bottom: -16px; inset-inline-start: 17px; width: 2px; background: var(--work-border); content: ""; }
+.work-detail-event-icon { display: grid; place-items: center; flex-shrink: 0; z-index: 1; width: 36px; height: 36px; border: 1px solid #bce6d4; border-radius: 11px; background: #e5f7ee; color: #08744f; font-size: 21px; }
+.work-detail-event { flex: 1; min-width: 0; padding: 18px 20px; border: 1px solid var(--work-border); border-radius: 14px; background: var(--work-surface); }
+.work-detail-event-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.work-detail-event-heading > strong { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; color: var(--work-ink); font-size: 13px; }
+.work-detail-event-quantity { display: flex; align-items: baseline; gap: 5px; padding: 4px 10px; border-radius: 8px; background: #e5f7ee; color: #08744f; font-size: 18px; }
+.work-detail-event-quantity small { font-size: 11px; }
+.work-detail-event-heading time { color: var(--work-muted); font-size: 11px; line-height: 1.9; }
+.work-detail-event-balance, .work-detail-event-pieces { margin: 12px 0 0; color: var(--work-muted); font-size: 12px; line-height: 1.9; }
+.work-detail-event-earning { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; color: #08744f; font-size: 12px; }
+.work-detail-event-earning svg { font-size: 17px; }
+.work-detail-event-earning strong { margin-inline-start: auto; font-size: 15px; }
+.work-detail-history-additions :is(.work-detail-event-icon, .work-detail-event-quantity) { border-color: #cedeff; color: #1d4ed8; background: #eaf1ff; }
+.work-detail-empty { display: grid; justify-items: center; gap: 10px; margin-top: 20px; padding: 55px 20px; border: 1px dashed var(--work-border); border-radius: 16px; background: var(--work-surface); text-align: center; }
+.work-detail-empty > svg { padding: 14px; width: 62px; height: 62px; border-radius: 18px; background: var(--work-background); color: #6482b6; }
+.work-detail-empty h4 { margin: 0; font-size: 15px; font-weight: 700; }
+.work-detail-empty p { max-width: 440px; margin: 0; color: var(--work-muted); font-size: 12px; line-height: 1.9; }
+.work-details-footer { padding: 13px 26px; }
+.dark .work-details-header { background: linear-gradient(110deg, #1c3159, #19372f); }
+.dark .work-detail-eyebrow { color: #b6cfff; }
+.dark .work-details-tabs button[aria-selected="true"] { color: #b6cfff; background: #243b69; }
+.dark .work-details-tabs button[aria-selected="true"] > bdi, .dark .work-detail-piece-number { color: #b6cfff; background: #2e4778; }
+.dark .work-detail-stat dd { color: #b6cfff; }
+.dark :is(.work-detail-stat-completedQuantity, .work-detail-stat-earned) { border-color: #285a49; background: #163e34; }
+.dark :is(.work-detail-stat-completedQuantity dd, .work-detail-stat-earned dd, .work-detail-progress strong, .work-detail-piece-wage, .work-detail-event-earning) { color: #9ae5c2; }
+.dark .work-detail-stat-remainingQuantity { border-color: #3b527b; background: #1c3159; }
+.dark .work-detail-sfifa > span { color: #dbbaff; }
+.dark :is(.work-detail-event-icon, .work-detail-event-quantity) { color: #9ae5c2; background: #163e34; border-color: #285a49; }
+.dark .work-detail-history-additions :is(.work-detail-event-icon, .work-detail-event-quantity) { color: #b6cfff; background: #243b69; border-color: #3b527b; }
+@media (max-width: 760px) {
+  .work-detail-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .work-detail-pieces { grid-template-columns: 1fr; }
+  .work-details-tabs { padding-inline: 15px; }
+  .work-details-tabs button { flex: 1; padding-inline: 10px; font-size: 12px; }
+}
+@media (max-width: 560px) {
+  .work-dialog.work-details-dialog { width: calc(100dvw - 16px); height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); border-radius: 17px; }
+  .work-details-header { padding: 15px; gap: 10px; }
+  .work-details-header h2 { font-size: 18px; }
+  .work-details-header .work-dialog-icon { width: 34px; height: 34px; font-size: 21px; }
+  .work-details-header .work-dialog-worker { font-size: 10px; }
+  .work-details-tabs { padding: 7px 8px 0; gap: 3px; }
+  .work-details-tabs button { flex-wrap: wrap; gap: 5px; padding: 9px 5px; font-size: 11px; }
+  .work-details-tabs button > svg { display: none; }
+  .work-details-tabs button > bdi { min-width: 19px; font-size: 10px; }
+  .work-details-body { padding: 18px 12px 22px; }
+  .work-detail-stats { gap: 8px; }
+  .work-detail-stat { padding: 12px; border-radius: 12px; }
+  .work-detail-stat dt { font-size: 11px; }
+  .work-detail-stat dd { font-size: 23px; }
+  .work-detail-stat-earned dd { font-size: 18px; }
+  .work-detail-section { padding: 15px; }
+  .work-detail-fields { grid-template-columns: 1fr; gap: 14px; }
+  .work-detail-piece { padding: 13px; }
+  .work-detail-timeline > li { gap: 8px; }
+  .work-detail-event-icon { width: 30px; height: 30px; font-size: 18px; border-radius: 9px; }
+  .work-detail-timeline > li:not(:last-child)::after { top: 32px; inset-inline-start: 14px; }
+  .work-detail-event { padding: 14px; }
+  .work-detail-event-heading > strong { gap: 8px; }
+  .work-detail-event-heading time { font-size: 10px; }
+  .work-details-footer { padding: 11px 15px; }
+}

@@ -1,3 +1,4 @@
+import { moduleOperationPermissions } from "../../shared/employeePermissions.js";
 import mongoose from "mongoose";
 import { createHash } from "node:crypto";
 import AdminModel from "../models/AdminModel.js";
@@ -28,12 +29,12 @@ const sendError = (res, error, fallback) => {
 async function accessFor(req, action) {
   if (!["admin", "Employe"].includes(req.user?.role)) throw fail("forbidden", 403);
   const admin = req.user.role === "admin";
-  const actor = await (admin ? AdminModel : EmployeModel).findById(req.user.id).select("_id name role idAdmin isActive action");
+  const actor = await (admin ? AdminModel : EmployeModel).findById(req.user.id).select("_id name role idAdmin isActive action moduleAccess operationPermissions");
   if (!actor || (!admin && !actor.isActive)) throw fail("forbidden", 403);
   const idAdmin = admin ? actor._id : actor.idAdmin;
   if (!mongoose.isObjectIdOrHexString(idAdmin)) throw fail("forbidden", 403);
-  const permissions = { add: admin || actor.action?.add === true, update: admin || actor.action?.update === true };
-  if (action && !permissions[action]) throw fail("forbidden", 403);
+  const permissions = moduleOperationPermissions(req.user.role, actor, 'tailoring');
+  if (action && !(Array.isArray(action) ? action.some(key => permissions[key]) : permissions[action])) throw fail("forbidden", 403);
   return { idAdmin, createdBy: actor._id, creator: { id: actor._id, name: actor.name || "", role: req.user.role }, permissions };
 }
 // Check current account permissions before accepting an image upload.
@@ -103,6 +104,7 @@ export async function addTailoringOrder(req, res) {
     requestId = typeof req.body?.requestId === "string" ? req.body.requestId.toLowerCase() : "";
     if (!/^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/.test(requestId)) throw fail("invalidRequest", 400);
     const value = validateTailoringOrder(req.body);
+    if (req.employeeAccount?.operationPermissions !== undefined && !req.tailoringAccess.permissions.payment && Number(value.paidAmount) > 0) throw fail("forbidden", 403);
     checkImageMapping(req, value);
     const normalizeFabric = item => ({ ...item, ...(item.fabricSource === "shop" ? { fabricType: "", fabricColor: "", fabricId: item.fabricId.toLowerCase(), colorId: item.colorId.toLowerCase() } : {}) });
     const normalized = { ...normalizeFabric(value), ...(value.items ? { items: value.items.map(normalizeFabric) } : {}) };
@@ -144,6 +146,7 @@ export async function updateTailoringOrder(req, res) {
     if (![undefined, false, true, "false", "true"].includes(req.body.removeImage)) throw fail("invalidOrder", 400);
     const previous = orderPhotos(order);
     const input = await attachPhotos(req, await orderInput(req, idAdmin, order), order, createdPhotos);
+    if (!req.tailoringAccess.permissions.payment && tailoringMoneyCents(input.paidAmount) !== tailoringMoneyCents(order.paidAmount)) throw fail("forbidden", 403);
     // Preserve the prior delivery figures when an older delivered order is edited.
     if (order.deliveredAt) {
       if (!order.deliveryFinancials) order.deliveryFinancials = createTailoringDeliveryFinancials(order);

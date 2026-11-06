@@ -1,3 +1,5 @@
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
+import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import { apiErrorMessage } from "../../i18n/apiErrors.js";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -19,12 +21,13 @@ import {
 import CreditShareDialog from "./CreditShareDialog.jsx";
 
 const ListUsercridite = () => {
+  const operations = useEmployeeOperations('credit');
   const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [shareUserId, setShareUserId] = useState(null);
-  const canDelete = useSelector(state => state.LoginAdmin.role === "admin");
+  const canDelete = operations.delete;
   const locale = i18n.language === "ar" ? "ar-MA" : "fr-MA";
 
   const formatMoney = (value) =>
@@ -180,7 +183,7 @@ const ListUsercridite = () => {
                   <td className="px-8 py-5" data-credit-customer-creator><span dir="auto">{user.createdBy?.name || t("creditAudit.unrecorded")}</span>{user.createdBy && <small className="block text-xs text-slate-500 dark:text-slate-400">{t(user.createdBy.role === "admin" ? "creditAudit.admin" : "creditAudit.employee")}</small>}</td>
                   <td className="px-8 py-5">
                     <div className="flex items-center justify-center gap-2">
-                      <button type="button" className="credit-document-icon" data-share-credit={user._id} onClick={() => setShareUserId(user._id)} title={t("creditDocuments.share.title")} aria-label={t("creditDocuments.share.named", { name: user.name })}><IoShareSocialOutline size={18} /></button>
+                      <EmployeeOperation module="credit" operation="share"><button type="button" className="credit-document-icon" data-share-credit={user._id} onClick={() => setShareUserId(user._id)} title={t("creditDocuments.share.title")} aria-label={t("creditDocuments.share.named", { name: user.name })}><IoShareSocialOutline size={18} /></button></EmployeeOperation>
                       <button
                         onClick={() =>
                           navigate(`/Home/cridit/UserCreditDetails/${user._id}`)

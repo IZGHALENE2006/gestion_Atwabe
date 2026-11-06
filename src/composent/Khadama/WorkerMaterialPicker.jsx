@@ -1,0 +1,51 @@
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { IoAddOutline, IoCubeOutline, IoRefreshOutline, IoTrashOutline } from 'react-icons/io5';
+import { WORKER_SFIFA_METERS, WORKER_MATERIAL_PIECE_LIMIT, workerPieceWageCents } from '../../../shared/workerMaterials.js';
+import { formatSfifaCode, sfifaQuantityUnits } from '../../../shared/sfifaStock.js';
+import { loadWorkerMaterialOptions } from './workersApi.js';
+import './workerMaterials.css';
+
+export default function WorkerMaterialPicker({ token, workerId, workType = 'client', garmentType, lineIds, value, onChange, onAddPiece, onRemovePiece, wages = false, disabled, fields = {} }) {
+  const { t, i18n } = useTranslation();
+  const [result, setResult] = useState(null), [attempt, setAttempt] = useState(0);
+  const scope = `${token}:${workerId}:${attempt}`, state = result?.scope === scope ? result : { loading: true, fabrics: [], sfifa: [], error: false };
+  useEffect(() => {
+    const controller = new AbortController();
+    loadWorkerMaterialOptions(token, workerId, controller.signal).then(data => {
+      if (!Array.isArray(data.fabrics) || !Array.isArray(data.sfifa)) throw new Error('Invalid material options');
+      if (!controller.signal.aborted) setResult({ ...data, scope, loading: false, error: false });
+    }).catch(() => { if (!controller.signal.aborted) setResult({ scope, fabrics: [], sfifa: [], loading: false, error: true }); });
+    return () => controller.abort();
+  }, [token, workerId, scope]);
+  const number = n => new Intl.NumberFormat(i18n.language === 'ar' ? 'ar-MA' : 'fr-MA', { maximumFractionDigits: 3 }).format(n);
+  const selected = lineIds.map(lineId => ({ lineId, ...(value[lineId] || {}) }));
+  const wageTotal = wages ? workerPieceWageCents(selected) : null;
+  const money = n => new Intl.NumberFormat(i18n.language === 'ar' ? 'ar-MA' : 'fr-MA', { style: 'currency', currency: 'MAD' }).format(n);
+  const demand = (key, id, quantity) => selected.filter(row => row[key] === id).reduce((total, row) => total + (quantity === 'meters' ? sfifaQuantityUnits(row.meters) ?? 0 : WORKER_SFIFA_METERS * 1000), 0) / 1000;
+  const patch = (lineId, data) => onChange({ ...value, [lineId]: { ...(value[lineId] || {}), ...data } });
+  const labelSfifa = row => `${t('sfifaStock.widths.' + row.width)} · ${row.code === undefined ? t('workers.work.materials.unassigned') : formatSfifaCode(row.code, row.family)} · \u2066${row.family}\u2069 · ${number(row.quantity)} ${t('sfifaStock.unit')}`;
+  const field = (index, key) => ({ id: `worker-work-materials.${index}.${key}`, 'aria-invalid': Boolean(fields[`materials.${index}.${key}`]) });
+  return <section className="worker-material-picker" id="worker-work-materials" tabIndex={-1} aria-labelledby="worker-material-title">
+    <header><div><h3 id="worker-material-title"><IoCubeOutline aria-hidden="true" />{t('workers.work.materials.title')}</h3><p>{t(workType === 'shop' ? 'workers.work.materials.shopHint' : 'workers.work.materials.hint', { meters: WORKER_SFIFA_METERS })}</p></div><button type="button" data-refresh-materials disabled={disabled || state.loading} onClick={() => setAttempt(n => n + 1)} className="work-text-button"><IoRefreshOutline />{t('workers.work.materials.refresh')}</button></header>
+    {state.loading ? <p role="status">{t('common.loading')}</p> : state.error ? <p role="alert" className="work-field-error">{t('workers.work.errors.loadMaterialsFailed')}</p> : !lineIds.length ? <p className="work-field-hint">{t('workers.work.materials.chooseLines')}</p> : <div className="worker-material-grid">{selected.map((row, index) => {
+      const fabric = state.fabrics.find(fabric => fabric._id === row.fabricId), color = fabric?.colors.find(color => color._id === row.colorId), piece = color?.pieces.find(piece => piece._id === row.pieceId), sfifa = state.sfifa.find(sfifa => sfifa._id === row.variantId && sfifa.parentId === row.sfifaId);
+      const fabricDemand = demand('pieceId', row.pieceId, 'meters'), sfifaDemand = demand('variantId', row.variantId, 'sfifa');
+      const shortage = (piece && fabricDemand > piece.meters) || (sfifa && sfifaDemand > sfifa.quantity);
+      return <article className={`worker-material-card ${shortage ? 'has-shortage' : ''}`} key={row.lineId} data-material-line={row.lineId}>
+        <h4><span>{index + 1}</span>{t(garmentType === 'djellaba' ? 'fesla.garmentNumber' : `fesla.${garmentType}.garmentNumber`, { number: index + 1 })}<small>{t('workers.work.materials.sfifaFixed', { meters: WORKER_SFIFA_METERS })}</small>{onRemovePiece && <button type="button" data-remove-work-piece={row.lineId} onClick={() => onRemovePiece(row.lineId)} disabled={disabled || lineIds.length <= 1} className="worker-remove-piece" aria-label={t('workers.work.pieceCards.remove', { number: index + 1 })}><IoTrashOutline aria-hidden="true" /></button>}</h4>
+        <div className="work-field"><label htmlFor={field(index, 'fabricId').id}>{t('workers.work.materials.fabric')}</label><select {...field(index, 'fabricId')} className="work-input" value={row.fabricId || ''} disabled={disabled} onChange={e => patch(row.lineId, { fabricId: e.target.value, colorId: '', pieceId: '' })}><option value="">{t('workers.work.materials.chooseFabric')}</option>{state.fabrics.map(fabric => <option key={fabric._id} value={fabric._id}>{fabric.type}{fabric.reference ? ' · ' + fabric.reference : ''}</option>)}</select></div>
+        <div className="worker-material-pair"><div className="work-field"><label htmlFor={field(index, 'colorId').id}>{t('workers.work.materials.color')}</label><select {...field(index, 'colorId')} className="work-input" value={row.colorId || ''} disabled={disabled || !fabric} onChange={e => patch(row.lineId, { colorId: e.target.value, pieceId: '' })}><option value="">{t('workers.work.materials.chooseColor')}</option>{fabric?.colors.map(color => <option key={color._id} value={color._id}>{color.name}{color.number ? ' · ' + color.number : ''}</option>)}</select></div><div className="work-field"><label htmlFor={field(index, 'pieceId').id}>{t('workers.work.materials.piece')}</label><select {...field(index, 'pieceId')} className="work-input" value={row.pieceId || ''} disabled={disabled || !color} onChange={e => patch(row.lineId, { pieceId: e.target.value })}><option value="">{t('workers.work.materials.choosePiece')}</option>{color?.pieces.map(piece => <option key={piece._id} value={piece._id} disabled={piece.meters <= 0}>{piece.barcode} · {number(piece.meters)} {t('sfifaStock.unit')}</option>)}</select></div></div>
+        <div className="work-field"><label htmlFor={field(index, 'meters').id}>{t('workers.work.materials.meters')}</label><div className="work-input-with-unit"><input {...field(index, 'meters')} className="work-input work-number-input" inputMode="decimal" dir="ltr" disabled={disabled} value={row.meters || ''} maxLength={11} placeholder="0" onChange={e => patch(row.lineId, { meters: e.target.value })} /><span>{t('sfifaStock.unit')}</span></div></div>
+        <div className="work-field"><label htmlFor={field(index, 'variantId').id}>{t('workers.work.materials.sfifa')}</label><select {...field(index, 'variantId')} className="work-input" value={row.variantId || ''} disabled={disabled} onChange={e => { const chosen = state.sfifa.find(item => item._id === e.target.value); patch(row.lineId, { sfifaId: chosen?.parentId || '', variantId: chosen?._id || '' }); }}><option value="">{t('workers.work.materials.chooseSfifa')}</option>{state.sfifa.map(sfifa => <option key={sfifa._id} value={sfifa._id} disabled={sfifa.quantity < WORKER_SFIFA_METERS}>{labelSfifa(sfifa)}</option>)}</select></div>
+        {wages && <div className="work-field worker-piece-wage-field"><label htmlFor={field(index, 'unitWage').id}>{t('workers.payroll.wagePerPiece')}</label><input {...field(index, 'unitWage')} className="work-input work-number-input" inputMode="decimal" dir="ltr" value={row.unitWage ?? ''} onChange={e => patch(row.lineId, { unitWage: e.target.value })} maxLength={13} placeholder="0.00" required disabled={disabled} /></div>}
+        {(piece || sfifa) && <dl className="worker-material-balances">{piece && <div className={fabricDemand > piece.meters ? 'has-shortage' : ''}><dt>{t('workers.work.materials.fabricBalance')}</dt><dd><bdi dir="ltr">{number(fabricDemand)} / {number(piece.meters)}</bdi> {t('sfifaStock.unit')}</dd></div>}{sfifa && <div className={sfifaDemand > sfifa.quantity ? 'has-shortage' : ''}><dt>{t('workers.work.materials.sfifaBalance')}</dt><dd><bdi dir="ltr">{number(sfifaDemand)} / {number(sfifa.quantity)}</bdi> {t('sfifaStock.unit')}</dd></div>}</dl>}
+        {shortage && <p role="alert" className="work-field-error">{t('workers.work.materials.shortage')}</p>}
+        {Object.entries(fields).filter(([key]) => key.startsWith(`materials.${index}.`)).map(([key, error]) => <p className="work-field-error" key={key}>{t('workers.work.errors.' + error)}</p>)}
+      </article>;
+    })}</div>}
+    {onAddPiece && <div className="worker-piece-add-row"><span data-work-piece-count>{t('workers.work.pieceCards.count', { count: number(lineIds.length) })}</span><button type="button" data-add-work-piece onClick={onAddPiece} className="work-button work-button-blue" disabled={disabled || state.loading || state.error || lineIds.length >= WORKER_MATERIAL_PIECE_LIMIT}><IoAddOutline aria-hidden="true" />{t('workers.work.pieceCards.add')}</button></div>}
+    {wages && <p className="worker-piece-wage-total">{t('workers.work.pieceCards.totalWages')}<strong data-work-piece-wage-total data-value={wageTotal === null ? '' : wageTotal / 100}>{wageTotal === null ? '—' : money(wageTotal / 100)}</strong></p>}
+    {fields.materials && <p className="work-field-error">{t('workers.work.errors.' + fields.materials)}</p>}
+  </section>;
+}

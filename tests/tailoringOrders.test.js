@@ -1,3 +1,4 @@
+import { moduleOperationPermissions } from "../shared/employeePermissions.js";
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import process from "node:process";
@@ -102,7 +103,7 @@ test("old orders expose stable barcodes to read-only employees without rewriting
   const f = setup(t), legacy = new TailoringOrder({ ...validateTailoringOrder(input()), fabricId: null, colorId: null, idAdmin: owner, createdBy: owner, requestId: randomUUID(), requestFingerprint: "legacy", __v: 3 });
   await legacy.validate(); f.records.push(legacy); f.staff.action = { add: false, update: false };
   const before = legacy.toObject(), response = await request({ actor: staffClaims }); assert.equal(response.status, 200);
-  const list = await response.json(); assert.equal(list.orders[0].barcode, tailoringOrderBarcode(legacy)); assert.deepEqual(list.permissions, { add: false, update: false });
+  const list = await response.json(); assert.equal(list.orders[0].barcode, tailoringOrderBarcode(legacy)); assert.deepEqual(list.permissions, moduleOperationPermissions('Employe', { action: { add: false, update: false } }, 'tailoring'));
   const again = await (await request()).json(); assert.equal(again.orders[0].barcode, list.orders[0].barcode);
   assert.equal(f.save.mock.callCount(), 0); assert.deepEqual(legacy.toObject(), before);
 });
@@ -240,7 +241,7 @@ test("shop orders retain their fabric snapshot and remain editable after stock d
 test("listing and access respect shop scope, current employee permissions and active accounts", async t => {
   const f = setup(t); await createOrder(); await createOrder(input({ clientName: "Other" }), { actor: stranger });
   const data = await (await request()).json(); assert.equal(data.orders.length, 1); assert.equal(data.orders[0].clientName, "أمينة");
-  const employeeData = await (await request({ actor: staffClaims })).json(); assert.deepEqual(employeeData.permissions, { add: true, update: false });
+  const employeeData = await (await request({ actor: staffClaims })).json(); assert.deepEqual(employeeData.permissions, moduleOperationPermissions('Employe', { action: { add: true, update: false } }, 'tailoring'));
   const staffOrder = await createOrder(input({ clientName: "Staff" }), { actor: staffClaims }); assert.equal(staffOrder.idAdmin, owner); assert.equal(staffOrder.createdBy, employee);
   const forbidden = await request({ suffix: `/${staffOrder._id}`, method: "PUT", actor: staffClaims, body: { ...input(), version: 0 } }); assert.equal(forbidden.status, 403);
   f.staff.action.add = false; assert.equal((await request({ actor: staffClaims, body: input() })).status, 403);

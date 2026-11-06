@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IoCloseOutline, IoLayersOutline, IoAddOutline } from 'react-icons/io5';
 import { cashierBatchChoices, cashierAvailableQuantity } from '../../../shared/cashierBatches.js';
@@ -19,6 +19,7 @@ export default function ProductBatchPicker({ product, cart, onChoose, onClose, p
         return <button key={batch.key} type="button" data-choose-batch={batch.batchId} data-batch-number={batch.batchNumber} disabled={available < quantity} onClick={() => { onChoose(batch); onClose(); }}>
           <span className="batch-picker-top"><span><IoLayersOutline size={20} />{t('productBatches.batch', { number: batch.batchNumber })}</span><small>{t('productBatches.' + label)}</small></span>
           <span className="batch-picker-meta"><span>{t('productBatches.remaining')}: <strong className="batch-remaining"><bdi data-batch-available>{available}</bdi></strong></span>{batch.receivedAt && !Number.isNaN(new Date(batch.receivedAt).getTime()) && <time dateTime={batch.receivedAt}>{new Date(batch.receivedAt).toLocaleDateString(locale)}</time>}</span>
+          <bdi dir="ltr" className="batch-choice-barcode" data-batch-choice-barcode>{batch.barcode}</bdi>
           <span className="batch-picker-add"><IoAddOutline size={18} />{t(available >= quantity ? 'productBatches.chooseAction' : 'productBatches.unavailable')}</span>
         </button>;
       })}</div>{!choices.length && <p className="batch-notice">{t('productBatches.empty')}</p>}

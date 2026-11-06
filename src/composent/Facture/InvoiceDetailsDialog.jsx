@@ -1,3 +1,4 @@
+import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import { documentTitleKey } from "../../../shared/salesDocuments.js";
 import { useRef, useState } from "react";
 import { useSelector } from "react-redux";
@@ -37,8 +38,8 @@ function InvoiceDetailsContent({ data, onClose }) {
           <h2 id="invoice-preview-title" className="font-bold text-slate-900 dark:text-white">{t(documentTitleKey(data))}</h2>
           <div className="flex flex-wrap items-center gap-2">
             {role === "admin" && <Link to="/Home/invoice-settings" onClick={onClose} className="rounded-xl border border-slate-200 p-3 text-slate-600 dark:border-slate-700 dark:text-slate-300" aria-label={t("invoiceSettings.title")} title={t("invoiceSettings.title")}><IoSettingsOutline size={19} /></Link>}
-            <button type="button" disabled={disabled || isExporting} onClick={() => exportPdf(data)} className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"><IoDownloadOutline />{isExporting ? t("salesPdf.exporting") : "PDF"}</button>
-            <button type="button" disabled={disabled} onClick={handlePrint} className="flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-40"><IoPrintOutline />{t("invoiceDialog.print")}</button>
+            <EmployeeOperation module="invoices" operation="download"><button type="button" disabled={disabled || isExporting} onClick={() => exportPdf(data)} className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"><IoDownloadOutline />{isExporting ? t("salesPdf.exporting") : "PDF"}</button></EmployeeOperation>
+            <EmployeeOperation module="invoices" operation="print"><button type="button" disabled={disabled} onClick={handlePrint} className="flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-40"><IoPrintOutline />{t("invoiceDialog.print")}</button></EmployeeOperation>
             <button type="button" onClick={onClose} aria-label={t("invoiceSettings.close")} className="rounded-xl p-3 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800"><IoCloseOutline size={23} /></button>
           </div>
         </header>

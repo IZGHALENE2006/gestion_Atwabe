@@ -1,3 +1,4 @@
+import { moduleOperationPermissions } from "../shared/employeePermissions.js";
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import process from "node:process";
@@ -93,7 +94,7 @@ test("one fabric preserves multiple colors and independently barcoded 35m / 47m 
   assert.deepEqual(fabricTotals(saved.colors), { quantity: 3, meters: 94.375 });
   const list = await (await request()).json();
   assert.deepEqual(list.fabrics, [saved]);
-  assert.deepEqual(list.permissions, { add: true, update: true, delete: true });
+  assert.deepEqual(list.permissions, moduleOperationPermissions('admin', { action: { add: true, update: true, delete: true } }, 'fabrics'));
 });
 
 test("optional numbers can be empty and quantity comes from physical pieces", async (t) => {
@@ -159,7 +160,7 @@ test("employee permissions and owner are read from the current account", async (
   assert.equal(list.fabrics.length, 1);
   assert.equal(list.fabrics[0].idAdmin, owner);
   f.staff.action.add = false;
-  assert.deepEqual((await (await request("GET", undefined, employeeClaims)).json()).permissions, { add: false, update: true, delete: true });
+  assert.deepEqual((await (await request("GET", undefined, employeeClaims)).json()).permissions, moduleOperationPermissions('Employe', { action: { add: false, update: true, delete: true } }, 'fabrics'));
   assert.equal((await request("POST", input, employeeClaims)).status, 403);
   f.staff.isActive = false;
   assert.equal((await request("GET", undefined, employeeClaims)).status, 403);
@@ -240,10 +241,13 @@ test("generated codes are unique, scannable EAN13 values and decimal totals stay
 });
 
 test("search finds types, color numbers, accented names, Arabic and individual piece barcodes", () => {
-  const fabric = validateFabric(input);
+  // Fixed barcodes keep the numeric color query from randomly matching a barcode.
+  const sample = structuredClone(input), codes = ['2000000000015', '2000000000022', '2000000000039'];
+  sample.colors.flatMap(color => color.pieces).forEach((piece, index) => piece.barcode = codes[index]);
+  const fabric = validateFabric(sample);
   const other = { type: "Étoffe", reference: "T-002", colors: [{ name: "أزرق", number: "009", pieces: [{ meters: 8, barcode: "different" }] }] };
   const fabrics = [fabric, other];
-  for (const search of ["coton", "t-001", "marine", "007", second]) assert.deepEqual(filterFabrics(fabrics, search), [fabric]);
+  for (const search of ["coton", "t-001", "marine", "007", codes[1]]) assert.deepEqual(filterFabrics(fabrics, search), [fabric]);
   for (const search of ["etoffe", "أزرق", "009"]) assert.deepEqual(filterFabrics(fabrics, search), [other]);
   assert.deepEqual(filterFabrics(fabrics, "absent"), []);
 });
@@ -407,7 +411,7 @@ test("employee add and update permissions are independent and evaluated from the
   const f = setup(t);
   const fabric = f.seed();
   f.staff.action.update = false;
-  assert.deepEqual((await (await request("GET", undefined, employeeClaims)).json()).permissions, { add: true, update: false, delete: true });
+  assert.deepEqual((await (await request("GET", undefined, employeeClaims)).json()).permissions, moduleOperationPermissions('Employe', { action: { add: true, update: false, delete: true } }, 'fabrics'));
   assert.equal((await request("PUT", updatePayload(fabric), { ...employeeClaims, action: { update: true } }, `/${fabric._id}`)).status, 403);
   f.staff.action = { add: false, update: true };
   assert.equal((await request("POST", input, employeeClaims)).status, 403);
@@ -568,10 +572,10 @@ test("delete permission is independent of add and update and cannot be granted t
   const f = setup(t);
   const fabric = f.seed();
   f.staff.action.delete = false;
-  assert.deepEqual((await (await request("GET", undefined, employeeClaims)).json()).permissions, { add: true, update: true, delete: false });
+  assert.deepEqual((await (await request("GET", undefined, employeeClaims)).json()).permissions, moduleOperationPermissions('Employe', { action: { add: true, update: true, delete: false } }, 'fabrics'));
   for (const suffix of deletePaths(fabric)) assert.equal((await deleteRequest(fabric, suffix, { ...employeeClaims, action: { delete: true } })).status, 403);
   f.staff.action = { add: false, update: false, delete: true };
-  assert.deepEqual((await (await request("GET", undefined, employeeClaims)).json()).permissions, { add: false, update: false, delete: true });
+  assert.deepEqual((await (await request("GET", undefined, employeeClaims)).json()).permissions, moduleOperationPermissions('Employe', { action: { add: false, update: false, delete: true } }, 'fabrics'));
   assert.equal((await deleteRequest(fabric, deletePaths(fabric)[2], employeeClaims)).status, 200);
   assert.equal(f.records[0].colors[0].pieces[0].barcode, second);
   assert.equal(f.save.mock.callCount(), 1);
