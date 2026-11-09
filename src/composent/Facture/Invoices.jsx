@@ -1,3 +1,4 @@
+import useSearchTarget from "../../hooks/useSearchTarget.js";
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import { FaFileInvoice, FaSearch, FaUserTie, FaThLarge, FaListUl, FaRegUserCircle } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
@@ -15,6 +16,7 @@ import { useSalesDocuments } from "./useSalesDocuments";
 import { documentTypeOf, isSalesDocument, filterSalesDocuments, SALES_DOCUMENT_TYPES } from "../../../shared/salesDocuments.js";
 
 function Invoices() {
+  const matchesSearchTarget = useSearchTarget();
   const { t, i18n } = useTranslation();
   const { user, role, token } = useSelector((state) => state.LoginAdmin);
   const { Employe } = useSelector((state) => state.Employe);
@@ -58,9 +60,9 @@ function Invoices() {
     return (user?.Facture || []).map((f) => ({ ...f, nameEmp: user?.name, source: user?._id || "user" }));
   }, [role, user, Employe]);
 
-  const visibleInvoices = filterInvoicesByView(allFactures, { view, filterType, periodValue });
+  const visibleInvoices = params.get("record") ? allFactures.filter(matchesSearchTarget) : filterInvoicesByView(allFactures, { view, filterType, periodValue });
   const documents = view === "manual" ? filterSalesDocuments([...visibleInvoices, ...notes.documents.map((note) => ({ ...note, source: note.createdByRole === "admin" ? "admin" : note.createdBy }))], documentFilter).sort((a, b) => new Date(b.DateFacture) - new Date(a.DateFacture)) : visibleInvoices;
-  const filteredFactures = documents.filter((item) => {
+  const filteredFactures = documents.filter(matchesSearchTarget).filter((item) => {
     const sellerMatch = selectedSeller === "all" || item.source === selectedSeller;
     const searchValue = searchTerm.toLowerCase();
     const ref = String(item.reference || item._id || "").toLowerCase();

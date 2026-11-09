@@ -1,4 +1,4 @@
-import { validateTailoringMeasurements } from "./tailoringMeasurements.js";
+import { validateTailoringMeasurements, validateTailoringMeasurementNotes } from "./tailoringMeasurements.js";
 import { normalizeTailoringBarcode, tailoringOrderBarcode } from "./tailoringBarcode.js";
 
 export const TAILORING_SOURCES = ["shop", "client"];
@@ -105,17 +105,21 @@ function validateSingleTailoringOrder(input) {
     const color2 = twoColors ? text(trim.color2, "sfifa.color2", true) : "";
     sfifa = { width, style, color1, color2 };
   }
-  let measurements;
-  try { measurements = validateTailoringMeasurements(input.measurements); }
+  let measurements, measurementNotes;
+  try {
+    measurementNotes = validateTailoringMeasurementNotes(input.measurementNotes);
+    // Old structured measurements remain valid until the free-text field is edited.
+    measurements = input.measurementNotes === undefined ? validateTailoringMeasurements(input.measurements) : undefined;
+  }
   catch (error) { Object.assign(fields, error.fields); }
   if (Object.keys(fields).length) throw Object.assign(new Error("invalidOrder"), { fields });
-  return { ...(measurements ? { measurements } : {}), clientName, phone, orderDate, readyDate, totalPrice: totalCents / 100, paidAmount: paidCents / 100, fabricSource, fabricType, fabricColor, fabricId, colorId, ...(input.garmentType === undefined ? {} : { garmentType }), ...(trousers ? { trouserType: input.trouserType, expenseAmount: expenses / 100 } : garmentType === "shirts" ? { shirtType, expenseAmount: expenses / 100 } : { sfifa }) };
+  return { ...(measurementNotes ? { measurementNotes } : {}), ...(measurements ? { measurements } : {}), clientName, phone, orderDate, readyDate, totalPrice: totalCents / 100, paidAmount: paidCents / 100, fabricSource, fabricType, fabricColor, fabricId, colorId, ...(input.garmentType === undefined ? {} : { garmentType }), ...(trousers ? { trouserType: input.trouserType, expenseAmount: expenses / 100 } : garmentType === "shirts" ? { shirtType, expenseAmount: expenses / 100 } : { sfifa }) };
 }
 
 export function tailoringOrderItems(order) {
   if (!order) return [];
   if (order.items?.length) return order.items;
-  return [{ ...(order.measurements ? { measurements: order.measurements } : {}), lineId: String(order._id), price: order.totalPrice ?? 0, fabricSource: order.fabricSource, fabricType: order.fabricType, fabricReference: order.fabricReference || "", fabricColor: order.fabricColor || "", fabricId: order.fabricId || null, colorId: order.colorId || null, sfifa: order.sfifa, ...(tailoringGarmentType(order) === "trousers" ? { trouserType: order.trouserType } : tailoringGarmentType(order) === "shirts" ? { shirtType: order.shirtType } : {}), photo: order.photo, hasPhoto: order.hasPhoto ?? Boolean(order.photo) }];
+  return [{ ...(order.measurementNotes ? { measurementNotes: order.measurementNotes } : {}), ...(order.measurements ? { measurements: order.measurements } : {}), lineId: String(order._id), price: order.totalPrice ?? 0, fabricSource: order.fabricSource, fabricType: order.fabricType, fabricReference: order.fabricReference || "", fabricColor: order.fabricColor || "", fabricId: order.fabricId || null, colorId: order.colorId || null, sfifa: order.sfifa, ...(tailoringGarmentType(order) === "trousers" ? { trouserType: order.trouserType } : tailoringGarmentType(order) === "shirts" ? { shirtType: order.shirtType } : {}), photo: order.photo, hasPhoto: order.hasPhoto ?? Boolean(order.photo) }];
 }
 export function tailoringItemsTotal(items) {
   if (!Array.isArray(items) || !items.length || items.length > MAX_TAILORING_ITEMS) return null;
@@ -153,9 +157,9 @@ export function validateTailoringOrder(input) {
     if (raw.imageIndex !== undefined && (!Number.isInteger(raw.imageIndex) || raw.imageIndex < 0 || raw.imageIndex >= MAX_TAILORING_ITEMS)) fields[`${prefix}photo`] = "imageUploadInvalid";
     if (raw.removeImage !== undefined && typeof raw.removeImage !== "boolean") fields[`${prefix}photo`] = "imageUploadInvalid";
     try {
-      const value = validateSingleTailoringOrder({ clientName: input.clientName, phone: input.phone, orderDate: input.orderDate, readyDate: input.readyDate, fabricSource: raw.fabricSource, fabricType: raw.fabricType, fabricColor: raw.fabricColor, fabricId: raw.fabricId, colorId: raw.colorId, sfifa: raw.sfifa, measurements: raw.measurements, garmentType: input.garmentType, trouserType: raw.trouserType, shirtType: raw.shirtType, expenseAmount: 0, totalPrice: raw.price, paidAmount: 0 });
+      const value = validateSingleTailoringOrder({ clientName: input.clientName, phone: input.phone, orderDate: input.orderDate, readyDate: input.readyDate, fabricSource: raw.fabricSource, fabricType: raw.fabricType, fabricColor: raw.fabricColor, fabricId: raw.fabricId, colorId: raw.colorId, sfifa: raw.sfifa, measurements: raw.measurements, measurementNotes: raw.measurementNotes, garmentType: input.garmentType, trouserType: raw.trouserType, shirtType: raw.shirtType, expenseAmount: 0, totalPrice: raw.price, paidAmount: 0 });
       const { fabricSource, fabricType, fabricColor, fabricId, colorId } = value;
-      return { ...(value.measurements ? { measurements: value.measurements } : {}), lineId, price: value.totalPrice, fabricSource, fabricType, fabricColor, fabricId, colorId, ...(value.garmentType === "trousers" ? { trouserType: value.trouserType } : value.garmentType === "shirts" ? { shirtType: value.shirtType } : { sfifa: value.sfifa }), removeImage: raw.removeImage === true, ...(raw.imageIndex === undefined ? {} : { imageIndex: raw.imageIndex }) };
+      return { ...(value.measurementNotes ? { measurementNotes: value.measurementNotes } : {}), ...(value.measurements ? { measurements: value.measurements } : {}), lineId, price: value.totalPrice, fabricSource, fabricType, fabricColor, fabricId, colorId, ...(value.garmentType === "trousers" ? { trouserType: value.trouserType } : value.garmentType === "shirts" ? { shirtType: value.shirtType } : { sfifa: value.sfifa }), removeImage: raw.removeImage === true, ...(raw.imageIndex === undefined ? {} : { imageIndex: raw.imageIndex }) };
     } catch (error) {
       for (const [key, code] of Object.entries(error.fields || {})) fields[["clientName", "phone", "orderDate", "readyDate", "garmentType"].includes(key) ? key : prefix + (key === "totalPrice" ? "price" : key)] = code;
       return {};

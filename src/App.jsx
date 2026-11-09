@@ -39,6 +39,7 @@ import ListUsercridite from './composent/Usercridit/ListUserCridite'
 import UserCreditDetails from './composent/Usercridit/UserCreditDetails'
 import { useTranslation } from 'react-i18next'
 import PageNave from './composent/NavBar/pageNave'
+import GlobalSearch from './composent/GlobalSearch/GlobalSearch.jsx';
 function App() {
   const { t, i18n } = useTranslation()
   const { pathname } = useLocation();
@@ -81,6 +82,7 @@ const toggleLanguage = () => {
   return (
     <>
 <div className={`app-display-controls ${pathname === "/Home" || pathname.startsWith("/Home/") ? "app-display-controls-home" : ""}`}>
+  {(pathname === "/Home" || pathname.startsWith("/Home/")) && <GlobalSearch/>}
   <button type="button" onClick={toggleLanguage} data-toggle-language className="app-language-control">{i18n.language === "ar" ? t("common.french") : t("common.arabic")}</button>
   <span aria-hidden="true" />
   <button type="button" onClick={toggleTheme} data-toggle-theme aria-label={theme === "light" ? t("theme.darkMode") : t("theme.lightMode")} title={theme === "light" ? t("theme.darkMode") : t("theme.lightMode")} className="app-theme-control">{theme === "light" ? <LuMoon size={19} /> : <LuSun size={19} />}</button>

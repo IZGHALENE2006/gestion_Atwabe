@@ -25,10 +25,12 @@ import ventesRoute from './Routes/routeVents.js'
 import FournisseurRoute from './Routes/FournisseurRoute.js'
 //import User Cridite 
 import UserCriditeRoute from './Routes/Usercridite.js'
+import SearchRoute from './Routes/SearchRoute.js';
 const app = express()
 
  app.use(cors())
  app.use(express.json())
+ app.use('/search', SearchRoute)
  app.use('/uploads/invoice-logos', express.static(invoiceLogosDirectory, {
    dotfiles: 'deny', index: false,
    setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),

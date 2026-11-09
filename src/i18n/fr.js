@@ -11,7 +11,9 @@ import { feslaFrench } from "./fesla.js";
 import { workersFrench } from "./workers.js";
 import { sfifaStockFrench } from "./sfifaStock.js";
 
+import { globalSearchFrench } from './globalSearch.js';
 export default {
+  globalSearch: globalSearchFrench,
   employeePayroll: employeePayrollFrench,
   creditDocuments: creditDocumentsFrench,
   employeePermissions: employeePermissionsFrench,

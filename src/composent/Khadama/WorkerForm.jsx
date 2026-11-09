@@ -30,7 +30,7 @@ export default function WorkerForm({ category, worker, token, onClose, onSaved }
     } catch (failure) {
       if (dialogRef.current?.open) {
         const code = failure.response?.data?.message;
-        setError(["invalidWorker", "invalidRequest", "requestConflict", "forbidden", "notFound", "conflict"].includes(code) ? code : "saveFailed");
+        setError(["invalidWorker", "invalidRequest", "requestConflict", "forbidden", "notFound", "workerDeleted", "conflict"].includes(code) ? code : "saveFailed");
         setFields(failure.response?.data?.fields || {});
       }
     } finally { savingRef.current = false; if (dialogRef.current?.open) setSaving(false); }

@@ -20,6 +20,8 @@ paymentSchema.pre("validate", function () {
 });
 const schema = new mongoose.Schema({
   payments: { type: [paymentSchema], default: [] },
+  deletedAt: { type: Date, default: undefined },
+  deletedBy: { type: mongoose.Schema.Types.ObjectId, default: undefined },
   idAdmin: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Admin" },
   createdBy: { type: mongoose.Schema.Types.ObjectId, required: true },
   name: { type: String, trim: true, required: true, maxlength: 160 },

@@ -3,6 +3,7 @@ import axios from "axios";
 const api = `${import.meta.env.VITE_API_URL || "http://localhost:7000"}/tailoring-workers`;
 const headers = token => ({ Authorization: `Bearer ${token}` });
 export const loadTailoringWorkers = async (token, signal) => (await axios.get(api, { headers: headers(token), signal })).data;
+export const deleteTailoringWorker = async (token, worker) => (await axios.delete(`${api}/${encodeURIComponent(worker._id)}`, { data: { version: worker.__v }, headers: headers(token) })).data;
 export const saveTailoringWorker = async (input, token, requestId, worker) => (worker
   ? await axios.put(`${api}/${encodeURIComponent(worker._id)}`, { ...input, version: worker.__v }, { headers: headers(token) })
   : await axios.post(api, { ...input, requestId }, { headers: headers(token) })).data;
@@ -12,6 +13,7 @@ export const assignWorkerWork = async (token, workerId, input, requestId) => (aw
 export const completeWorkerWork = async (token, workerId, work, quantity, requestId, lineIds) => (await axios.post(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}/completions`, { quantity, requestId, version: work.__v, ...(lineIds ? { lineIds } : {}) }, { headers: headers(token) })).data;
 export const increaseWorkerWork = async (token, workerId, work, input, requestId) => (await axios.post(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}/increases`, { ...input, requestId, version: work.__v }, { headers: headers(token) })).data;
 export const deleteWorkerWork = async (token, workerId, work, requestId) => (await axios.delete(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}`, { data: { version: work.__v, requestId }, headers: headers(token) })).data;
+export const loadWorkerFabricOptions = async (token, workerId, signal) => (await axios.get(`${api}/${encodeURIComponent(workerId)}/work/fabric-options`, { headers: headers(token), signal })).data;
 export const loadWorkerMaterialOptions = async (token, workerId, signal) => (await axios.get(`${api}/${encodeURIComponent(workerId)}/work/material-options`, { headers: headers(token), signal })).data;
 export const cancelWorkerWork = async (token, workerId, work, requestId) => (await axios.post(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}/cancel`, { version: work.__v, requestId }, { headers: headers(token) })).data;
 export const resumeWorkerWorkMaterials = async (token, workerId, work) => (await axios.post(`${api}/${encodeURIComponent(workerId)}/work/${encodeURIComponent(work._id)}/materials/resume`, {}, { headers: headers(token) })).data;
@@ -22,3 +24,5 @@ export async function loadWorkerPayroll(token, workerId, signal) {
 export async function saveWorkerPayment(token, workerId, input, requestId) {
   return (await axios.post(api + "/" + workerId + "/payments", { ...input, requestId }, { headers: headers(token) })).data;
 }
+
+export const loadWorkerShopOptions = async (token, workerId, category, garmentType, signal) => (await axios.get(api + '/' + encodeURIComponent(workerId) + '/work/shop-options', { params: { category, garmentType }, headers: headers(token), signal })).data;

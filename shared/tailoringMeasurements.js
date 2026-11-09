@@ -1,6 +1,18 @@
 export const TAILORING_MEASUREMENT_FIELDS = [
   "shoulder", "sleeve", "chest", "length", "sleevePlacement", "sleeveHead", "jlail", "collar",
 ];
+export const TAILORING_MEASUREMENT_NOTES_LIMIT = 4000;
+
+export function validateTailoringMeasurementNotes(input) {
+  if (input === undefined) return undefined;
+  if (typeof input !== "string" || input.length > TAILORING_MEASUREMENT_NOTES_LIMIT || [...input].some(character => {
+    const code = character.charCodeAt(0);
+    return code === 127 || code < 32 && ![9, 10, 13].includes(code);
+  })) {
+    throw Object.assign(new Error("invalidOrder"), { fields: { measurementNotes: "invalidMeasurementNotes" } });
+  }
+  return input.replace(/\r\n?/g, "\n").trim() || undefined;
+}
 
 // All measurements are in centimetres, with at most two decimal places.
 export function tailoringMeasurement(value) {

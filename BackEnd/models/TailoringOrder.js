@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { TAILORING_MEASUREMENT_FIELDS, tailoringMeasurement } from "../../shared/tailoringMeasurements.js";
+import { TAILORING_MEASUREMENT_FIELDS, TAILORING_MEASUREMENT_NOTES_LIMIT, tailoringMeasurement, validateTailoringMeasurementNotes } from "../../shared/tailoringMeasurements.js";
 import { tailoringReceiptSchema } from './tailoringReceiptSchema.js';
 import { SFIFA_STYLES, SFIFA_WIDTHS, TAILORING_SOURCES, TAILORING_GARMENT_TYPES, TAILORING_TROUSER_TYPES, validTailoringDate, tailoringMoneyCents, tailoringHasExpenses, tailoringFabricMeters, tailoringGarmentType, tailoringUsesSfifa } from "../../shared/tailoring.js";
 
@@ -16,6 +16,11 @@ const deliveryFinancialsSchema = new mongoose.Schema({
   expenseAmount: { type: Number, default: null, validate: value => value === null || tailoringMoneyCents(value) !== null },
   garmentCount: { type: Number, required: true, min: 1, max: 50, validate: Number.isSafeInteger },
 }, { _id: false });
+const actorSchema = new mongoose.Schema({
+  id: { type: mongoose.Schema.Types.ObjectId, required: true },
+  name: { type: String, default: "" },
+  role: { type: String, enum: ["admin", "Employe"], required: true },
+}, { _id: false });
 const sfifaSchema = new mongoose.Schema({
   width: { type: String, enum: SFIFA_WIDTHS, required: true },
   style: { type: String, enum: SFIFA_STYLES, required: true },
@@ -28,10 +33,15 @@ const paymentReceiptSchema = new mongoose.Schema({
   amount: { type: Number, required: true, validate: value => tailoringMoneyCents(value) > 0 },
   paidAt: { type: Date, required: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, required: true },
+  actor: { type: actorSchema },
 }, { _id: false });
 const measurementsSchema = new mongoose.Schema(Object.fromEntries(TAILORING_MEASUREMENT_FIELDS.map(key => [key, { type: Number, validate: value => tailoringMeasurement(value) !== null }])), { _id: false });
+const measurementNotesField = () => ({ type: String, maxlength: TAILORING_MEASUREMENT_NOTES_LIMIT, validate: value => {
+  try { validateTailoringMeasurementNotes(value); return true; } catch { return false; }
+} });
 const itemSchema = new mongoose.Schema({
   measurements: { type: measurementsSchema },
+  measurementNotes: measurementNotesField(),
   lineId: { type: String, required: true, match: /^[a-f\d]{24}$/ },
   fabricMeters: { type: Number, validate: value => tailoringFabricMeters(value) !== null },
   costs: { type: itemCostsSchema },
@@ -59,6 +69,7 @@ const schema = new mongoose.Schema({
   requestId: { type: String, required: true },
   requestFingerprint: { type: String, required: true },
   measurements: { type: measurementsSchema },
+  measurementNotes: measurementNotesField(),
   clientName: { type: String, required: true, maxlength: 160 },
   phone: { type: String, required: true, maxlength: 40 },
   orderDate: { type: String, required: true, validate: validTailoringDate },
@@ -81,11 +92,15 @@ const schema = new mongoose.Schema({
   deliveredAt: { type: Date, default: null },
   deliveryFinancials: { type: deliveryFinancialsSchema },
   deliveredBy: { type: mongoose.Schema.Types.ObjectId, default: null },
+  cancelledAt: { type: Date },
+  cancelledBy: { type: actorSchema },
   paymentReceipts: { type: [paymentReceiptSchema], default: [] },
   customerReceipt: { type: tailoringReceiptSchema, immutable: true },
   items: { type: [itemSchema], default: undefined },
 }, { timestamps: true, optimisticConcurrency: true });
 schema.pre("validate", function () {
+  if (this.cancelledAt && (!this.deliveredAt || !this.cancelledBy || !this.deliveryFinancials)) this.invalidate("cancelledAt", "Cancellation requires delivery, financial snapshot and actor");
+  if (this.cancelledBy && !this.cancelledAt) this.invalidate("cancelledBy", "Cancellation date is required");
   if (this.trouserCosting && this.garmentType !== "trousers") this.invalidate("trouserCosting", "Trouser labor rates require a trouser order");
   if (this.deliveryFinancials && !this.deliveredAt) this.invalidate("deliveryFinancials", "Delivery is required for recognized profit");
   for (const [index, item] of (this.items || []).entries()) {

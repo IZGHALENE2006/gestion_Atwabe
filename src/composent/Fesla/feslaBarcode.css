@@ -93,6 +93,16 @@
 .fesla-payment-button:hover { background: #dce8ff; }
 .fesla-deliver-button { color: #fff; background: #168052; border-color: #168052; }
 .fesla-deliver-button:hover { background: #116540; }
+.fesla-cancel-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 9px 12px; border: 1px solid #f6bdc7; border-radius: 10px; color: #a82142; background: #fff0f3; font-size: 12px; font-weight: 700; cursor: pointer; }
+.fesla-cancel-button:hover { background: #ffe1e8; }
+.fesla-cancel-button:focus-visible { outline: 3px solid #ee93ac; outline-offset: 2px; }
+.fesla-cancel-button:disabled { opacity: .6; cursor: default; }
+.fesla-order-status.is-cancelled { color: #a82142; background: #ffe8ee; }
+.fesla-cancellation-log, .fesla-cancellation-notice { margin-top: 12px; padding: 12px 14px; border: 1px solid #f6bdc7; border-radius: 11px; background: #fff3f5; color: #982342; font-size: 12px; line-height: 1.9; overflow-wrap: anywhere; }
+.fesla-cancellation-log > p + p { margin-top: 5px; }
+.fesla-payment-actor { flex-basis: 100%; color: #52627a; font-size: 12px; }
+.dark .fesla-cancel-button, .dark .fesla-order-status.is-cancelled, .dark .fesla-cancellation-log, .dark .fesla-cancellation-notice { color: #ffb0c2; background: #421e2c; border-color: #793a50; }
+.dark .fesla-payment-actor { color: #acbdd5; }
 .fesla-payment-button:disabled, .fesla-deliver-button:disabled { opacity: .6; cursor: default; }
 .fesla-order-status { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border-radius: 9px; color: #956017; background: #fff2d9; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .fesla-order-status.is-delivered { color: #116540; background: #dcf7e9; }

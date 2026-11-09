@@ -1,3 +1,4 @@
+import useSearchTarget from "../../hooks/useSearchTarget.js";
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import { productBatches } from "../../../shared/productBatches.js";
 import {
@@ -28,6 +29,7 @@ export default function ProductList() {
   const [openScanner, setOpenScanner] = useState(false);
   const scannerRef = useRef(null);
 
+  const matchesSearchTarget = useSearchTarget();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCat, setSelectedCat] = useState("");
   const [sortBy, setSortBy] = useState("");
@@ -85,7 +87,7 @@ export default function ProductList() {
     };
   }, [openScanner, t]);
 
-  const filteredProducts = Produts?.filter((product) => {
+  const filteredProducts = Produts?.filter(matchesSearchTarget).filter((product) => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
       product.name?.toLowerCase().includes(searchLower) ||

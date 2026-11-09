@@ -1,4 +1,6 @@
 export const workersFrench = {
+  shopFlow: {"progress":"Étapes du travail","completed":"Terminé","inProgress":"En cours","notAssigned":"Pas encore confié","chooseWork":"Choisir un travail de la machine","refresh":"Actualiser la liste","selectionHint":"Le travail complet passe à l’étape suivante après réalisation de l’étape précédente. Le tarif saisi concerne cette étape, par pièce.","search":"Rechercher par artisan, code-barres de pièce ou du travail","machineWork":"Travail d’origine du magasin","pieceCount":"Nombre de pièces : {{count}}","loadFailed":"Impossible de charger les travaux. Actualisez la liste.","empty":"Aucun travail correspondant dans cette section.","unavailable":"Travaux indisponibles","barcodeTitle":"Étiquettes des pièces","barcodeHint":"Chaque pièce possède un code-barres distinct conservé pendant toutes les étapes du travail.","printBarcode":"Imprimer toutes les étiquettes","barcode":"Code-barres","allDone":"Toutes les étapes sont terminées","pieceBarcode":"Code-barres de la pièce","printSelection":"Pièces à imprimer","allPieces":"Toutes les pièces ({{count}})","onePiece":"Une seule pièce","pieceNumber":"Numéro de la pièce","invalidPiece":"Saisissez un numéro de pièce entre 1 et {{count}}.","printOne":"Imprimer cette pièce","matchedPiece":"Pièce correspondant au code-barres : n° {{number}}"},
+  removal: {"title":"Supprimer l’artisan","named":"Supprimer l’artisan {{name}}","badge":"Artisan supprimé","saved":"L’artisan a été retiré des listes actives de toutes ses sections.","confirm":"Supprimer cet artisan de toutes ses sections ? Son compte restera conservé dans la liste des artisans supprimés.","historyHint":"Les travaux, matières, réalisations et versements restent conservés. Vous pourrez terminer les travaux en cours et régler les sommes dues, sans confier de nouveau travail.","listLabel":"Liste des artisans","activeList":"Artisans actifs","deletedList":"Artisans supprimés","empty":"Aucun artisan supprimé dans cette section.","accountHint":"Cet artisan a été supprimé des listes actives. Ses travaux et son compte restent accessibles pour terminer les travaux en cours et régler son solde."},
   payroll: {
   pdf: {"invalidPeriod":"Choisissez une semaine ou un mois valide à partir de 1900.","pageLabel":"Page","accountAction":"Compte complet PDF","periodAction":"Exporter la période PDF","exporting":"Préparation du PDF…","failed":"Impossible de créer le PDF. Réessayez.","title":"Relevé du compte de l’artisan","overall":"Situation complète du compte","periodSummary":"Statistiques de la période","generated":"Édité le","phone":"Téléphone","weekDay":"Un jour de la semaine","weekRange":"Du {{start}} au {{end}}","yearLabel":"Année {{year}}","weekHint":"Du lundi au dimanche, selon la date réelle de réalisation ou de versement. Le solde de la semaine est un mouvement, pas le reste dû du compte.","monthHint":"Les réalisations et versements sont rattachés au mois concerné, même si le versement a eu lieu plus tard.","balance":"Solde de la période","accountHint":"Le reste dû et les avances sont calculés mois par mois, sans compenser les soldes de mois différents.","filtered":"Écritures affichées : {{kind}}. Les totaux couvrent toute la période.","page":"Page {{page}} / {{pages}}"},
   "title": "Compte de l’artisan",
@@ -105,7 +107,7 @@ export const workersFrench = {
     resumeMaterialsHint: "Reprenez l’opération interrompue. Les mouvements déjà enregistrés ne seront pas répétés.",
     materialProcessing: "Opération de stock en cours",
     detailDialog: {"overview":"Détails du travail","completions":"Réalisations","additions":"Ajouts","summary":"Suivi du travail","information":"Informations et rémunération","garmentType":"Type de pièce","orderDate":"Date de la commande","fabricBarcode":"Code-barres du coupon","records":"Opérations : {{count}}","completed":"Réalisation enregistrée","added":"Quantité ajoutée","emptyCompletions":"Aucune réalisation pour le moment","emptyAdditions":"Aucun ajout pour le moment","noAdditions":"Les quantités ajoutées à ce travail apparaîtront ici avec leur date."},
-    pieceCards: {"add":"Ajouter une autre pièce","remove":"Retirer la pièce n° {{number}}","count":"Pièces : {{count}}","pieceNumber":"Pièce n° {{number}}","totalWages":"Total des rémunérations","variableWages":"Rémunération par pièce","chooseCompleted":"Choisir les pièces réalisées","completionHint":"Seules les pièces sélectionnées sont comptées et rémunérées.","selectAll":"Tout sélectionner","clearSelection":"Tout désélectionner","completedNumbers":"Pièces réalisées : {{numbers}}"},
+    pieceCards: {"size":"Taille","chooseSize":"Choisir la taille","add":"Ajouter une autre pièce","remove":"Retirer la pièce n° {{number}}","count":"Pièces : {{count}}","pieceNumber":"Pièce n° {{number}}","totalWages":"Total des rémunérations","variableWages":"Rémunération par pièce","chooseCompleted":"Choisir les pièces réalisées","completionHint":"Seules les pièces sélectionnées sont comptées et rémunérées.","selectAll":"Tout sélectionner","clearSelection":"Tout désélectionner","completedNumbers":"Pièces réalisées : {{numbers}}"},
     materials: {"title":"Tissu et sfifa de chaque pièce","shopHint":"Ajoutez une carte par pièce, puis choisissez son tissu, son métrage, sa sfifa et sa rémunération. {{meters}} m de sfifa sont déduits pour chaque pièce.","hint":"Choisissez les matières de chaque pièce. Le tissu saisi et {{meters}} m de sfifa par pièce seront déduits à la confirmation.","refresh":"Actualiser le stock","chooseLines":"Choisissez d’abord un ordre et ses pièces.","fabric":"Type de tissu","chooseFabric":"Choisir un tissu du stock","color":"Couleur","chooseColor":"Choisir une couleur","piece":"Coupon de tissu","choosePiece":"Choisir le coupon","meters":"Mètres de tissu","sfifa":"Sfifa du stock","chooseSfifa":"Choisir la sfifa","sfifaFixed":"{{meters}} m de sfifa / pièce","fabricBalance":"Tissu demandé / disponible","sfifaBalance":"Sfifa demandée / disponible","shortage":"Le stock ne couvre pas le total demandé pour les pièces sélectionnées.","unassigned":"Sans numéro"},
     chooseGarmentType: "Choisissez les pièces", legacyGarments: "Travaux précédents sans type",
     shirts: { types: { shop: "Chemises pour la vente", client: "Chemises des clients" }, typeHints: { shop: "Production de chemises pour le magasin.", client: "Choisissez les chemises des commandes Fesla enregistrées." } },
@@ -124,6 +126,7 @@ export const workersFrench = {
     confirmDelete: "Supprimer le travail",
     increaseHistory: "Historique des quantités ajoutées",
     increaseEntry: "Reste avant l’ajout : {{before}} · Reste après : {{after}}",
+    shopTrousers: { details: "Détails des pantalons du magasin", noFabrics: "Aucun type de tissu enregistré dans le stock." },
     trousers: {
       types: { shop: "Pantalons pour la vente", client: "Pantalons des clients" },
       typeHints: { shop: "Production de pantalons destinés à la vente.", client: "Pantalons ordinaires ou qandrissi confiés pour les clients." },
@@ -223,6 +226,10 @@ export const workersFrench = {
     emptyHint: "Ajoutez le nom du produit et la quantité confiée.",
     reload: "Actualiser les travaux",
     errors: {
+    ...{"chooseShopWork":"Choisissez un travail du magasin terminé à la machine.","invalidShopSection":"Cette section ne peut pas recevoir ce travail du magasin.","shopWorkNotFound":"Le travail de la machine n’est plus disponible. Actualisez la liste.","shopMachinePending":"Ce travail n’est pas encore terminé à la machine.","shopFinishingRequired":"Confiez d’abord le travail à la finition et terminez cette étape.","shopFinishingPending":"Ce travail n’est pas encore terminé à la finition.","shopAlreadyAssigned":"Ce travail est déjà confié dans cette section.","shopHasLaterStage":"Le travail a atteint une étape suivante. Retirez d’abord cette affectation.","shopFlowFixedQuantity":"La quantité provient du travail de la machine et ne peut pas être augmentée ici."},
+      invalidShopTrouser: "Vérifiez le type, le tissu et la taille du pantalon.",
+      invalidSize: "Choisissez une taille : S, M, L, XL, XXL ou 3XL.",
+      workerDeleted: "Cet artisan a été supprimé. Aucun nouveau travail ni ajout de quantité ne peut lui être confié.", deleteFailed: "Impossible de supprimer l’artisan. Réessayez.",
       chooseCompletedPieces: "Sélectionnez des pièces non encore réalisées correspondant à la quantité.",
       chooseMaterials: "Indiquez le tissu, ses mètres et la sfifa de chaque pièce.",
       chooseStockFabric: "Choisissez le tissu, la couleur et le coupon dans le stock.",
@@ -299,6 +306,7 @@ export const workersFrench = {
   noResults: "Aucun artisan ne correspond à votre recherche.",
   retry: "Réessayer",
   errors: {
+      workerDeleted: "Cet artisan a été supprimé. Aucun nouveau travail ni ajout de quantité ne peut lui être confié.", deleteFailed: "Impossible de supprimer l’artisan. Réessayez.",
     required: "Ce champ est obligatoire.",
     invalidText: "Saisissez un texte valide (160 caractères maximum pour le nom et 40 pour le téléphone).",
     invalidPhone: "Saisissez un téléphone valide de 6 à 20 chiffres.",
@@ -315,6 +323,8 @@ export const workersFrench = {
 };
 
 export const workersArabic = {
+  shopFlow: {"progress":"مراحل إنجاز العمل","completed":"منجز","inProgress":"قيد الإنجاز","notAssigned":"لم يُسند بعد","chooseWork":"اختر عملًا من أعمال الآلة","refresh":"تحديث القائمة","selectionHint":"يُنقل العمل كاملًا بعد إنجاز المرحلة السابقة. الأجرة التي ستحددها تخص هذه المرحلة لكل قطعة.","search":"بحث باسم العامل أو باركود القطعة أو العمل","machineWork":"عمل المحل الأصلي","pieceCount":"عدد القطع: {{count}}","loadFailed":"تعذر تحميل أعمال المحل. أعد تحديث القائمة.","empty":"لا توجد أعمال مطابقة في هذا القسم.","unavailable":"أعمال غير متاحة للإسناد","barcodeTitle":"ملصقات باركود القطع","barcodeHint":"لكل قطعة باركود مستقل يرافقها خلال مراحل إنجاز العمل.","printBarcode":"طباعة جميع الملصقات","barcode":"الباركود","allDone":"اكتمل العمل في جميع المراحل","pieceBarcode":"باركود القطعة","printSelection":"القطع المطلوب طباعتها","allPieces":"جميع القطع ({{count}})","onePiece":"قطعة واحدة","pieceNumber":"رقم القطعة","invalidPiece":"أدخل رقم قطعة بين 1 و{{count}}.","printOne":"طباعة ملصق القطعة","matchedPiece":"القطعة المطابقة للباركود: رقم {{number}}"},
+  removal: {"title":"حذف العامل","named":"حذف العامل {{name}}","badge":"عامل محذوف","saved":"تم حذف العامل من القوائم النشطة في جميع أقسامه.","confirm":"هل تريد حذف هذا العامل من جميع أقسامه؟ سيبقى حسابه محفوظًا في قائمة العمال المحذوفين.","historyHint":"تبقى الأعمال والمواد والإنجازات والدفعات محفوظة. يمكنك إتمام الأعمال الجارية وتسوية المستحقات، دون إسناد أعمال جديدة للعامل.","listLabel":"قائمة العمال","activeList":"العمال النشطون","deletedList":"العمال المحذوفون","empty":"لا يوجد عمال محذوفون في هذا القسم.","accountHint":"هذا العامل محذوف من القوائم النشطة. تبقى أعماله وحسابه متاحين لإتمام الأعمال الجارية وتسوية المستحقات."},
   payroll: {
   pdf: {"invalidPeriod":"اختر أسبوعًا أو شهرًا صحيحًا ابتداءً من سنة ١٩٠٠.","pageLabel":"صفحة","accountAction":"كشف الحساب الكامل PDF","periodAction":"تصدير الفترة PDF","exporting":"جارٍ إعداد PDF…","failed":"تعذر إنشاء ملف PDF. حاول مجددًا.","title":"كشف حساب العامل","overall":"الوضع الكامل لحساب العامل","periodSummary":"إحصائيات الفترة","generated":"تاريخ الإصدار","phone":"الهاتف","weekDay":"اختر يومًا من الأسبوع","weekRange":"من {{start}} إلى {{end}}","yearLabel":"سنة {{year}}","weekHint":"من الاثنين إلى الأحد، بحسب تاريخ الإنجاز أو الصرف الفعلي. صافي حركة الأسبوع لا يمثّل المتبقي في الحساب.","monthHint":"تُنسب الإنجازات والدفعات إلى شهر الاستحقاق المحدد، حتى إن صُرفت الدفعة لاحقًا.","balance":"صافي حركة الفترة","accountHint":"يُحسب المتبقي والتسبيقات لكل شهر على حدة، دون خصم أرصدة أشهر من أشهر أخرى.","filtered":"السجلات المعروضة: {{kind}}. الإجماليات تشمل الفترة كاملة.","page":"صفحة {{page}} / {{pages}}"},
   "title": "حساب العامل",
@@ -421,7 +431,7 @@ export const workersArabic = {
     resumeMaterialsHint: "استكمل العملية التي توقفت. لن تتكرر حركات المخزون التي حُفظت سابقًا.",
     materialProcessing: "عملية المخزون قيد الاستكمال",
     detailDialog: {"overview":"تفاصيل العمل","completions":"سجل الإنجاز","additions":"سجل الزيادات","summary":"ملخص العمل","information":"معلومات العمل والأجرة","garmentType":"نوع القطعة","orderDate":"تاريخ الطلب","fabricBarcode":"باركود قطعة الثوب","records":"عدد العمليات: {{count}}","completed":"إنجاز مسجّل","added":"كمية مضافة","emptyCompletions":"لا توجد إنجازات بعد","emptyAdditions":"لا توجد زيادات بعد","noAdditions":"ستظهر هنا الكميات المضافة إلى هذا العمل مع تاريخ كل إضافة."},
-    pieceCards: {"add":"إضافة قطعة أخرى","remove":"حذف القطعة رقم {{number}}","count":"عدد القطع: {{count}}","pieceNumber":"القطعة رقم {{number}}","totalWages":"مجموع أجور القطع","variableWages":"أجرة مستقلة لكل قطعة","chooseCompleted":"اختر القطع المنجزة","completionHint":"تُحتسب أجرة القطع التي تحددها فقط.","selectAll":"تحديد الكل","clearSelection":"إلغاء التحديد","completedNumbers":"القطع المنجزة: {{numbers}}"},
+    pieceCards: {"size":"المقاس","chooseSize":"اختر المقاس","add":"إضافة قطعة أخرى","remove":"حذف القطعة رقم {{number}}","count":"عدد القطع: {{count}}","pieceNumber":"القطعة رقم {{number}}","totalWages":"مجموع أجور القطع","variableWages":"أجرة مستقلة لكل قطعة","chooseCompleted":"اختر القطع المنجزة","completionHint":"تُحتسب أجرة القطع التي تحددها فقط.","selectAll":"تحديد الكل","clearSelection":"إلغاء التحديد","completedNumbers":"القطع المنجزة: {{numbers}}"},
     materials: {"title":"الثوب والسفيفة لكل قطعة","shopHint":"أضف بطاقة لكل قطعة، ثم اختر ثوبها وأمتاره والسفيفة المناسبة وأجرة العامل. يُخصم {{meters}} أمتار من السفيفة لكل قطعة عند التأكيد.","hint":"اختر مواد كل قطعة. عند التأكيد، يُخصم الثوب حسب الأمتار المحددة و{{meters}} أمتار من السفيفة لكل قطعة.","refresh":"تحديث المخزون","chooseLines":"اختر طلب الفصلة وقطعه أولًا.","fabric":"نوع الثوب","chooseFabric":"اختيار ثوب من المخزون","color":"اللون","chooseColor":"اختيار اللون","piece":"قطعة الثوب","choosePiece":"اختيار قطعة الثوب","meters":"أمتار الثوب المطلوبة","sfifa":"السفيفة من المخزون","chooseSfifa":"اختيار السفيفة","sfifaFixed":"{{meters}} أمتار سفيفة لكل قطعة","fabricBalance":"الثوب المطلوب / المتاح","sfifaBalance":"السفيفة المطلوبة / المتاحة","shortage":"المخزون لا يكفي لمجموع الأمتار المطلوبة للقطع المختارة.","unassigned":"غير مرقمة"},
     chooseGarmentType: "اختر نوع القطع", legacyGarments: "أعمال سابقة دون نوع محدد",
     shirts: { types: { shop: "أقمصة البيع", client: "أقمصة الزبائن" }, typeHints: { shop: "إنتاج الأقمصة المخصّصة للبيع في المحل.", client: "اختر الأقمصة من طلبات الفصلة المسجّلة." } },
@@ -440,6 +450,7 @@ export const workersArabic = {
     confirmDelete: "تأكيد حذف العمل",
     increaseHistory: "سجل الزيادات",
     increaseEntry: "المتبقي قبل الزيادة: {{before}} · المتبقي بعدها: {{after}}",
+    shopTrousers: { details: "تفاصيل سراويل المحل", noFabrics: "لا توجد أنواع أثواب مسجلة في المخزون." },
     trousers: {
       types: { shop: "سراويل البيع", client: "سراويل الزبائن" },
       typeHints: { shop: "إنتاج السراويل المخصّصة للبيع في المحل.", client: "سراويل الزبائن من النوع العادي أو القندريسي." },
@@ -539,6 +550,10 @@ export const workersArabic = {
     emptyHint: "أضف اسم المنتج والكمية التي سلّمتها للعامل.",
     reload: "تحديث الأعمال",
     errors: {
+    ...{"chooseShopWork":"اختر عملًا من أعمال المحل المنجزة في الآلة.","invalidShopSection":"هذا القسم لا يقبل إسناد عمل المحل المختار.","shopWorkNotFound":"لم يعد عمل الآلة متاحًا. حدّث القائمة.","shopMachinePending":"العمل لم يُنجز بعد في الآلة.","shopFinishingRequired":"يجب إسناد العمل إلى التصفية وإنجازه أولًا.","shopFinishingPending":"العمل لم يُنجز بعد في التصفية.","shopAlreadyAssigned":"هذا العمل مسند بالفعل في هذا القسم.","shopHasLaterStage":"انتقل العمل إلى مرحلة لاحقة. احذف إسناد المرحلة اللاحقة أولًا.","shopFlowFixedQuantity":"تُؤخذ الكمية من عمل الآلة ولا يمكن زيادتها في هذه المرحلة."},
+      invalidShopTrouser: "تحقق من نوع السروال والثوب والمقاس.",
+      invalidSize: "اختر أحد المقاسات: S أو M أو L أو XL أو XXL أو 3XL.",
+      workerDeleted: "هذا العامل محذوف؛ لا يمكن إسناد أعمال جديدة له أو زيادة كمية أعماله.", deleteFailed: "تعذر حذف العامل. حاول مجددًا.",
       chooseCompletedPieces: "اختر القطع التي أُنجزت ولم تُسجّل سابقًا.",
       chooseMaterials: "حدّد الثوب وأمتاره والسفيفة لكل قطعة مختارة.",
       chooseStockFabric: "اختر نوع الثوب واللون والقطعة من المخزون.",
@@ -615,6 +630,7 @@ export const workersArabic = {
   noResults: "لا يوجد عمّال مطابقون للبحث.",
   retry: "إعادة المحاولة",
   errors: {
+      workerDeleted: "هذا العامل محذوف؛ لا يمكن إسناد أعمال جديدة له أو زيادة كمية أعماله.", deleteFailed: "تعذر حذف العامل. حاول مجددًا.",
     required: "هذا الحقل مطلوب.",
     invalidText: "أدخل نصًا صحيحًا (160 حرفًا كحد أقصى للاسم، و40 لرقم الهاتف).",
     invalidPhone: "أدخل رقم هاتف صحيحًا يتكون من 6 إلى 20 رقمًا.",

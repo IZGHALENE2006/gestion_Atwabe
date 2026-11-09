@@ -1,7 +1,8 @@
+import { validateShopFlowSelection } from './workerShopFlow.js';
 import { validateWorkerSfifa } from './workerSfifa.js';
 import { TAILORING_GARMENT_TYPES, TAILORING_SFIFA_GARMENT_TYPES, tailoringGarmentType, tailoringMoneyCents } from "./tailoring.js";
 import { WORKER_CATEGORIES } from "./workers.js";
-import { usesWorkerMaterials, workerHasPieceWages, workerMaterialRows, workerPieceWageCents, validateWorkerPieceCompletion, validateShopWorkerMaterials, validateWorkerMaterialSelection } from './workerMaterials.js';
+import { usesWorkerMaterials, workerHasPieceWages, workerMaterialRows, workerPieceWageCents, validateWorkerPieceCompletion, validateShopWorkerMaterials, validateWorkerMaterialSelection, WORKER_GARMENT_SIZES } from './workerMaterials.js';
 import { SFIFA_STOCK_SCALE, sfifaQuantityUnits } from "./sfifaStock.js";
 
 export const WORK_TRACKING_CATEGORIES = [...WORKER_CATEGORIES];
@@ -42,6 +43,7 @@ export function remainingWorkQuantity(work) {
 export const nextWorkSequence = work => (work.completions?.length || 0) + (work.additions?.length || 0) + 1;
 
 export function validateWorkerIncrease(input, work, { checkLimits = true } = {}) {
+  if (work.shopFlow) throw Object.assign(new Error('invalidWork'), { fields: { quantity: 'shopFlowFixedQuantity' } });
   if (work.materialOperations?.length && workerWorkType(work) === 'shop' && input?.materials === undefined) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'chooseMaterials' } });
   let quantity, lineIds;
   if (work.tailoring && work.category !== "sfifa") {
@@ -97,6 +99,7 @@ function orderSelection(input) {
 }
 
 export function validateWorkerWork(input, { allowLegacyTrouserClient = false } = {}) {
+  if (input?.shopTrouser !== undefined && (input.category !== 'trousers' || input.workType !== 'shop')) throw Object.assign(new Error('invalidWork'), { fields: { shopTrouser: 'invalidShopTrouser' } });
   if (input?.materials !== undefined && (input.category !== 'machine' || input.workType !== 'shop')) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'invalidMaterialSection' } });
   if (input?.workType !== undefined && !WORK_TYPES.includes(input.workType)) throw Object.assign(new Error("invalidWork"), { fields: { workType: "invalidWorkType" } });
   const withWage = result => {
@@ -107,7 +110,12 @@ export function validateWorkerWork(input, { allowLegacyTrouserClient = false } =
     return { ...result, unitWage: cents / 100 };
   };
   const type = input?.workType === undefined ? {} : { workType: input.workType };
-  if (input?.workType === "client" && input.category !== "sfifa" && !(input.category === "trousers" && allowLegacyTrouserClient)) {
+  if (input?.shopOriginId !== undefined || input?.workType === 'shop' && ['finishing', 'mesbanto'].includes(input.category) && input.garmentType !== undefined) {
+    const selection = validateShopFlowSelection(input), cents = tailoringMoneyCents(input.unitWage);
+    if (cents === null) throw Object.assign(new Error('invalidWork'), { fields: { unitWage: 'invalidWage' } });
+    return { ...selection, unitWage: cents / 100 };
+  }
+  if (input?.workType === "client" && input.category !== "sfifa" && (input.category !== "brim" || input.orderId) && !(input.category === "trousers" && allowLegacyTrouserClient)) {
     if (!WORK_TRACKING_CATEGORIES.includes(input.category)) throw Object.assign(new Error("invalidWork"), { fields: { category: "invalidWorkCategory" } });
     const selection = orderSelection(input);
     return withWage({ workType: "client", ...selection, quantity: selection.lineIds.length, category: input.category, ...(input.materials !== undefined ? { materials: validateWorkerMaterialSelection(input.materials, selection.lineIds) } : {}) });
@@ -125,9 +133,19 @@ export function validateWorkerWork(input, { allowLegacyTrouserClient = false } =
   }
   const fields = {};
   const isTrouserClient = input?.category === "trousers" && input.workType === "client";
+  const isShopTrouser = input?.category === "trousers" && input.workType === "shop" && input.shopTrouser !== undefined;
+  let shopTrouser;
+  if (isShopTrouser) {
+    const fabricId = typeof input.shopTrouser?.fabricId === 'string' ? input.shopTrouser.fabricId.toLowerCase() : '';
+    const size = typeof input.shopTrouser?.size === 'string' ? input.shopTrouser.size.trim().toUpperCase() : '';
+    if (!/^[a-f\d]{24}$/.test(fabricId)) fields['shopTrouser.fabricId'] = 'chooseStockFabric';
+    if (!WORKER_GARMENT_SIZES.includes(size)) fields['shopTrouser.size'] = 'invalidSize';
+    if (!TROUSER_TYPES.includes(input.trouserType)) fields.trouserType = 'invalidTrouserType';
+    shopTrouser = { fabricId, size };
+  }
   if (isTrouserClient && !TROUSER_TYPES.includes(input.trouserType)) fields.trouserType = "invalidTrouserType";
   const suppliedName = typeof input?.productName === "string" ? input.productName.trim() : "";
-  const productName = suppliedName || (input?.category === "brim" && input.workType !== "client" ? "Brim" : "");
+  const productName = isShopTrouser ? 'Trousers' : suppliedName || (input?.category === "brim" ? "Brim" : "");
   if (!productName) fields.productName = "required";
   else if (productName.length > 160 || [...productName].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)) fields.productName = isTrouserClient ? "invalidClientName" : "invalidProductName";
   const quantity = parseWorkQuantity(input?.quantity);
@@ -137,7 +155,7 @@ export function validateWorkerWork(input, { allowLegacyTrouserClient = false } =
   const garmentType = input.category === "machine" && input.garmentType !== undefined ? input.garmentType : undefined;
   if (garmentType !== undefined && !TAILORING_SFIFA_GARMENT_TYPES.includes(garmentType)) throw Object.assign(new Error("invalidWork"), { fields: { garmentType: "invalidGarmentType" } });
   if (input.materials !== undefined && !usesWorkerMaterials(input.category, input.workType, garmentType)) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'invalidMaterialSection' } });
-  return withWage({ productName, quantity, category: input.category, ...type, ...(garmentType ? { garmentType } : {}), ...(isTrouserClient ? { trouserType: input.trouserType } : {}), ...(input.materials !== undefined ? { materials: validateShopWorkerMaterials(input.materials, quantity) } : {}) });
+  return withWage({ productName, quantity, category: input.category, ...type, ...(garmentType ? { garmentType } : {}), ...(isTrouserClient || isShopTrouser ? { trouserType: input.trouserType } : {}), ...(shopTrouser ? { shopTrouser } : {}), ...(input.materials !== undefined ? { materials: validateShopWorkerMaterials(input.materials, quantity) } : {}) });
 }
 
 export function validateWorkerCompletion(input, remaining, category, work) {

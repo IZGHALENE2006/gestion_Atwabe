@@ -1,7 +1,8 @@
+import useSearchTarget from "../../hooks/useSearchTarget.js";
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { IoAddOutline, IoChevronDownOutline, IoCreateOutline, IoLayersOutline, IoPrintOutline, IoSearchOutline, IoTrashOutline, IoRemoveCircleOutline, IoTimeOutline } from "react-icons/io5";
 import Barcode from "react-barcode";
@@ -17,11 +18,13 @@ import FabricPhoto from "./FabricPhoto.jsx";
 import FabricCatalogButton from "./FabricCatalogButton.jsx";
 
 export default function Atwabe() {
+  const matchesSearchTarget = useSearchTarget();
   const { t, i18n } = useTranslation();
   const token = useSelector((state) => state.LoginAdmin.token);
   const [result, setResult] = useState({ token: null, fabrics: [], permissions: {}, loading: true, error: "" });
   const [attempt, setAttempt] = useState(0);
-  const [search, setSearch] = useState("");
+  const [params] = useSearchParams();
+  const [search, setSearch] = useState(params.get("piece") || "");
   const [editor, setEditor] = useState(null);
   const [expanded, setExpanded] = useState(null);
   const [labels, setLabels] = useState(null);
@@ -43,8 +46,8 @@ export default function Atwabe() {
   }, [token, attempt]);
 
   const state = result.token === token ? result : { fabrics: [], permissions: {}, loading: true, error: "" };
-  const visible = filterFabrics(state.fabrics, search);
-  const pieceMatches = findFabricPieces(state.fabrics, search);
+  const visible = filterFabrics(state.fabrics.filter(matchesSearchTarget), search);
+  const pieceMatches = findFabricPieces(state.fabrics.filter(matchesSearchTarget), search);
   const totals = fabricTotals(state.fabrics.flatMap((fabric) => fabric.colors));
   const format = (value) => Number(value).toLocaleString(i18n.language === "ar" ? "ar-MA" : "fr-MA", { maximumFractionDigits: 3 });
   const usedBarcodes = state.fabrics.flatMap((fabric) => fabric.colors.flatMap((color) => color.pieces.map((piece) => piece.barcode)));

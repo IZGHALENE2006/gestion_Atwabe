@@ -14,10 +14,12 @@ import { feslaArabic } from "./fesla.js";
 import { workersArabic } from "./workers.js";
 import { sfifaStockArabic } from "./sfifaStock.js";
 
+import { globalSearchArabic } from './globalSearch.js';
 const resources = {
   fr: { translation: french },
   ar: {
     translation: {
+      globalSearch: globalSearchArabic,
       creditDocuments: creditDocumentsArabic,
       employeePayroll: employeePayrollArabic,
       employeePermissions: employeePermissionsArabic,

@@ -1,4 +1,5 @@
-import { TAILORING_MEASUREMENT_FIELDS } from "../../../shared/tailoringMeasurements.js";
+import { TAILORING_MEASUREMENT_NOTES_LIMIT } from "../../../shared/tailoringMeasurements.js";
+import { tailoringMeasurementText } from "./tailoringMeasurementText.js";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { IoTrashOutline } from "react-icons/io5";
@@ -34,10 +35,9 @@ export default function TailoringOrderItemForm({ costPreview, garmentType, item,
     {trousers && <fieldset disabled={disabled}><Field index={index} name="trouserType" label={t("fesla.trouserType")} error={fields.trouserType}><select {...props("trouserType")} value={item.trouserType} onChange={event => patch({ trouserType: event.target.value })} required>{TAILORING_TROUSER_TYPES.map(type => <option key={type} value={type}>{t("fesla.trouserTypes." + type)}</option>)}</select></Field></fieldset>}
     <fieldset disabled={disabled}><Field index={index} name="price" label={garmentText("garmentPrice") + " (" + t("fesla.currency") + ")"} error={fields.price}><input {...props("price")} type="text" inputMode="decimal" dir="ltr" value={item.price} onChange={event => patch({ price: event.target.value })} placeholder="0.00" maxLength={12} required /></Field></fieldset>
     <fieldset disabled={disabled} data-tailoring-measurements className="min-w-0 rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900 dark:bg-blue-950/20">
-      <legend className="px-2 text-sm font-bold text-blue-800 dark:text-blue-200">{t("fesla.measurements.title")} ({t("fesla.measurements.unit")})</legend>
-      <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">{t("fesla.measurements.hint")}</p>
-      <div className="grid min-w-0 grid-cols-2 items-end gap-4 sm:grid-cols-4">{TAILORING_MEASUREMENT_FIELDS.map(key => <Field key={key} index={index} name={"measurements." + key} label={t("fesla.measurements.fields." + key)} error={fields["measurements." + key]}><input {...props("measurements." + key)} type="text" inputMode="decimal" dir="ltr" maxLength={10} value={item.measurements?.[key] ?? ""} onChange={event => patch({ measurements: { ...item.measurements, [key]: event.target.value } })} /></Field>)}</div>
-      {fields.measurements && <p role="alert" className="mt-2 text-xs text-rose-600 dark:text-rose-400">{t("fesla.errors." + fields.measurements)}</p>}
+      <legend className="px-2 text-sm font-bold text-blue-800 dark:text-blue-200">{t("fesla.measurements.title")}</legend>
+      <p className="mb-3 text-xs leading-6 text-slate-500 dark:text-slate-400">{t("fesla.measurements.hint")}</p>
+      <Field index={index} name="measurementNotes" label={t("fesla.measurements.notesLabel")} error={fields.measurementNotes}><textarea {...props("measurementNotes")} data-tailoring-measurement-notes dir="auto" rows={6} maxLength={TAILORING_MEASUREMENT_NOTES_LIMIT} style={{ resize: "vertical", minHeight: 160 }} value={tailoringMeasurementText(item, t)} placeholder={t("fesla.measurements.placeholder")} onChange={event => patch({ measurementNotes: event.target.value, measurements: undefined })} /></Field>
     </fieldset>
       <fieldset disabled={saving} className="space-y-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
         <legend className="px-2 text-sm font-bold">{t("fesla.fabricType")}</legend>

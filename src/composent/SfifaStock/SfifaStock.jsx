@@ -1,3 +1,4 @@
+import useSearchTarget from "../../hooks/useSearchTarget.js";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { Navigate } from "react-router-dom";
@@ -17,13 +18,14 @@ const emptyFilters = { width: "", family: "", code: "", barcode: "" };
 const tones = { total: "bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300", thick: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300", thin: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" };
 
 export default function SfifaStock() {
+  const matchesSearchTarget = useSearchTarget();
   const { t, i18n } = useTranslation();
   const token = useSelector(state => state.LoginAdmin.token);
   const [result, setResult] = useState(null), [attempt, setAttempt] = useState(0), [editor, setEditor] = useState(null), [status, setStatus] = useState(null);
   const [filters, setFilters] = useState(emptyFilters);
   const state = result?.token === token && result.attempt === attempt ? result : { items: [], permissions: {}, loading: true, error: "" };
   const totals = sfifaStockTotals(state.items);
-  const visible = filterSfifaStock(state.items, filters).sort((a, b) => SFIFA_STOCK_WIDTHS.indexOf(a.width) - SFIFA_STOCK_WIDTHS.indexOf(b.width) || a.family.localeCompare(b.family) || (a.code ?? Infinity) - (b.code ?? Infinity));
+  const visible = filterSfifaStock(state.items.filter(matchesSearchTarget), filters).sort((a, b) => SFIFA_STOCK_WIDTHS.indexOf(a.width) - SFIFA_STOCK_WIDTHS.indexOf(b.width) || a.family.localeCompare(b.family) || (a.code ?? Infinity) - (b.code ?? Infinity));
   useEffect(() => {
     if (!token) return;
     const controller = new AbortController();

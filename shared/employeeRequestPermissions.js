@@ -7,6 +7,7 @@ export function employeeCanRequest(user, method, rawPath, input) {
   const read = method === "GET" || method === "HEAD", allowed = (...keys) => keys.some(key => employeeModules(user).includes(key));
   const can = (module, operation) => canEmployeeOperation("Employe", user, module, operation);
   const any = (module, ...operations) => operations.some(operation => can(module, operation));
+  if (path === "/search") return read;
   if (path === "/user/getme" || path === "/api/admin/updatepassword") return true;
   if (path.startsWith("/employe") || path.startsWith("/api/admin") || path.startsWith("/fournisseur")) return false;
   if (path.startsWith("/product")) {
@@ -38,10 +39,12 @@ export function employeeCanRequest(user, method, rawPath, input) {
     if (path.endsWith("/cost-settings") && method === "PUT") return can("tailoring", "settings");
     if (path.endsWith("/payments") && method === "POST") return can("tailoring", "payment");
     if (path.endsWith("/deliver") && method === "POST") return can("tailoring", "deliver");
+    if (path.endsWith("/cancel") && method === "POST") return can("tailoring", "cancel");
     return path === "/tailoring-orders" && method === "POST" ? can("tailoring", "add") && (user?.operationPermissions === undefined || !(Number(body.paidAmount) > 0) || can("tailoring", "payment")) : method === "PUT" && can("tailoring", "update");
   }
   if (path.startsWith("/tailoring-workers")) {
-    if (read) return path.endsWith("/payroll") ? any("workers", "payroll", "pay", "advance", "download") : path.endsWith("/orders") || path.endsWith("/material-options") ? any("workers", "assign", "increase") : allowed("workers");
+    if (read && path.endsWith("/shop-options")) return can("workers", "assign");
+    if (read) return path.endsWith("/payroll") ? any("workers", "payroll", "pay", "advance", "download") : path.endsWith("/orders") || path.endsWith("/material-options") || path.endsWith("/fabric-options") ? any("workers", "assign", "increase") : allowed("workers");
     if (path.endsWith("/payments") && method === "POST") return can("workers", body.type === "advance" ? "advance" : "pay");
     if (path.endsWith("/completions") && method === "POST") return can("workers", "complete");
     if (path.endsWith("/increases") && method === "POST") return can("workers", "increase");
@@ -49,6 +52,7 @@ export function employeeCanRequest(user, method, rawPath, input) {
     if (path.endsWith("/materials/resume") && method === "POST") return can("workers", "resume");
     if (path.endsWith("/work") && method === "POST") return can("workers", "assign");
     if (/\/work\/.+/.test(path) && method === "DELETE") return can("workers", "deleteWork");
+    if (/^\/tailoring-workers\/[^/]+$/.test(path) && method === "DELETE") return can("workers", "delete");
     return path === "/tailoring-workers" && method === "POST" ? can("workers", "add") : method === "PUT" && can("workers", "update");
   }
   if (path.startsWith("/sfifa-stock")) {

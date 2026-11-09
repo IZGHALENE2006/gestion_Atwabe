@@ -1,3 +1,4 @@
+import useSearchTarget from "../../hooks/useSearchTarget.js";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { Navigate } from "react-router-dom";
@@ -20,6 +21,7 @@ function ClientType({ type }) {
 }
 
 export default function Clients() {
+  const matchesSearchTarget = useSearchTarget();
   const { t, i18n } = useTranslation();
   const token = useSelector((state) => state.LoginAdmin.token);
   const [result, setResult] = useState({ token: null, clients: [], permissions: {}, loading: true, error: "" });
@@ -40,7 +42,7 @@ export default function Clients() {
     return () => controller.abort();
   }, [token, attempt]);
   const state = result.token === token ? result : { clients: [], permissions: {}, loading: true, error: "" };
-  const visible = filterClients(state.clients, search, type);
+  const visible = filterClients(state.clients.filter(matchesSearchTarget), search, type);
   const retry = () => { setResult((current) => ({ ...current, loading: true, error: "" })); setAttempt((value) => value + 1); };
   const edit = (client) => { setEditor({ client, token }); setStatus(""); };
   const saved = (client) => {

@@ -13,7 +13,7 @@ import { createTailoringReceipt, publicTailoringReceipt, tailoringPaymentReferen
 import { saveTailoringPhoto, deleteTailoringPhoto, tailoringPhotoPath } from "../utils/tailoringPhotos.js";
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
-const publicPayment = (order, receipt, index) => ({ amount: receipt.amount, paidAt: receipt.paidAt, reference: tailoringPaymentReference(order, index), ...(receipt.document ? { document: publicTailoringReceipt(receipt.document) } : {}) });
+const publicPayment = (order, receipt, index) => ({ amount: receipt.amount, paidAt: receipt.paidAt, reference: tailoringPaymentReference(order, index), ...(receipt.actor ? { actor: receipt.actor } : {}), ...(receipt.document ? { document: publicTailoringReceipt(receipt.document) } : {}) });
 const publicOrder = (document) => {
   const { photo, items: _items, requestId: _requestId, requestFingerprint: _fingerprint, paymentReceipts = [], deliveredBy: _deliveredBy, ...order } = typeof document.toObject === "function" ? document.toObject() : document;
   const totalPrice = order.totalPrice ?? 0, paidAmount = order.paidAmount ?? 0;
@@ -143,6 +143,7 @@ export async function updateTailoringOrder(req, res) {
     const order = await TailoringOrder.findOne({ _id: req.params.id, idAdmin });
     if (!order) throw fail("notFound", 404);
     checkActionVersion(req, order);
+    if (order.cancelledAt) throw fail("orderCancelled", 409);
     if (![undefined, false, true, "false", "true"].includes(req.body.removeImage)) throw fail("invalidOrder", 400);
     const previous = orderPhotos(order);
     const input = await attachPhotos(req, await orderInput(req, idAdmin, order), order, createdPhotos);
@@ -199,6 +200,7 @@ export async function addTailoringPayment(req, res) {
       if (tailoringMoneyCents(receipt.amount) !== amount) throw fail("requestConflict", 409);
       return res.json({ ...publicOrder(order), paymentReceipt: publicPayment(order, receipt, order.paymentReceipts.indexOf(receipt)) });
     }
+    if (order.cancelledAt) throw fail("orderCancelled", 409);
     checkActionVersion(req, order);
     const paid = tailoringMoneyCents(order.paidAmount ?? 0), total = tailoringMoneyCents(order.totalPrice ?? 0);
     if (paid === null || total === null) throw fail("invalidPayment", 400);
@@ -206,7 +208,7 @@ export async function addTailoringPayment(req, res) {
     order.paidAmount = (paid + amount) / 100;
     const paidAt = new Date();
     const document = createTailoringReceipt(order, { kind: 'payment', reference: tailoringPaymentReference(order, order.paymentReceipts.length), issuedAt: paidAt, paymentAmount: amount / 100 });
-    order.paymentReceipts.push({ requestId, amount: amount / 100, paidAt, createdBy: req.tailoringAccess.createdBy, document });
+    order.paymentReceipts.push({ requestId, amount: amount / 100, paidAt, createdBy: req.tailoringAccess.createdBy, actor: req.tailoringAccess.creator, document });
     // Money and its receipt commit together using the order's optimistic version.
     await order.save();
     res.json({ ...publicOrder(order), paymentReceipt: publicPayment(order, order.paymentReceipts.at(-1), order.paymentReceipts.length - 1) });
@@ -215,11 +217,28 @@ export async function addTailoringPayment(req, res) {
 export async function deliverTailoringOrder(req, res) {
   try {
     const order = await actionOrder(req);
+    if (order.cancelledAt) throw fail("orderCancelled", 409);
     if (order.deliveredAt) return res.json(publicOrder(order));
     checkActionVersion(req, order);
     order.deliveryFinancials = createTailoringDeliveryFinancials(order);
     order.deliveredAt = new Date();
     order.deliveredBy = req.tailoringAccess.createdBy;
+    await order.save();
+    res.json(publicOrder(order));
+  } catch (error) { sendError(res, error, "saveFailed"); }
+}
+
+export async function cancelTailoringOrder(req, res) {
+  try {
+    const order = await actionOrder(req);
+    // A lost response or repeated click must not replace the original audit entry.
+    if (order.cancelledAt) return res.json(publicOrder(order));
+    checkActionVersion(req, order);
+    if (!order.deliveredAt) throw fail("orderNotDelivered", 409);
+    order.deliveryFinancials ||= createTailoringDeliveryFinancials(order);
+    order.cancelledAt = new Date();
+    order.cancelledBy = req.tailoringAccess.creator;
+    // Keep delivery figures and payments; cancellation excludes them from profits.
     await order.save();
     res.json(publicOrder(order));
   } catch (error) { sendError(res, error, "saveFailed"); }

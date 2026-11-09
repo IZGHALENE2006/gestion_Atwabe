@@ -1,3 +1,4 @@
+import useSearchTarget from "../../hooks/useSearchTarget.js";
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import {
@@ -39,6 +40,7 @@ function Categories() {
     dispatch(GetAllProduct());
   }, [dispatch]);
 
+  const matchesSearchTarget = useSearchTarget();
   const [openAdd, setOpenAdd] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openUpdate, setOpenUpdate] = useState(false);
@@ -47,7 +49,7 @@ function Categories() {
   const [viewMode, setViewMode] = useState("grid");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredCategories = Category.filter((cat) =>
+  const filteredCategories = Category.filter(matchesSearchTarget).filter((cat) =>
     String(cat.name || "")
       .toLowerCase()
       .includes(searchTerm.toLowerCase())

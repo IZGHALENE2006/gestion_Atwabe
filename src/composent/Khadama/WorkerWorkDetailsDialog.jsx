@@ -1,3 +1,5 @@
+import { shopPieceBarcode } from '../../../shared/workerShopFlow.js';
+import WorkerShopFlowInfo from './WorkerShopFlowInfo.jsx';
 import { workerSfifaFamilyLabel, workerSfifaNumberLabel } from './workerSfifaLabels.js';
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -18,7 +20,7 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
   const date = value => new Date(value).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" });
   const day = value => new Date(value.length === 10 ? `${value}T12:00:00` : value).toLocaleDateString(locale, { dateStyle: "medium" });
   const isSfifa = category === "sfifa", pieceWages = workerHasPieceWages(work);
-  const completions = work.completions || [], additions = work.additions || [], materials = work.materials || [];
+  const completions = work.completions || [], additions = work.additions || [], materials = work.shopFlow?.materials || work.materials || [];
   const completedIds = new Set(completions.flatMap(event => event.lineIds || []));
   const earned = completions.reduce((sum, event) => sum + Math.round((event.earningAmount || 0) * 100), 0) / 100;
   const unpriced = completions.filter(event => event.earningAmount === undefined).length;
@@ -70,6 +72,8 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
           {["quantity", "completedQuantity", "remainingQuantity"].map(key => <div key={key} data-detail-stat={key} className={`work-detail-stat work-detail-stat-${key}`}><dt>{t(`workers.work.${isSfifa ? "sfifa" : "design"}.${key}`)}</dt><dd>{quantity(work[key])}</dd></div>)}
           <div className="work-detail-stat work-detail-stat-earned" data-detail-stat="earned"><dt><IoWalletOutline aria-hidden="true" />{t("workers.payroll.earnedShort")}</dt><dd>{work.unitWage === undefined && !pieceWages && !completions.some(event => event.earningAmount !== undefined) ? <span className="work-detail-unpriced">{t("workers.payroll.unpriced")}</span> : <bdi>{money(earned)}</bdi>}</dd></div>
         </dl>
+        {work.shopBarcode && <bdi dir="ltr" className="work-detail-barcode shop-flow-barcode">{work.shopBarcode}</bdi>}
+        <WorkerShopFlowInfo flow={work.flow} />
         {unpriced > 0 && <p className="work-detail-note">{t("workers.payroll.unpricedHint", { count: unpriced })}</p>}
         <div className="work-detail-progress"><div><span>{t("workers.work.design.progress")}</span><strong><bdi>{number(Math.round(progress))}%</bdi></strong></div><progress max="100" value={progress} aria-label={t("workers.work.design.progress")} /></div>
         <section className="work-detail-section">
@@ -78,6 +82,7 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
             {field(t("workers.work.assignedDate"), <time dateTime={work.createdAt}>{date(work.createdAt)}</time>)}
             {garmentType && field(t("workers.work.detailDialog.garmentType"), t(`fesla.garmentTypes.${garmentType}`))}
             {work.trouserType && field(t("workers.work.trousers.typeLabel"), t(`workers.work.trousers.styles.${work.trouserType}`))}
+            {work.shopTrouser && <>{field(t("workers.work.materials.fabric"), <span dir="auto" data-detail-trouser-fabric>{work.shopTrouser.fabricType}{work.shopTrouser.fabricReference ? ` · ${work.shopTrouser.fabricReference}` : ""}</span>)}{field(t("workers.work.pieceCards.size"), <bdi dir="ltr" data-detail-trouser-size>{work.shopTrouser.size}</bdi>)}</>}
             {field(t("workers.payroll.wage"), pieceWages ? t("workers.work.pieceCards.variableWages") : work.unitWage === undefined ? t("workers.payroll.unpriced") : <><bdi>{money(work.unitWage)}</bdi><small>{t(isSfifa ? "workers.payroll.perMeter" : "workers.payroll.perPiece")}</small></>)}
             {totalWageCents !== null && field(t("workers.work.pieceCards.totalWages"), <bdi>{money(totalWageCents / 100)}</bdi>)}
           </dl>
@@ -105,7 +110,9 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
             <div className="work-detail-piece-heading"><span className="work-detail-piece-number">{number(index + 1)}</span><h4>{t("workers.work.pieceCards.pieceNumber", { number: index + 1 })}</h4>{pieceWages && <span data-piece-state={completedIds.has(row.lineId) ? "done" : "pending"} className={`work-status-badge ${completedIds.has(row.lineId) ? "work-status-done" : "work-status-pending"}`}>{t(completedIds.has(row.lineId) ? "workers.work.done" : "workers.work.inProgress")}</span>}</div>
             <p className="work-detail-fabric-name" dir="auto">{row.fabricType} · {row.fabricColor}</p>
             <dl className="work-detail-piece-fields">
+              {row.size && field(t("workers.work.pieceCards.size"), <bdi dir="ltr" data-work-piece-size-value>{row.size}</bdi>)}
               {field(t("workers.work.materials.meters"), <><bdi>{number(row.meters)}</bdi> {t("sfifaStock.unit")}</>)}
+              {work.shopBarcode && field(t('workers.shopFlow.pieceBarcode'), <bdi dir="ltr" className="work-detail-barcode" data-detail-piece-barcode>{shopPieceBarcode(work, index + 1)}</bdi>)}
               {row.pieceBarcode && field(t("workers.work.detailDialog.fabricBarcode"), <bdi dir="ltr" className="work-detail-barcode">{row.pieceBarcode}</bdi>)}
               {field(t("workers.work.materials.sfifa"), <><span>{t(`sfifaStock.widths.${row.sfifaWidth}`)}</span><bdi dir="ltr">{row.sfifaCode === undefined ? t("workers.work.materials.unassigned") : formatSfifaCode(row.sfifaCode, row.sfifaFamily)}</bdi><span><bdi>{number(row.sfifaMeters)}</bdi> {t("sfifaStock.unit")}</span></>)}
             </dl>

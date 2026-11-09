@@ -1,3 +1,5 @@
+import { useSearchParams } from 'react-router-dom';
+import useSearchTarget from "../../hooks/useSearchTarget.js";
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
@@ -175,9 +177,11 @@ function ExpenseTypeDialog({ token, items, initialType = '', initialMonth, onSav
 export default function SideExpenses() {
   const { t, i18n } = useTranslation();
   const token = useSelector(state => state.LoginAdmin.token);
+  const [params] = useSearchParams();
+  const matchesSearchTarget = useSearchTarget();
   const [editor, setEditor] = useState(null), [result, setResult] = useState(null);
   const [attempt, setAttempt] = useState(0), [status, setStatus] = useState(null);
-  const [selectedMonth, setSelectedMonth] = useState(() => currentExpenseMonth());
+  const [selectedMonth, setSelectedMonth] = useState(() => params.get('month') ?? currentExpenseMonth());
   const state = result?.token === token && result.attempt === attempt ? result : { items: [], permissions: {}, loading: true, error: '' };
   useEffect(() => {
     if (!token) return;
@@ -197,7 +201,7 @@ export default function SideExpenses() {
     setSelectedMonth(expense.month || '');
   };
   if (!token) return <Navigate to="/LoginChoise" replace />;
-  const visible = state.items.filter(item => !selectedMonth || expenseMonth(item) === selectedMonth);
+  const visible = state.items.filter(matchesSearchTarget).filter(item => params.get('record') || !selectedMonth || expenseMonth(item) === selectedMonth);
   const totals = monthlyExpenseTotals(state.items, selectedMonth), totalCents = totals.totalCents;
   const pricingMonth = selectedMonth || currentExpenseMonth();
   const locale = i18n.language === 'ar' ? 'ar-MA' : 'fr-MA';

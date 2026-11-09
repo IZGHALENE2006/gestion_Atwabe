@@ -74,6 +74,8 @@
 .fesla-profits-table tbody tr:hover { background:#eff6ff; }
 .fesla-profits-table td small { display:block; margin-top:5px; color:var(--fp-muted); font-size:10px; }
 .fesla-profits-table .is-profit { color:var(--fp-green); font-weight:800; }
+.fesla-profits-status { min-width:260px; max-width:340px; }
+.fesla-profits-table [data-profit-cancelled=true] [data-profit-amount] > bdi { text-decoration:line-through; color:var(--fp-muted); }
 .fesla-profits-table .is-loss { color:#b52f4c; font-weight:800; }
 .fesla-profits-details-button { display:inline-flex; align-items:center; gap:7px; padding:10px 12px; border-radius:10px; background:#245ee0; color:#fff; font-size:12px; font-weight:700; white-space:nowrap; }
 .fesla-profits-empty { display:grid; justify-items:center; gap:10px; padding:48px 20px; text-align:center; color:var(--fp-muted); }

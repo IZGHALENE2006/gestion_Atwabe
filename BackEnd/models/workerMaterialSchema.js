@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { WORKER_SFIFA_METERS } from '../../shared/workerMaterials.js';
+import { WORKER_SFIFA_METERS, WORKER_GARMENT_SIZES } from '../../shared/workerMaterials.js';
 import { sfifaQuantityUnits } from '../../shared/sfifaStock.js';
 import { tailoringMoneyCents } from '../../shared/tailoring.js';
 
@@ -8,7 +8,8 @@ export const workerMaterialDebitSchema = new mongoose.Schema({
   operationId: { type: String, required: true }, workId: id(),
   date: { type: Date, required: true }, returnedAt: { type: Date, default: undefined },
 }, { _id: false });
-const rowSchema = new mongoose.Schema({
+export const workerMaterialRowSchema = new mongoose.Schema({
+  size: { type: String, enum: WORKER_GARMENT_SIZES, default: undefined },
   unitWage: { type: Number, default: undefined, validate: value => value === undefined || tailoringMoneyCents(value) !== null },
   lineId: { type: String, required: true }, fabricId: id(), colorId: id(), pieceId: id(), sfifaId: id(), variantId: id(),
   meters: { type: Number, required: true, validate: value => sfifaQuantityUnits(value) !== null && value > 0 },
@@ -20,7 +21,7 @@ const rowSchema = new mongoose.Schema({
 export const workerMaterialOperationSchema = new mongoose.Schema({
   requestId: { type: String, required: true }, kind: { type: String, required: true, enum: ['assign', 'increase'] },
   state: { type: String, required: true, enum: ['reserving', 'rollingBack', 'committed', 'failed'] },
-  rows: { type: [rowSchema], required: true }, failureCode: { type: String, default: undefined },
+  rows: { type: [workerMaterialRowSchema], required: true }, failureCode: { type: String, default: undefined },
   createdBy: id(), date: { type: Date, required: true },
 }, { _id: false });
 export const workerMaterialCancellationSchema = new mongoose.Schema({

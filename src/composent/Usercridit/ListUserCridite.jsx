@@ -1,3 +1,4 @@
+import useSearchTarget from "../../hooks/useSearchTarget.js";
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import { apiErrorMessage } from "../../i18n/apiErrors.js";
@@ -21,6 +22,7 @@ import {
 import CreditShareDialog from "./CreditShareDialog.jsx";
 
 const ListUsercridite = () => {
+  const matchesSearchTarget = useSearchTarget();
   const operations = useEmployeeOperations('credit');
   const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
@@ -43,9 +45,9 @@ const ListUsercridite = () => {
 
   const filteredUsers = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
-    if (!query) return users;
+    if (!query) return users.filter(matchesSearchTarget);
 
-    return users.filter((user) => {
+    return users.filter(matchesSearchTarget).filter((user) => {
       const name = String(user.name || "").toLowerCase();
       const cin = String(user.cin || "").toLowerCase();
       const phone = String(user.phone || "").toLowerCase();
@@ -54,7 +56,7 @@ const ListUsercridite = () => {
         name.includes(query) || cin.includes(query) || phone.includes(query)
       );
     });
-  }, [users, searchTerm]);
+  }, [users, searchTerm, matchesSearchTarget]);
 
   const globalRemaining = useMemo(() => {
     return filteredUsers.reduce(

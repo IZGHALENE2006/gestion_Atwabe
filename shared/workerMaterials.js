@@ -3,13 +3,14 @@ import { tailoringMoneyCents } from './tailoring.js';
 
 export const WORKER_SFIFA_METERS = 3;
 export const WORKER_MATERIAL_PIECE_LIMIT = 50;
+export const WORKER_GARMENT_SIZES = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
 const identity = value => typeof value === 'string' && /^[a-f0-9]{24}$/i.test(value);
 export const supportsWorkerMaterialHistory = (category, workType, garmentType) => category === 'machine' && ['shop', 'client'].includes(workType) && ['djellaba', 'jabador', 'malakiya'].includes(garmentType);
 export const usesWorkerMaterials = (category, workType, garmentType) => workType === 'shop' && supportsWorkerMaterialHistory(category, workType, garmentType);
 export const workerMaterialPending = work => ['pending', 'returning'].includes(work.materialStatus);
 export const workerMaterialRows = work => work.materialOperations ? work.materialOperations.filter(operation => operation.state !== 'failed').flatMap(operation => operation.rows) : work.materials || [];
 export const workerHasPieceWages = work => work.category === 'machine' && work.workType === 'shop' && workerMaterialRows(work).some(row => row.unitWage !== undefined);
-export const workerMaterialInputKey = rows => JSON.stringify((rows || []).map(row => ({ ...Object.fromEntries(['lineId', 'fabricId', 'colorId', 'pieceId', 'sfifaId', 'variantId', 'meters'].map(key => [key, key === 'meters' ? Number(row[key]) : String(row[key])])), ...(row.unitWage !== undefined ? { unitWage: Number(row.unitWage) } : {}) })).sort((a, b) => a.lineId.localeCompare(b.lineId)));
+export const workerMaterialInputKey = rows => JSON.stringify((rows || []).map(row => ({ ...Object.fromEntries(['lineId', 'fabricId', 'colorId', 'pieceId', 'sfifaId', 'variantId', 'meters'].map(key => [key, key === 'meters' ? Number(row[key]) : String(row[key])])), ...(row.size !== undefined ? { size: row.size } : {}), ...(row.unitWage !== undefined ? { unitWage: Number(row.unitWage) } : {}) })).sort((a, b) => a.lineId.localeCompare(b.lineId)));
 export const workerPieceSelectionKey = lineIds => JSON.stringify(Array.isArray(lineIds) ? lineIds.map(id => String(id).toLowerCase()).sort() : []);
 export function workerPieceWageCents(rows) {
   let total = 0n;
@@ -59,7 +60,9 @@ export function validateWorkerMaterialSelection(rows, lineIds) {
     if (units === null || units <= 0) fields[`${prefix}.meters`] = 'invalidMeters';
     const wage = row?.unitWage === undefined ? undefined : tailoringMoneyCents(row.unitWage);
     if (wage === null) fields[`${prefix}.unitWage`] = 'invalidWage';
-    return { lineId: row?.lineId, ...Object.fromEntries(['fabricId', 'colorId', 'pieceId', 'sfifaId', 'variantId'].map(key => [key, String(row?.[key] || '').toLowerCase()])), meters: units === null ? 0 : units / 1000, ...(wage !== undefined && wage !== null ? { unitWage: wage / 100 } : {}) };
+    const size = typeof row?.size === 'string' ? row.size.trim().toUpperCase() : row?.size;
+    if (size !== undefined && size !== '' && !WORKER_GARMENT_SIZES.includes(size)) fields[`${prefix}.size`] = 'invalidSize';
+    return { lineId: row?.lineId, ...Object.fromEntries(['fabricId', 'colorId', 'pieceId', 'sfifaId', 'variantId'].map(key => [key, String(row?.[key] || '').toLowerCase()])), meters: units === null ? 0 : units / 1000, ...(size && WORKER_GARMENT_SIZES.includes(size) ? { size } : {}), ...(wage !== undefined && wage !== null ? { unitWage: wage / 100 } : {}) };
   });
   if (Object.keys(fields).length) throw Object.assign(new Error('invalidWork'), { fields });
   return result.sort((a, b) => a.lineId.localeCompare(b.lineId));

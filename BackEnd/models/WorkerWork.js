@@ -1,10 +1,11 @@
+import { SHOP_FLOW_GARMENTS, shopFlowSlot } from '../../shared/workerShopFlow.js';
 import { WORKER_SFIFA_FAMILIES, SFIFA_CUSTOMER_FAMILY, workerSfifaCreditsStock } from '../../shared/workerSfifa.js';
 import { tailoringMoneyCents } from "../../shared/tailoring.js";
 import { workerCompletionEarning, workerPayrollMonthValid } from "../../shared/workerPayroll.js";
 import mongoose from "mongoose";
-import { workerMaterialOperationSchema, workerMaterialCancellationSchema } from './workerMaterialSchema.js';
-import { supportsWorkerMaterialHistory, workerMaterialRows, workerHasPieceWages, workerPieceWageCents } from '../../shared/workerMaterials.js';
-import { WORK_QUANTITY_LIMIT, WORK_TRACKING_CATEGORIES, WORK_TYPES, TROUSER_TYPES, workerOrderGarmentTypes, workQuantityUnits } from "../../shared/workerWork.js";
+import { workerMaterialOperationSchema, workerMaterialCancellationSchema, workerMaterialRowSchema } from './workerMaterialSchema.js';
+import { supportsWorkerMaterialHistory, workerMaterialRows, workerHasPieceWages, workerPieceWageCents, WORKER_GARMENT_SIZES } from '../../shared/workerMaterials.js';
+import { WORK_QUANTITY_LIMIT, WORK_TRACKING_CATEGORIES, WORK_TYPES, TROUSER_TYPES, workerWageCents, workerOrderGarmentTypes, workQuantityUnits } from "../../shared/workerWork.js";
 import { SFIFA_STOCK_WIDTHS, sfifaCodeNumber } from "../../shared/sfifaStock.js";
 
 import { TAILORING_SFIFA_GARMENT_TYPES, TAILORING_GARMENT_TYPES, tailoringGarmentType } from "../../shared/tailoring.js";
@@ -58,7 +59,22 @@ const tailoringSchema = new mongoose.Schema({
   readyDate: { type: String, required: true },
   items: { type: [garmentSchema], required: true },
 }, { _id: false });
+const shopFlowSchema = new mongoose.Schema({
+  originId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'WorkerWork' },
+  sourceWorkId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'WorkerWork' },
+  sourceCategory: { type: String, required: true, enum: ['machine', 'finishing'] },
+  originWorkerName: { type: String, default: '' }, sourceWorkerName: { type: String, default: '' },
+  materials: { type: [workerMaterialRowSchema], default: [] },
+}, { _id: false });
 const schema = new mongoose.Schema({
+  shopFlow: { type: shopFlowSchema, default: undefined },
+  shopFlowSlot: { type: String, default: undefined },
+  shopTrouser: { type: new mongoose.Schema({
+    fabricId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Fabric' },
+    fabricType: { type: String, required: true, maxlength: 120 },
+    fabricReference: { type: String, default: '', maxlength: 120 },
+    size: { type: String, required: true, enum: WORKER_GARMENT_SIZES },
+  }, { _id: false }), default: undefined },
   idAdmin: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Admin" },
   createdBy: { type: mongoose.Schema.Types.ObjectId, required: true },
   workerId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "TailoringWorker" },
@@ -86,6 +102,12 @@ const schema = new mongoose.Schema({
   requestFingerprint: { type: String, required: true },
 }, { timestamps: true, optimisticConcurrency: true });
 schema.pre("validate", function () {
+  if (this.shopFlow) {
+    if (this.workType !== 'shop' || !['finishing', 'mesbanto'].includes(this.category) || !SHOP_FLOW_GARMENTS.includes(this.garmentType) || this.shopFlow.sourceCategory !== (this.category === 'finishing' ? 'machine' : 'finishing') || this.materialOperations?.length || this.additions.length || this.shopFlow.materials.length && this.shopFlow.materials.length !== this.quantity) this.invalidate('shopFlow', 'Invalid shop production stage');
+    if (workerWageCents(this.unitWage, this.quantity, this.category) === null) this.invalidate('unitWage', 'Invalid shop stage wage');
+    if (this.category === 'finishing' && String(this.shopFlow.sourceWorkId) !== String(this.shopFlow.originId)) this.invalidate('shopFlow', 'Finishing must follow its machine origin');
+    if ((!this.deletedAt && this.shopFlowSlot !== shopFlowSlot(this.shopFlow.originId, this.category)) || (this.deletedAt && this.shopFlowSlot !== undefined)) this.invalidate('shopFlowSlot', 'Invalid shop production slot');
+  } else if (this.shopFlowSlot !== undefined) this.invalidate('shopFlowSlot', 'Missing shop production link');
   if (this.materialOperations?.length) {
     const order = this.tailoring || this.archivedTailoring, rows = workerMaterialRows(this);
     if (!supportsWorkerMaterialHistory(this.category, this.workType, order ? tailoringGarmentType(order) : this.garmentType) || new Set(rows.map(row => row.lineId)).size !== rows.length || rows.length > this.quantity || (order && rows.some(row => !order.lineIds.includes(row.lineId)))) this.invalidate('materialOperations', 'Invalid garment materials');
@@ -115,9 +137,11 @@ schema.pre("validate", function () {
   }
   const linked = Boolean(this.tailoring);
   const trouserClient = this.category === "trousers" && this.workType === "client";
-  if ((trouserClient && !TROUSER_TYPES.includes(this.trouserType)) || (!trouserClient && this.trouserType !== undefined)) this.invalidate("trouserType", "Trouser type must match client trouser work");
-  if ((this.workType === "client" && !["sfifa", "trousers"].includes(this.category) && !linked && !this.deletedAt) || (linked && this.workType !== "client")) this.invalidate("tailoring", "Client work must reference a matching tailoring order");
-  if (this.garmentType !== undefined && (this.category !== "machine" || this.workType === "client")) this.invalidate("garmentType", "Shop garment type must belong to machine work");
+  const shopTrouser = Boolean(this.shopTrouser);
+  if (shopTrouser && (this.category !== 'trousers' || this.workType !== 'shop')) this.invalidate('shopTrouser', 'Shop trouser details require shop trouser work');
+  if (((trouserClient || shopTrouser) && !TROUSER_TYPES.includes(this.trouserType)) || (!trouserClient && !shopTrouser && this.trouserType !== undefined)) this.invalidate("trouserType", "Trouser type must match trouser work");
+  if ((this.workType === "client" && !["sfifa", "trousers", "brim"].includes(this.category) && !linked && !this.deletedAt) || (linked && this.workType !== "client")) this.invalidate("tailoring", "Client work must reference a matching tailoring order");
+  if (this.garmentType !== undefined && ((this.category !== "machine" && !this.shopFlow) || this.workType === "client")) this.invalidate("garmentType", "Shop garment type must belong to machine work");
   if (linked && !workerOrderGarmentTypes(this.category).includes(tailoringGarmentType(this.tailoring))) this.invalidate("tailoring", "Order kind does not match worker section");
   if (linked && trouserClient && this.tailoring.items.some(item => item.trouserType !== this.trouserType)) this.invalidate("trouserType", "Assigned trousers must have one matching style");
   if (linked && this.tailoring && (!this.tailoring.lineIds.length || this.tailoring.lineIds.length > 50 || (this.category !== "sfifa" && this.tailoring.lineIds.length !== this.quantity) || new Set(this.tailoring.lineIds).size !== this.tailoring.lineIds.length || this.tailoring.items.length !== this.tailoring.lineIds.length || this.tailoring.items.some(item => !this.tailoring.lineIds.includes(item.lineId)))) this.invalidate("tailoring", "Garments must match the assigned quantity");
@@ -135,6 +159,8 @@ schema.pre("validate", function () {
   if (workQuantityUnits(this.quantity, this.category) !== workQuantityUnits(this.initialQuantity ?? this.quantity, this.category) + added || workQuantityUnits(this.completedQuantity, this.category) !== completed || workQuantityUnits(this.completedQuantity, this.category) !== workQuantityUnits(this.quantity, this.category) - remaining) this.invalidate("completedQuantity", "Invalid work quantities");
 });
 schema.index({ idAdmin: 1, workerId: 1, category: 1, createdAt: -1, _id: -1 });
+schema.index({ idAdmin: 1, shopFlowSlot: 1 }, { unique: true, partialFilterExpression: { shopFlowSlot: { $type: 'string' } } });
+schema.index({ idAdmin: 1, 'shopFlow.originId': 1 });
 schema.index({ idAdmin: 1, requestId: 1 }, { unique: true });
 schema.index({ idAdmin: 1, category: 1, "tailoring.orderId": 1, "tailoring.lineIds": 1 }, { unique: true, partialFilterExpression: { workType: "client", "tailoring.orderId": { $type: "objectId" } } });
 export default mongoose.model("WorkerWork", schema);

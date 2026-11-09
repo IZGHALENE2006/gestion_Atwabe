@@ -5,6 +5,7 @@ const headers = (token) => ({ Authorization: `Bearer ${token}` });
 export const loadTailoringOrders = async (token, signal) => (await axios.get(api, { headers: headers(token), signal })).data;
 export const loadTailoringPhoto = async (order, token, signal, lineId) => (await axios.get(`${api}/${encodeURIComponent(order._id)}${lineId ? `/items/${encodeURIComponent(lineId)}` : ""}/photo`, { headers: headers(token), responseType: "blob", signal })).data;
 export const addTailoringPayment = async (order, amount, requestId, token) => (await axios.post(`${api}/${encodeURIComponent(order._id)}/payments`, { amount, requestId, version: order.__v }, { headers: headers(token) })).data;
+export const cancelTailoringOrder = async (order, token) => (await axios.post(`${api}/${encodeURIComponent(order._id)}/cancel`, { version: order.__v }, { headers: headers(token) })).data;
 export const deliverTailoringOrder = async (order, token) => (await axios.post(`${api}/${encodeURIComponent(order._id)}/deliver`, { version: order.__v }, { headers: headers(token) })).data;
 export const saveTailoringOrder = async (input, selection, removeImage, token, order, requestId) => {
   const body = new FormData();

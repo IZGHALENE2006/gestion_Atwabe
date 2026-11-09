@@ -1,6 +1,7 @@
 export const feslaFrench = {
+  cancellation: {"action":"Annuler la commande","status":"Commande annulée","saved":"La commande a été annulée et retirée des totaux et bénéfices.","confirm":"Confirmer l’annulation de cette commande livrée ? Sa valeur et son bénéfice seront retirés des statistiques. La commande, sa livraison et ses paiements resteront conservés dans l’historique.","date":"Annulée le","by":"Annulée par","recordedBy":"Enregistré par","excluded":"Commande exclue des montants et bénéfices. Les paiements déjà reçus sont conservés dans l’historique."},
   measurements: {
-    title: "Mensurations", unit: "cm", hint: "Facultatives, propres à chaque pièce. Laissez vides les mesures non utilisées.",
+    title: "Mensurations", unit: "cm", notesLabel: "Toutes les mesures de cette pièce", placeholder: "Épaule : 42 cm\nManche : 60 cm\nLongueur : 145 cm", hint: "Facultatif : saisissez librement toutes les mesures de cette pièce dans ce champ (4 000 caractères maximum).",
     fields: { shoulder: "Épaule", sleeve: "Manche", chest: "Poitrine", length: "Longueur", sleevePlacement: "Placement de la manche", sleeveHead: "Tête de manche", jlail: "Jlaïl", collar: "Col" },
   },
   receipts: {
@@ -23,7 +24,7 @@ export const feslaFrench = {
     profit: "Bénéfice enregistré", revenue: "Valeur des commandes livrées", expenses: "Frais des commandes", deliveredOrders: "Commandes livrées",
     deliveredCount: "Commandes livrées : {{count}}", garmentCount: "Pièces livrées : {{count}}",
     cardHints: { profit: "Prix moins les frais enregistrés", revenue: "Montant total, y compris les soldes à payer", expenses: "Frais enregistrés à la livraison" },
-    history: "Historique des bénéfices", historyHint: "Sélectionnez une période pour consulter ses livraisons.", details: "Détails des commandes livrées", detailsHint: "Montants retenus à la date de livraison.",
+    history: "Historique des bénéfices", historyHint: "Sélectionnez une période pour consulter ses livraisons et annulations.", details: "Détails des commandes livrées", detailsHint: "Montants retenus à la livraison. Les commandes annulées sont exclues des totaux et figurent à leur date d’annulation.",
     deliveredAt: "Date de livraison", garments: "Pièces", empty: "Aucune livraison pour cette sélection", emptyHint: "Choisissez une autre période ou affichez tout le registre. Les commandes en cours apparaîtront après leur livraison.",
     unknownCosts: "Les frais de {{count}} commande(s) ne sont pas enregistrés. Leur bénéfice reste indéterminé et n’est pas inclus dans le bénéfice affiché.",
     deliverySnapshot: "Montants retenus à la livraison", snapshotHint: "Le registre des bénéfices conserve ces montants, même si la commande est ensuite modifiée.",
@@ -196,6 +197,8 @@ export const feslaFrench = {
   garmentsCount: "Nombre de djellabas : {{count}}",
   moreGarments: "Autres : {{count}}",
   errors: {
+    orderCancelled: "Cette commande a été annulée. Aucune modification, livraison ou nouveau paiement n’est autorisé.", orderNotDelivered: "Seule une commande déjà livrée peut être annulée.",
+    invalidMeasurementNotes: "Saisissez les mesures en texte libre, avec 4 000 caractères maximum.",
     invalidMeasurements: "Vérifiez les mensurations de cette pièce.",
     invalidMeasurement: "Saisissez une mesure supérieure à 0 et inférieure ou égale à 1 000 cm, avec deux décimales maximum.",
     costSettingsRequired: "Enregistrez les tarifs de la sfifa et des artisans dans les réglages de cette section.",
@@ -245,8 +248,13 @@ export const feslaFrench = {
 };
 
 export const feslaArabic = {
+  cancellation: {
+    action: "إلغاء الطلب", status: "طلب ملغى", saved: "تم إلغاء الطلب واستبعاد ثمنه وربحه من الإحصائيات.",
+    confirm: "هل تؤكد إلغاء هذا الطلب المسلّم؟ سيُستبعد ثمنه وربحه من الإحصائيات، مع الاحتفاظ بالطلب وتاريخ تسليمه والدفعات المسجلة في السجل.",
+    date: "تاريخ الإلغاء", by: "ألغاه", recordedBy: "سجّلها", excluded: "هذا الطلب مستبعد من مجموع المبالغ والأرباح. تبقى الدفعات المستلمة محفوظة في السجل.",
+  },
   measurements: {
-    title: "القياسات", unit: "سم", hint: "قياسات اختيارية خاصة بكل قطعة. اترك القياسات غير المطلوبة فارغة.",
+    title: "القياسات", unit: "سم", notesLabel: "قياسات هذه القطعة", placeholder: "الكتف: ٤٢ سم\nالكم: ٦٠ سم\nالطول: ١٤٥ سم", hint: "اختياري: اكتب جميع قياسات هذه القطعة في هذه الخانة بالطريقة التي تناسبك (٤٬٠٠٠ حرف كحد أقصى).",
     fields: { shoulder: "الكتف", sleeve: "الكم", chest: "الصدر", length: "الطول", sleevePlacement: "تركيز الكم", sleeveHead: "رأس الكم", jlail: "الجلايل", collar: "الكول" },
   },
   receipts: {
@@ -269,7 +277,7 @@ export const feslaArabic = {
     profit: "الربح المسجّل", revenue: "قيمة الطلبات المسلّمة", expenses: "مصاريف الطلبات", deliveredOrders: "الطلبات المسلّمة",
     deliveredCount: "الطلبات المسلّمة: {{count}}", garmentCount: "القطع المسلّمة: {{count}}",
     cardHints: { profit: "الثمن ناقص المصاريف المسجّلة", revenue: "القيمة الكاملة، بما فيها المبالغ المتبقية", expenses: "المصاريف المعتمدة عند التسليم" },
-    history: "سجل الأرباح", historyHint: "اختر فترة لعرض الطلبات التي سُلّمت خلالها.", details: "تفاصيل الطلبات المسلّمة", detailsHint: "الأرقام المعتمدة بتاريخ تسليم الطلب.",
+    history: "سجل الأرباح", historyHint: "اختر فترة لعرض الطلبات التي سُلّمت أو أُلغيت خلالها.", details: "تفاصيل الطلبات المسلّمة", detailsHint: "المبالغ المثبتة عند التسليم. تُستبعد الطلبات الملغاة من المجاميع، وتظهر في السجل بتاريخ إلغائها.",
     deliveredAt: "تاريخ التسليم", garments: "القطع", empty: "لا توجد تسليمات ضمن هذا الاختيار", emptyHint: "اختر فترة أخرى أو اعرض كل السجل. تظهر الطلبات الجاري إنجازها بعد تسليمها.",
     unknownCosts: "لم تُسجّل مصاريف {{count}} من الطلبات. يظل ربحها غير محدد، ولا يدخل ضمن الربح المعروض.",
     deliverySnapshot: "الأرقام المعتمدة عند التسليم", snapshotHint: "يحتفظ سجل الأرباح بهذه الأرقام حتى عند تعديل الطلب لاحقًا.",
@@ -442,6 +450,8 @@ export const feslaArabic = {
   garmentsCount: "عدد الجلابيب: {{count}}",
   moreGarments: "إضافية: {{count}}",
   errors: {
+    orderCancelled: "هذا الطلب ملغى؛ لا يمكن تعديله أو تسليمه أو تسجيل دفعة جديدة له.", orderNotDelivered: "يمكن إلغاء الطلب بعد تسجيل تسليمه فقط.",
+    invalidMeasurementNotes: "اكتب القياسات نصيًا، في حدود ٤٬٠٠٠ حرف.",
     invalidMeasurements: "تحقق من قياسات هذه القطعة.",
     invalidMeasurement: "أدخل قياسًا أكبر من صفر ولا يتجاوز ١٬٠٠٠ سم، مع منزلتين عشريتين كحد أقصى.",
     costSettingsRequired: "احفظ أسعار السفيفة وأجور العمال في إعدادات هذا القسم.",

@@ -51,7 +51,7 @@ export default function WorkerWorkActionDialog({ token, worker, work, mode, onCl
     } catch (failure) {
       if (dialogRef.current?.open) {
         const code = failure.response?.data?.message;
-        setError(['materialsPending', 'materialsReturnLimit', 'cannotCancelCompleted', 'materialStockUnavailable', 'insufficientFabric', 'insufficientSfifa', 'invalidMaterialSection', 'invalidWork', 'invalidRequest', 'workRequestConflict', 'workerSectionChanged', 'workNotFound', 'workConflict', 'workDeleted', 'forbidden', 'notFound', 'orderNotFound', 'orderAlreadyDelivered', 'orderGarmentsChanged', 'garmentAlreadyAssigned', 'garmentInProgress'].includes(code) ? code : withMaterials || cancelling || resuming ? 'materialsPending' : 'saveWorkFailed');
+        setError(['shopHasLaterStage', 'shopFlowFixedQuantity', 'materialsPending', 'materialsReturnLimit', 'cannotCancelCompleted', 'materialStockUnavailable', 'insufficientFabric', 'insufficientSfifa', 'invalidMaterialSection', 'invalidWork', 'invalidRequest', 'workRequestConflict', 'workerSectionChanged', 'workNotFound', 'workConflict', 'workDeleted', 'workerDeleted', 'forbidden', 'notFound', 'orderNotFound', 'orderAlreadyDelivered', 'orderGarmentsChanged', 'garmentAlreadyAssigned', 'garmentInProgress'].includes(code) ? code : withMaterials || cancelling || resuming ? 'materialsPending' : 'saveWorkFailed');
         if (['materialStockUnavailable', 'insufficientFabric', 'insufficientSfifa'].includes(code)) submissionRef.current = null;
         setFields(failure.response?.data?.fields || {}); setBlockers(failure.response?.data?.blockers || []);
       }

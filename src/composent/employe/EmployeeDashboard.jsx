@@ -1,3 +1,4 @@
+import useSearchTarget from "../../hooks/useSearchTarget.js";
 import { Link } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
 import React, { useState, useLayoutEffect, useRef, useEffect } from "react";
@@ -17,6 +18,7 @@ gsap.registerPlugin(Draggable);
 export const EmployeeDashboard = () => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
+  const matchesSearchTarget = useSearchTarget();
   const [editingId, setEditingId] = useState(null);
 
   const [view, setView] = useState("card"); // 'card' or 'list'
@@ -36,7 +38,7 @@ export const EmployeeDashboard = () => {
   }, [dispatch]);
 
   // ================= SEARCH FILTER LOGIC =================
-  const filteredEmployees = (Employe || []).filter((emp) => {
+  const filteredEmployees = (Employe || []).filter(matchesSearchTarget).filter((emp) => {
     const search = searchTerm.toLowerCase();
     return (
       emp.name?.toLowerCase().includes(search) ||

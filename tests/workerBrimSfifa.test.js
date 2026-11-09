@@ -22,11 +22,11 @@ const request = async (path,body,method=body===undefined?'GET':'POST') => {
 const pathFor = worker=>`/tailoring-workers/${worker._id}/work`;
 const customerInput = (workType='client')=>({category:'sfifa',workType,quantity:12,unitWage:2.5,sfifa:{width:'thick',family:'customer'},requestId:randomUUID()});
 
-test('brim shop work accepts quantity and wage alone while other shop sections still require names',()=>{
+test('brim shop and client work accept quantity and wage alone while other shop sections still require names',()=>{
   assert.deepEqual(validateWorkerWork({category:'brim',workType:'shop',quantity:'3',unitWage:'4.50'}),{category:'brim',workType:'shop',productName:'Brim',quantity:3,unitWage:4.5});
   assert.equal(validateWorkerWork({category:'brim',quantity:2,productName:'عمل سابق'}).productName,'عمل سابق');
   for(const category of ['machine','finishing','shirts','mesbanto'])assert.throws(()=>validateWorkerWork({category,workType:'shop',quantity:2}),error=>error.fields.productName==='required');
-  assert.throws(()=>validateWorkerWork({category:'brim',workType:'client',quantity:2}),error=>error.fields.orderId==='chooseOrder');
+  assert.deepEqual(validateWorkerWork({category:'brim',workType:'client',quantity:2,unitWage:4.5}),{category:'brim',workType:'client',productName:'Brim',quantity:2,unitWage:4.5});
 });
 test('customer sfifa retains width and exact metres without a stock number',()=>{
   const value=validateWorkerWork({...customerInput(),quantity:'1,125',sfifa:{width:'thin',family:'customer',code:''}});

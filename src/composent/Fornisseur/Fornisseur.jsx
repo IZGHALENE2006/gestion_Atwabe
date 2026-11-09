@@ -1,3 +1,4 @@
+import useSearchTarget from "../../hooks/useSearchTarget.js";
 import React, { useEffect, useRef, useState } from 'react';
 import { 
   IoSearchOutline, IoAddOutline, IoPeopleOutline, 
@@ -19,6 +20,7 @@ import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 const Fornisseur = () => {
   const { t } = useTranslation();
+  const matchesSearchTarget = useSearchTarget();
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewType, setViewType] = useState("grid"); // 'grid' or 'list'
@@ -33,7 +35,7 @@ const navigate = useNavigate()
     Dispatch(GetAllFournisseur());
   }, [Dispatch]);
 
-  const filteredSuppliers = Fournisseur.filter(s => 
+  const filteredSuppliers = Fournisseur.filter(matchesSearchTarget).filter(s => 
    s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 const [confirmOpen,setconfirmOpen] = useState(false)

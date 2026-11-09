@@ -15,6 +15,7 @@ export function requireWorkerMaterialsReady(work) {
 }
 export function archiveWorkerAssignment(work, actor) {
   work.deletedAt = new Date(); work.deletedBy = actor;
+  if (work.shopFlow) work.shopFlowSlot = undefined;
   if (work.tailoring) {
     work.archivedTailoring = work.tailoring.toObject ? work.tailoring.toObject() : work.tailoring;
     work.tailoring = undefined;
