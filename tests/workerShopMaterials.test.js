@@ -8,6 +8,7 @@ import { workerMaterialsFixture } from './helpers/workerMaterialsFixture.js';
 import { owner, otherOwner, employee } from './helpers/djellabaCostsFixture.js';
 import { validateWorkerWork, validateWorkerIncrease } from '../shared/workerWork.js';
 import { resizeWorkerMaterialLines } from '../shared/workerMaterials.js';
+import { sfifaStockStyles } from '../shared/sfifaStock.js';
 
 let server, base;
 const previousSecret = process.env.JWT_SECRET, admin = { id: owner, role: 'admin' }, staff = { id: employee, role: 'Employe', idAdmin: otherOwner };
@@ -24,6 +25,63 @@ const assign = (f, body, actor) => request(pathFor(f), body, 'POST', actor);
 const cancel = (f, work, patch = {}, actor) => request(`${pathFor(f)}/${work._id}/cancel`, { version: work.__v, requestId: randomUUID(), ...patch }, 'POST', actor);
 const complete = (f, work, quantity = 1) => request(`${pathFor(f)}/${work._id}/completions`, { version: work.__v, requestId: randomUUID(), quantity });
 const balance = f => [f.fabrics[0].colors[0].pieces[0].meters, f.stocks[0].quantity];
+const registerStyles = (stock, styles, code = stock.variants?.[0]?.code) => stock.receipts.push({ requestId: randomUUID(), code, quantity: Object.values(styles).reduce((sum, value) => sum + value, 0), styleMeters: { single: 0, double: 0, gradient: 0, ...styles }, createdBy: owner, date: new Date() });
+
+test('material options expose only positively recorded styles for the selected sfifa number and owner', async t => {
+  const f = workerMaterialsFixture(t), stock = f.stocks[0];
+  registerStyles(stock, { single: 6, gradient: 14 });
+  stock.variants.push({ code: 13, quantity: 5 }); stock.quantity += 5;
+  registerStyles(stock, { double: 5 }, 13);
+  const foreign = f.seedSfifa({ width: 'thick', idAdmin: otherOwner }); registerStyles(foreign, { double: 20 });
+  const result = await request(pathFor(f) + '/material-options');
+  assert.equal(result.status, 200);
+  assert.equal(result.data.sfifa.length, 2);
+  assert.deepEqual(result.data.sfifa.find(row => row.code === 12).styles, ['single', 'gradient']);
+  assert.deepEqual(result.data.sfifa.find(row => row.code === 13).styles, ['double']);
+  assert.ok(result.data.sfifa.every(row => row.receipts === undefined && row.createdBy === undefined));
+  assert.deepEqual(sfifaStockStyles({ receipts: [{ code: 12, styleMeters: { single: 0, gradient: -1 } }] }, 12), []);
+});
+
+test('a recorded sfifa style is required and forged or unavailable choices cannot reserve shop materials', async t => {
+  const f = workerMaterialsFixture(t); registerStyles(f.stocks[0], { single: 6, gradient: 14 });
+  for (const sfifaStyle of [undefined, '', 'double', 'invalid', null, true]) {
+    const body = assignment(f); body.materials.forEach(row => row.sfifaStyle = sfifaStyle);
+    const result = await assign(f, body);
+    assert.equal(result.status, 400, JSON.stringify(result));
+    assert.equal(result.data.fields['materials.0.sfifaStyle'], 'chooseSfifaStyle');
+  }
+  assert.equal(f.records.length, 0); assert.deepEqual(balance(f), [20, 20]);
+  const legacy = f.seedSfifa({ width: 'thick' }), body = assignment(f, { quantity: 1, materials: [{ ...f.selection(lineId(), 2, f.fabric, legacy), sfifaStyle: 'single' }] });
+  assert.equal((await assign(f, body)).status, 400);
+});
+
+for (const garmentType of ['djellaba', 'jabador', 'malakiya']) test(`shop ${garmentType} saves a separate sfifa style per piece and retry identity includes it`, async t => {
+  const f = workerMaterialsFixture(t); registerStyles(f.stocks[0], { single: 6, double: 6, gradient: 8 });
+  const body = assignment(f, { garmentType }); body.materials[0].sfifaStyle = 'single'; body.materials[1].sfifaStyle = 'gradient';
+  const first = await assign(f, body); assert.equal(first.status, 201, JSON.stringify(first));
+  assert.deepEqual(first.data.materials.map(row => row.sfifaStyle), ['single', 'gradient']);
+  assert.deepEqual(balance(f), [14.5, 14]);
+  assert.equal((await assign(f, body)).status, 200); assert.deepEqual(balance(f), [14.5, 14]);
+  const changed = structuredClone(body); changed.materials[0].sfifaStyle = 'double';
+  assert.equal((await assign(f, changed)).status, 409); assert.deepEqual(balance(f), [14.5, 14]);
+  const listed = await request(pathFor(f) + '?category=machine');
+  assert.deepEqual(listed.data.works[0].materials.map(row => row.sfifaStyle), ['single', 'gradient']);
+  assert.equal((await cancel(f, first.data)).status, 200); assert.deepEqual(balance(f), [20, 20]);
+});
+
+test('style choices survive lost stock acknowledgements and increases without changing previous pieces', async t => {
+  const f = workerMaterialsFixture(t); registerStyles(f.stocks[0], { single: 8, double: 6, gradient: 6 });
+  const body = assignment(f); body.materials.forEach(row => row.sfifaStyle = 'double');
+  f.controls.failAfter = 'sfifa'; assert.equal((await assign(f, body)).status, 503);
+  const assigned = await assign(f, body); assert.equal(assigned.status, 200); assert.deepEqual(balance(f), [14.5, 14]);
+  const increase = { quantity: 1, requestId: randomUUID(), version: assigned.data.__v, materials: [{ ...f.selection(lineId(), 1), sfifaStyle: 'gradient' }] };
+  const path = `${pathFor(f)}/${assigned.data._id}/increases`, added = await request(path, increase);
+  assert.equal(added.status, 201, JSON.stringify(added));
+  assert.deepEqual(added.data.materials.map(row => row.sfifaStyle), ['double', 'double', 'gradient']);
+  assert.equal((await request(path, { ...increase, materials: [{ ...increase.materials[0], sfifaStyle: 'single' }] })).status, 409);
+  assert.deepEqual(balance(f), [13.5, 11]);
+  assert.equal((await cancel(f, added.data)).status, 200); assert.deepEqual(balance(f), [20, 20]);
+});
 
 for (const garmentType of ['djellaba', 'jabador', 'malakiya']) test(`shop ${garmentType} reserves each piece's fabric and exactly 3 m sfifa without a customer order`, async t => {
   const f = workerMaterialsFixture(t), body = assignment(f, { garmentType });

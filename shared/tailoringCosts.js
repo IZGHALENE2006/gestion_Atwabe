@@ -1,10 +1,13 @@
 import { tailoringMoneyCents, tailoringFabricMeters } from "./tailoring.js";
 
 export const DJELLABA_RATE_FIELDS = ["thinSfifaPrice", "thickSfifaPrice", "laborPrice"];
-export const tailoringRateFields = garmentType => garmentType === "trousers" ? ["laborPrice"] : DJELLABA_RATE_FIELDS;
-export function validateDjellabaRates(input, garmentType = "djellaba") {
+export const DJELLABA_SALE_RATE_FIELDS = ["thinSfifaPrice", "thickSfifaPrice"];
+export const DJELLABA_SFIFA_COST_FIELDS = ["thinSfifaCostPrice", "thickSfifaCostPrice"];
+export const DJELLABA_COST_SALE_RATE_FIELDS = ["thinSfifaCostPrice", "thinSfifaPrice", "thickSfifaCostPrice", "thickSfifaPrice"];
+export const tailoringRateFields = (garmentType, pricingVersion = 1) => garmentType === "trousers" ? ["laborPrice"] : pricingVersion === 3 ? DJELLABA_COST_SALE_RATE_FIELDS : pricingVersion === 2 ? DJELLABA_SALE_RATE_FIELDS : DJELLABA_RATE_FIELDS;
+export function validateDjellabaRates(input, garmentType = "djellaba", pricingVersion = 1) {
   const fields = {}, rates = {};
-  for (const key of tailoringRateFields(garmentType)) {
+  for (const key of tailoringRateFields(garmentType, pricingVersion)) {
     const cents = tailoringMoneyCents(input?.[key]);
     if (cents === null) fields[key] = "invalidMoney";
     else rates[key] = cents / 100;
@@ -30,15 +33,21 @@ export function trouserCostsTotal(costs, laborPrice = 0) {
   const total = BigInt(fabric) + BigInt(labor) * BigInt(costs.length);
   return total <= 99999999999n ? Number(total) / 100 : null;
 }
-export function djellabaItemCosts(item, rates) {
+export function djellabaItemCosts(item, rates, pricingVersion = 1) {
   const fabric = tailoringFabricCost(item);
   const sfifa = tailoringMoneyCents(rates?.[item.sfifa?.width === "thin" ? "thinSfifaPrice" : item.sfifa?.width === "thick" ? "thickSfifaPrice" : ""]);
-  const labor = tailoringMoneyCents(rates?.laborPrice);
-  if (!fabric || sfifa === null || labor === null) return null;
+  const labor = pricingVersion >= 2 ? 0 : tailoringMoneyCents(rates?.laborPrice);
+  const sfifaCost = pricingVersion === 3 ? tailoringMoneyCents(rates?.[item.sfifa?.width === "thin" ? "thinSfifaCostPrice" : "thickSfifaCostPrice"]) : 0;
+  if (!fabric || sfifa === null || sfifaCost === null || labor === null) return null;
   const fabricCents = BigInt(tailoringMoneyCents(fabric.fabricAmount));
-  const total = fabricCents + BigInt(sfifa) + BigInt(labor);
+  const total = pricingVersion >= 2 ? fabricCents + BigInt(sfifaCost) : fabricCents + BigInt(sfifa) + BigInt(labor);
   if (total > 99999999999n) return null;
-  return { ...fabric, sfifaAmount: sfifa / 100, laborAmount: labor / 100, totalAmount: Number(total) / 100 };
+  return { ...fabric, sfifaAmount: sfifa / 100, ...(pricingVersion === 3 ? { sfifaCostAmount: sfifaCost / 100 } : {}), laborAmount: labor / 100, totalAmount: Number(total) / 100 };
+}
+export function djellabaItemSalePrice(costs) {
+  const fabric = tailoringMoneyCents(costs?.fabricAmount), sfifa = tailoringMoneyCents(costs?.sfifaAmount);
+  if (fabric === null || sfifa === null || fabric + sfifa > 99999999999) return null;
+  return (fabric + sfifa) / 100;
 }
 export function djellabaCostsTotal(costs) {
   if (!Array.isArray(costs) || !costs.length) return null;

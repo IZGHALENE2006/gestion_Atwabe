@@ -17,10 +17,14 @@ const fabricSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, required: true },
   type: { type: String, required: true, trim: true, maxlength: FABRIC_LIMITS.text },
   reference: { type: String, trim: true, maxlength: FABRIC_LIMITS.text, default: "" },
+  purchasePricePerMeter: { type: Number, min: 0, max: FABRIC_LIMITS.pricePerMeter },
+  wholesalePricePerMeter: { type: Number, min: 0.01, max: FABRIC_LIMITS.pricePerMeter },
   salePricePerMeter: { type: Number, min: 0.01, max: FABRIC_LIMITS.pricePerMeter },
   photo: { type: String, default: "" },
   colors: { type: [colorSchema], required: true },
   movements: { type: [fabricMovementSchema], default: [] },
+  tailoringStockOperations: { type: [new mongoose.Schema({ operationId: { type: String, required: true }, orderId: { type: mongoose.Schema.Types.ObjectId, required: true }, date: { type: Date, required: true }, returnedAt: Date }, { _id: false })], default: undefined },
+  tailoringOrderIds: { type: [mongoose.Schema.Types.ObjectId], default: undefined },
   workerMaterialDebits: { type: [workerMaterialDebitSchema], default: undefined },
 }, { timestamps: true, optimisticConcurrency: true });
 

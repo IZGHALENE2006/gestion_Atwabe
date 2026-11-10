@@ -60,12 +60,12 @@ export function employeeCanRequest(user, method, rawPath, input) {
     return method === "POST" ? can("sfifa", path.endsWith("/restock") ? "restock" : "add") : method === "PUT" ? can("sfifa", "update") : method === "DELETE" && can("sfifa", "delete");
   }
   if (path.startsWith("/fabrics")) {
-    if (read) return path.endsWith("/movements") ? can("fabrics", "history") : allowed("fabrics", "tailoring");
+    if (read) return path.endsWith("/profits") ? can("fabrics", "profits") : path.endsWith("/sale-clients") ? can("fabrics", "sell") : path.endsWith("/movements") ? can("fabrics", "history") : allowed("fabrics", "tailoring");
     if (method === "DELETE") return can("fabrics", path.includes("/pieces/") ? "deletePiece" : path.includes("/colors/") ? "deleteColor" : "delete");
-    return method === "POST" ? can("fabrics", path.endsWith("/reductions") ? "reduce" : "add") : method === "PUT" && any("fabrics", "update", "addColor", "addPiece");
+    return method === "POST" ? can("fabrics", path.endsWith("/sales") ? "sell" : path.endsWith("/reductions") ? "reduce" : "add") : method === "PUT" && any("fabrics", "update", "addColor", "addPiece");
   }
   if (path.startsWith("/clients")) return read ? allowed("clients", "cashier", "invoices") : method === "POST" ? can("clients", "add") : method === "PUT" && can("clients", "update");
-  if (path.startsWith("/invoice-settings")) return read && allowed("invoices", "cashier", "credit", "tailoring");
+  if (path.startsWith("/invoice-settings")) return read && allowed("invoices", "cashier", "credit", "tailoring", "fabrics");
   if (path.startsWith("/side-expenses")) return read ? allowed("expenses") : method === "POST" && can("expenses", "add");
   return false;
 }

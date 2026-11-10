@@ -25,12 +25,12 @@ export default function AddFabricForm({ fabric, token, usedBarcodes, canUpdate, 
   const dialogRef = useRef(null);
   const savingRef = useRef(false);
   const [draft, setDraft] = useState(() => fabric ? {
-    type: fabric.type, reference: fabric.reference || "", salePricePerMeter: String(fabric.salePricePerMeter ?? ""),
+    type: fabric.type, reference: fabric.reference || "", salePricePerMeter: String(fabric.salePricePerMeter ?? ""), purchasePricePerMeter: String(fabric.purchasePricePerMeter ?? ""), wholesalePricePerMeter: String(fabric.wholesalePricePerMeter ?? ""),
     colors: fabric.colors.map((color) => ({
       ...color, _key: crypto.randomUUID(), batchMeters: "", batchQuantity: "1",
       pieces: color.pieces.map((piece) => ({ ...piece, _key: crypto.randomUUID(), meters: String(piece.meters) })),
     })),
-  } : { type: "", reference: "", salePricePerMeter: "", colors: [newColor(new Set(usedBarcodes))] });
+  } : { type: "", reference: "", salePricePerMeter: "", purchasePricePerMeter: "", wholesalePricePerMeter: "", colors: [newColor(new Set(usedBarcodes))] });
   const [photo, setPhoto] = useState(null);
   const [removedPhoto, setRemovedPhoto] = useState(false);
   const [fields, setFields] = useState({});
@@ -92,7 +92,11 @@ export default function AddFabricForm({ fabric, token, usedBarcodes, canUpdate, 
     event.preventDefault();
     if (savingRef.current) return;
     let input;
-    try { input = fabric ? validateFabricUpdate(draft, fabric, { requirePrice: true }) : validateFabric(draft, { requirePrice: true }); }
+    try {
+      const values = { ...draft };
+      if (fabric && !canUpdate) for (const key of ['salePricePerMeter', 'purchasePricePerMeter', 'wholesalePricePerMeter']) if (fabric[key] === undefined) delete values[key];
+      input = fabric ? validateFabricUpdate(values, fabric, { requirePrices: Boolean(canUpdate) }) : validateFabric(values, { requirePrices: true });
+    }
     catch (validation) { showErrors(validation.fields || {}); setError("invalidFabric"); return; }
     savingRef.current = true;
     setSaving(true);
@@ -103,7 +107,7 @@ export default function AddFabricForm({ fabric, token, usedBarcodes, canUpdate, 
       if (dialogRef.current?.open) onSaved(saved);
     } catch (failure) {
       const response = failure.response?.data;
-      const code = ["workerMaterialsInUse", "invalidFabric", "forbidden", "duplicateBarcode", "notFound", "conflict", "imageTooLarge", "imageTypeInvalid", "imageUploadInvalid"].includes(response?.message) ? response.message : "saveFailed";
+      const code = ["tailoringFabricInUse", "workerMaterialsInUse", "invalidFabric", "forbidden", "duplicateBarcode", "notFound", "conflict", "imageTooLarge", "imageTypeInvalid", "imageUploadInvalid"].includes(response?.message) ? response.message : "saveFailed";
       if (response?.fields) showErrors(response.fields);
       setError(code);
     } finally {
@@ -121,7 +125,8 @@ export default function AddFabricForm({ fabric, token, usedBarcodes, canUpdate, 
       <fieldset disabled={saving} className="min-w-0 space-y-5 disabled:opacity-70">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div><label htmlFor="fabric-type" className="mb-2 block text-sm font-bold">{t("fabrics.type")} *</label><input id="fabric-type" disabled={Boolean(fabric && !canUpdate)} autoFocus required maxLength={FABRIC_LIMITS.text} value={draft.type} placeholder={t("fabrics.typePlaceholder")} onChange={(event) => change((current) => ({ ...current, type: event.target.value }))} className={inputClass} {...fieldProps("type")} /><FieldError path="type" fields={fields} /></div>
-          <div><label htmlFor="fabric-sale-price" className="mb-2 block text-sm font-bold">{t("fabrics.salePriceLabel")} *</label><input id="fabric-sale-price" disabled={Boolean(fabric && !canUpdate)} required inputMode="decimal" dir="ltr" maxLength={20} value={draft.salePricePerMeter} placeholder="25.50" onChange={(event) => change((current) => ({ ...current, salePricePerMeter: event.target.value }))} className={inputClass} {...fieldProps("salePricePerMeter")} /><FieldError path="salePricePerMeter" fields={fields} /><p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t("fabrics.salePriceHint")}</p></div>
+          {[["purchasePricePerMeter", "purchasePriceLabel", "fabric-purchase-price"], ["wholesalePricePerMeter", "wholesalePriceLabel", "fabric-wholesale-price"], ["salePricePerMeter", "retailPriceLabel", "fabric-sale-price"]].map(([key, label, id]) => <div key={key}><label htmlFor={id} className="mb-2 block text-sm font-bold">{t("fabrics." + label)} *</label><input id={id} disabled={Boolean(fabric && !canUpdate)} required inputMode="decimal" dir="ltr" maxLength={20} value={draft[key]} onChange={event => change(current => ({ ...current, [key]: event.target.value }))} className={inputClass} {...fieldProps(key)} /><FieldError path={key} fields={fields} /></div>)}
+          <p className="text-xs text-slate-500 dark:text-slate-400 sm:col-span-2 lg:col-span-3">{t("fabrics.salePriceHint")}</p>
           <div><label htmlFor="fabric-reference" className="mb-2 block text-sm font-bold">{t("fabrics.reference")} <span className="font-normal text-slate-500">({t("fabrics.optional")})</span></label><input id="fabric-reference" disabled={Boolean(fabric && !canUpdate)} maxLength={FABRIC_LIMITS.text} value={draft.reference} onChange={(event) => change((current) => ({ ...current, reference: event.target.value }))} className={inputClass} {...fieldProps("reference")} /><FieldError path="reference" fields={fields} /></div>
         </div>
         <FabricPhotoField fabric={fabric} token={token} selection={photo} removed={removedPhoto} disabled={saving || Boolean(fabric && !canUpdate)} onSelect={selection => { setPhoto(selection); setRemovedPhoto(false); setError(""); }} onRemove={() => { setPhoto(null); setRemovedPhoto(true); setError(""); }} />

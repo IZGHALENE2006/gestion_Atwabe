@@ -2,11 +2,13 @@ import { WORKER_SFIFA_FAMILIES, SFIFA_CUSTOMER_FAMILY, workerSfifaCreditsStock }
 import mongoose from "mongoose";
 import WorkerWork from "./WorkerWork.js";
 import { workerMaterialDebitSchema } from './workerMaterialSchema.js';
-import { SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, SFIFA_STOCK_WIDTHS, sfifaCodeNumber, sfifaQuantityUnits } from "../../shared/sfifaStock.js";
+import { SFIFA_METER_TYPES, SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, SFIFA_STOCK_WIDTHS, parseSfifaStyleMeters, sfifaCodeNumber, sfifaQuantityUnits } from "../../shared/sfifaStock.js";
 
+const styleMetersSchema = new mongoose.Schema(Object.fromEntries(SFIFA_METER_TYPES.map(key => [key, { type: Number, required: true, min: 0, max: SFIFA_STOCK_LIMIT, validate: value => sfifaQuantityUnits(value) !== null }])), { _id: false });
 const receiptSchema = new mongoose.Schema({
   requestId: { type: String, required: true, match: /^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/ },
   quantity: { type: Number, required: true, validate: value => sfifaQuantityUnits(value) !== null && value > 0 },
+  styleMeters: { type: styleMetersSchema, default: undefined },
   code: { type: Number, default: undefined },
   workId: { type: mongoose.Schema.Types.ObjectId, default: undefined },
   workerId: { type: mongoose.Schema.Types.ObjectId, ref: "TailoringWorker", default: undefined },
@@ -14,6 +16,13 @@ const receiptSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, required: true },
   date: { type: Date, required: true },
 }, { _id: false });
+receiptSchema.pre("validate", function () {
+  if (this.styleMeters === undefined) return;
+  try {
+    const styles = parseSfifaStyleMeters(this.styleMeters.toObject());
+    if (!styles || styles.quantity !== this.quantity) this.invalidate("styleMeters", "Style meters must match the addition quantity");
+  } catch { this.invalidate("styleMeters", "Invalid style meters"); }
+});
 const variantSchema = new mongoose.Schema({
   code: { type: Number, required: true, validate: Number.isSafeInteger },
   quantity: { type: Number, required: true, min: 0, max: SFIFA_STOCK_LIMIT, validate: value => sfifaQuantityUnits(value) !== null },

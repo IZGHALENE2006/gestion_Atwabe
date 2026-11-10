@@ -13,6 +13,7 @@ export function canOpenEmployeePage(role, user, path) {
   const url = new URL(String(path), "http://permissions.local");
   if (module === "invoices" && /\/new\/?$/i.test(url.pathname)) return canEmployeeOperation(role, user, module, invoiceCreationOperation(url.searchParams.get("type") || "invoice"));
   if (module === "invoices" && /\/history\/?$/i.test(url.pathname)) return canEmployeeOperation(role, user, module, "history");
+  if (module === "fabrics" && /\/profits\/?$/i.test(url.pathname)) return canEmployeeOperation(role, user, module, "profits");
   if (module === "tailoring" && url.searchParams.get("view") === "profits") return canEmployeeOperation(role, user, module, "profits");
   if (module === "credit" && /\/add\/?$/i.test(url.pathname)) return canEmployeeOperation(role, user, module, "add");
   if (module === "profits" && /\/hestorique\/?$/i.test(url.pathname)) return canEmployeeOperation(role, user, module, "history");

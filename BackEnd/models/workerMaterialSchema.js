@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { WORKER_SFIFA_METERS, WORKER_GARMENT_SIZES } from '../../shared/workerMaterials.js';
-import { sfifaQuantityUnits } from '../../shared/sfifaStock.js';
+import { SFIFA_METER_TYPES, sfifaQuantityUnits } from '../../shared/sfifaStock.js';
 import { tailoringMoneyCents } from '../../shared/tailoring.js';
 
 const id = () => ({ type: mongoose.Schema.Types.ObjectId, required: true });
@@ -17,6 +17,7 @@ export const workerMaterialRowSchema = new mongoose.Schema({
   fabricType: { type: String, required: true }, fabricColor: { type: String, required: true }, fabricReference: String,
   pieceBarcode: { type: String, required: true }, sfifaWidth: { type: String, required: true },
   sfifaFamily: { type: String, required: true }, sfifaCode: { type: Number, default: undefined },
+  sfifaStyle: { type: String, enum: SFIFA_METER_TYPES, default: undefined },
 }, { _id: false });
 export const workerMaterialOperationSchema = new mongoose.Schema({
   requestId: { type: String, required: true }, kind: { type: String, required: true, enum: ['assign', 'increase'] },

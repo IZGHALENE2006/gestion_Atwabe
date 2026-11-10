@@ -16,6 +16,7 @@ import Dashboard from "./composent/Dashboard/Dashboard"
 import Fornisseur from "./composent/Fornisseur/Fornisseur"
 import SupplierInvoices from './composent/Fornisseur/SupplierInvoices'
 import Clients from './composent/Clients/Clients'
+import FabricProfits from './composent/Atwabe/FabricProfits.jsx';
 import Atwabe from './composent/Atwabe/Atwabe'
 import Fesla from './composent/Fesla/Fesla'
 import Khadama from './composent/Khadama/Khadama'
@@ -98,6 +99,7 @@ const toggleLanguage = () => {
         <Route path='Categories' element={<Categories/>}/>
         <Route path='products' element={  <ProductPg />} />
         <Route path='Atwabe' element={<Atwabe />} />
+        <Route path='Atwabe/profits' element={<FabricProfits />} />
         <Route path='SfifaStock' element={<SfifaStock />} />
         <Route path='SideExpenses' element={<SideExpenses />} />
         <Route path='Fesla' element={<Fesla />} />

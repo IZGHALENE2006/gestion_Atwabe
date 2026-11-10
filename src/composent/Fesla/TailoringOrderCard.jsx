@@ -33,7 +33,7 @@ export default function TailoringOrderCard({ order, token, canEdit, onEdit, onPr
     <div className="mt-4 space-y-2"><p className="inline-flex rounded-lg bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">{t(`fesla.sources.${item.fabricSource}`)}</p><p dir="auto" className="break-words font-semibold">{item.fabricType}{item.fabricReference ? ` · ${item.fabricReference}` : ""}</p>{item.fabricColor && <p dir="auto" className="break-words text-sm text-slate-500 dark:text-slate-400">{t("fesla.fabricColor")}: {item.fabricColor}</p>}</div>
     {!withExpenses && <div className="mt-4 rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700"><p className="font-bold">{t(`fesla.widths.${item.sfifa.width}`)}</p><p className="mt-1 text-slate-500 dark:text-slate-400">{t(`fesla.styles.${item.sfifa.style}`)}</p>{item.sfifa.style !== "fabric" && <p dir="auto" className="mt-2 break-words">{item.sfifa.color1} · {item.sfifa.color2}</p>}</div>}
     {operations.profits && trousers && item.fabricCost && <TrouserFabricCost cost={item.fabricCost} meters={item.fabricMeters} />}
-    {operations.profits && item.costs && <DjellabaCostBreakdown garmentType={garmentType} costs={item.costs} meters={item.fabricMeters} />}
+    {operations.profits && item.costs && <DjellabaCostBreakdown pricingVersion={order.costing?.pricingVersion} garmentType={garmentType} costs={item.costs} meters={item.fabricMeters} />}
     </section>)}</div>
     {tailoringUsesSfifa(order) && !order.costing && <p className="fesla-costs-notice">{t(["fesla." + garmentType + ".costs.legacyUnknown", "fesla.costs.legacyUnknown"])}</p>}
     <section className="fesla-barcode-panel" aria-label={t("fesla.barcode")}>

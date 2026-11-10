@@ -9,7 +9,7 @@ import AdminModel from "../BackEnd/models/AdminModel.js";
 import EmployeModel from "../BackEnd/models/EmployeModele.js";
 import SfifaStock from "../BackEnd/models/SfifaStock.js";
 import TailoringWorker from "../BackEnd/models/TailoringWorker.js";
-import { SFIFA_STOCK_FAMILIES, SFIFA_STOCK_WIDTHS, filterSfifaStock, formatSfifaCode, normalizeSfifaBarcode, sfifaStockBarcode, sfifaCodeNumber, sfifaQuantityUnits, sfifaStockTotals, validateSfifaStock } from "../shared/sfifaStock.js";
+import { SFIFA_STOCK_FAMILIES, SFIFA_STOCK_WIDTHS, filterSfifaStock, formatSfifaCode, normalizeSfifaBarcode, parseSfifaStyleMeters, sfifaStockBarcode, sfifaCodeNumber, sfifaQuantityUnits, sfifaStockTotals, validateSfifaStock } from "../shared/sfifaStock.js";
 
 const owner = "111111111111111111111111", otherOwner = "222222222222222222222222", employee = "333333333333333333333333";
 const admin = { id: owner, role: "admin" }, stranger = { id: otherOwner, role: "admin" }, staffClaims = { id: employee, role: "Employe", idAdmin: otherOwner, action: { add: true, update: true, delete: true } };
@@ -54,6 +54,76 @@ async function request({ body, suffix = "", method = body === undefined ? "GET" 
   return fetch(base + suffix, { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 }
 const add = async (body = input(), actor) => { const response = await request({ body, ...(actor === undefined ? {} : { actor }) }); assert.equal(response.status, 201); return response.json(); };
+
+test("optional color-style meters sum exact thousandths and override an untrusted total", () => {
+  const value = validateSfifaStock(input({ quantity: 999, styleMeters: { single: "0,1", double: "0.200", gradient: "0.125" } }));
+  assert.equal(value.quantity, 0.425);
+  assert.deepEqual(value.styleMeters, { single: 0.1, double: 0.2, gradient: 0.125 });
+  assert.equal(validateSfifaStock(input({ quantity: undefined, styleMeters: { gradient: "2.5" } })).quantity, 2.5);
+  assert.deepEqual(validateSfifaStock(input({ styleMeters: { single: "", double: "  ", gradient: "" } })), { width: "thin", family: "01-30", code: 1, quantity: 10 });
+  assert.equal(parseSfifaStyleMeters(undefined), undefined);
+  assert.equal(validateSfifaStock(input({ styleMeters: {} })).quantity, 10);
+});
+
+test("invalid style meters and zero or excessive totals cannot create stock", async t => {
+  const f = setup(t);
+  for (const styleMeters of [null, [], "bad", { other: 2 }, { single: -1 }, { double: true }, { gradient: {} }, { single: "1.0001" }, { single: "1e2" }, { single: 1000001 }, { single: 600000, double: 500000 }, { single: 0 }]) {
+    const response = await request({ body: input({ styleMeters }) });
+    assert.equal(response.status, 400, JSON.stringify(styleMeters));
+    assert.equal((await response.json()).message, "invalidStock");
+  }
+  assert.throws(() => validateSfifaStock(input({ styleMeters: { double: "-1" } })), error => error.fields["styleMeters.double"] === "invalidBalance");
+  assert.equal(f.records.length, 0);
+});
+
+test("new and existing stock additions retain style meters and history totals", async t => {
+  const f = setup(t);
+  const first = await add(input({ quantity: 200, styleMeters: { single: "1,125", double: "2", gradient: "" } }));
+  assert.equal(first.quantity, 3.125);
+  const second = await add(input({ quantity: 999, styleMeters: { gradient: "0.875" } }));
+  assert.equal(second._id, first._id); assert.equal(second.quantity, 4);
+  await add(input({ quantity: 1, styleMeters: { single: "", double: "", gradient: "" } }));
+  assert.equal(f.records[0].quantity, 5); assert.equal(f.records[0].receipts.length, 3);
+  assert.deepEqual(f.records[0].receipts[0].styleMeters.toObject(), { single: 1.125, double: 2, gradient: 0 });
+  const entries = (await (await history(first)).json()).entries;
+  assert.equal(entries.length, 3);
+  assert.deepEqual(entries.find(entry => entry.quantity === 0.875).styleMeters, { single: 0, double: 0, gradient: 0.875 });
+  assert.deepEqual(Object.keys(entries.find(entry => entry.quantity === 1)).sort(), ["date", "quantity", "source", "workerName"]);
+  const correction = await request({ suffix: variantPath(second), method: "PUT", body: { quantity: 2, version: f.records[0].__v } });
+  assert.equal(correction.status, 200);
+  assert.deepEqual((await (await history(first)).json()).entries, entries);
+});
+
+test("style addition retries do not duplicate stock and changing the distribution conflicts", async t => {
+  const f = setup(t), body = input({ styleMeters: { single: 2, double: 3 } });
+  const results = await Promise.all([request({ body }), request({ body })]);
+  assert.deepEqual(results.map(response => response.status).sort(), [200, 201]);
+  const stock = await (results[0].status === 201 ? results[0] : results[1]).json();
+  assert.equal((await request({ body: { ...body, quantity: 999, styleMeters: { single: "2.000", double: "3,000", gradient: "" } } })).status, 200);
+  for (const styleMeters of [{ single: 1, double: 4 }, undefined]) assert.equal((await request({ body: { ...body, quantity: 5, styleMeters } })).status, 409);
+  assert.equal((await restock(stock, { quantity: 5, requestId: body.requestId })).status, 409);
+  assert.equal(f.records[0].quantity, 5); assert.equal(f.records[0].receipts.length, 1);
+});
+
+test("style additions preserve owner scoping and the employee author", async t => {
+  const f = setup(t);
+  const stock = await add(input({ styleMeters: { single: "1.5" }, idAdmin: otherOwner, createdBy: owner }), staffClaims);
+  assert.equal(String(f.records[0].receipts[0].createdBy), employee);
+  assert.equal(String(f.records[0].idAdmin), owner);
+  assert.equal((await history(stock, stranger)).status, 404);
+  f.staff.action.add = false;
+  assert.equal((await request({ body: input({ styleMeters: { double: 2 } }), actor: staffClaims })).status, 403);
+  assert.equal(f.records[0].quantity, 1.5);
+});
+
+test("persisted receipt breakdown must agree with its addition and remains optional for legacy receipts", async () => {
+  const base = { idAdmin: owner, createdBy: owner, width: "thin", family: "01-30", quantity: 3, receipts: [{ requestId: randomUUID(), quantity: 3, code: 1, createdBy: owner, date: new Date() }] };
+  await new SfifaStock(base).validate();
+  for (const styleMeters of [{ single: 1, double: 0, gradient: 0 }, { single: -1, double: 4, gradient: 0 }, { single: 1.0001, double: 1.9999, gradient: 0 }, { single: 3 }]) {
+    await assert.rejects(new SfifaStock({ ...base, receipts: [{ ...base.receipts[0], styleMeters }] }).validate(), error => error.name === "ValidationError");
+  }
+  await new SfifaStock({ ...base, receipts: [{ ...base.receipts[0], styleMeters: { single: 1.1, double: 1.9, gradient: 0 } }] }).validate();
+});
 
 test("sfifa has exactly two widths and the three requested family labels, preserving 01", () => {
   assert.deepEqual(SFIFA_STOCK_WIDTHS, ["thin", "thick"]);

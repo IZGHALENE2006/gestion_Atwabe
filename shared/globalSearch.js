@@ -24,6 +24,7 @@ export const SEARCH_PAGES = [
   ['dashboard', '/Home/Dashboard', 'لوحة التحكم إحصائيات dashboard statistiques'],
   ['products', '/Home/products', 'منتجات منتج سلع مخزون produits stock product'],
   ['fabrics', '/Home/Atwabe', 'أثواب ثوب ألوان قطع قماش atwabe tissu tissus fabric'],
+  ['fabricProfits', '/Home/Atwabe/profits', 'أرباح أثواب ثوب مبيعات tissu tissus bénéfices profit'],
   ['sfifa', '/Home/SfifaStock', 'سفيفة رقيقة عريضة مخزون sfifa stock'],
   ['tailoring', '/Home/Fesla', 'فصالة طلبات جلابة جلابيب fesla couture commande djellaba'],
   ['trousers', '/Home/Fesla?garment=trousers', 'سروال سراويل قندريسي عادي pantalon pantalons'],

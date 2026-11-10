@@ -33,6 +33,10 @@
 .dark .worker-piece-wage { color: #a9e5cc; }
 .dark .worker-remove-piece { background: #4a2831; border-color: #71414e; color: #ffc6ce; }
 .worker-material-pair { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.3fr); gap: 10px; }
+.worker-sfifa-style-field { padding: 12px; border: 1px solid #c8d8fc; border-radius: 12px; background: #edf3ff; }
+.worker-sfifa-style-field > label { color: #2454c3; }
+.dark .worker-sfifa-style-field { border-color: #3a5685; background: #1c3159; }
+.dark .worker-sfifa-style-field > label { color: #b6cfff; }
 .worker-material-balances { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 14px 0 0; }
 .worker-material-balances > div { padding: 10px; color: #176b4e; background: #e7f5ef; border-radius: 10px; }
 .worker-material-balances dt { font-size: 10px; line-height: 1.7; }

@@ -24,5 +24,5 @@ export const saveTailoringOrder = async (input, selection, removeImage, token, o
 
 export const loadTailoringTracking = async (token, signal) => (await axios.get(api + "/work-status", { headers: headers(token), signal })).data;
 
-export const loadDjellabaCostSettings = async (token, signal, garmentType = "djellaba") => (await axios.get(api + "/cost-settings", { headers: headers(token), signal, params: garmentType !== "djellaba" ? { garment: garmentType } : undefined })).data;
-export const saveDjellabaCostSettings = async (rates, version, token, garmentType = "djellaba") => (await axios.put(api + "/cost-settings", { rates, version }, { headers: headers(token), params: garmentType !== "djellaba" ? { garment: garmentType } : undefined })).data;
+export const loadDjellabaCostSettings = async (token, signal, garmentType = "djellaba", pricingVersion = 3) => (await axios.get(api + "/cost-settings", { headers: headers(token), signal, params: { ...(garmentType !== "djellaba" ? { garment: garmentType } : {}), ...(garmentType !== "trousers" ? { pricingVersion } : {}) } })).data;
+export const saveDjellabaCostSettings = async (rates, version, token, garmentType = "djellaba") => (await axios.put(api + "/cost-settings", { rates, version }, { headers: headers(token), params: { ...(garmentType !== "djellaba" ? { garment: garmentType } : {}), ...(garmentType !== "trousers" ? { pricingVersion: 3 } : {}) } })).data;

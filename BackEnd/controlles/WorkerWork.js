@@ -3,6 +3,7 @@ import { loadShopFlowWorks, shopFlowNames, publicShopOption, resolveShopFlow, re
 import { workerCompletionEarning } from "../../shared/workerPayroll.js";
 import Fabric from '../models/Fabric.js';
 import SfifaStock from '../models/SfifaStock.js';
+import { sfifaStockStyles } from '../../shared/sfifaStock.js';
 import { usesWorkerMaterials, supportsWorkerMaterialHistory, workerMaterialInputKey, workerMaterialRows, workerPieceSelectionKey } from '../../shared/workerMaterials.js';
 import { archiveWorkerAssignment, makeWorkerMaterialOperation, requireWorkerMaterialsReady, resolveWorkerMaterials, resumeWorkerMaterials } from '../utils/workerMaterials.js';
 import mongoose from "mongoose";
@@ -123,8 +124,9 @@ export async function listWorkerMaterialOptions(req, res) {
   try {
     const { idAdmin } = await workerAccessFor(req, ["assign", "increase"]), worker = await workerFor(req, idAdmin);
     if (!workerCategories(worker).includes('machine')) throw fail('workerSectionChanged', 409);
-    const [fabrics, sfifa] = await Promise.all([Fabric.find({ idAdmin }).select('type reference colors').lean(), SfifaStock.find({ idAdmin }).select('width family variants quantity unassignedQuantity').lean()]);
-    res.json({ fabrics: fabrics.map(fabric => ({ _id: fabric._id, type: fabric.type, reference: fabric.reference, colors: fabric.colors })), sfifa: sfifa.flatMap(stock => [...(stock.variants || []).map(variant => ({ _id: variant._id, parentId: stock._id, width: stock.width, family: stock.family, code: variant.code, quantity: variant.quantity })), ...((stock.unassignedQuantity ?? stock.quantity) > 0 ? [{ _id: stock._id, parentId: stock._id, width: stock.width, family: stock.family, quantity: stock.unassignedQuantity ?? stock.quantity }] : [])]) });
+    const [fabrics, sfifa] = await Promise.all([Fabric.find({ idAdmin }).select('type reference colors').lean(), SfifaStock.find({ idAdmin }).select('width family variants quantity unassignedQuantity receipts.code receipts.styleMeters').lean()]);
+    const stylesFor = (stock, code) => { const styles = sfifaStockStyles(stock, code); return styles.length ? { styles } : {}; };
+    res.json({ fabrics: fabrics.map(fabric => ({ _id: fabric._id, type: fabric.type, reference: fabric.reference, colors: fabric.colors })), sfifa: sfifa.flatMap(stock => [...(stock.variants || []).map(variant => ({ _id: variant._id, parentId: stock._id, width: stock.width, family: stock.family, code: variant.code, quantity: variant.quantity, ...stylesFor(stock, variant.code) })), ...((stock.unassignedQuantity ?? stock.quantity) > 0 ? [{ _id: stock._id, parentId: stock._id, width: stock.width, family: stock.family, quantity: stock.unassignedQuantity ?? stock.quantity, ...stylesFor(stock) }] : [])]) });
   } catch (error) { sendError(res, error, 'loadMaterialsFailed'); }
 }
 export async function listWorkerFabricOptions(req, res) {

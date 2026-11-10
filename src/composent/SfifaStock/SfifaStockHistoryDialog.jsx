@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IoCloseOutline, IoPersonOutline, IoTimeOutline } from "react-icons/io5";
-import { SFIFA_STOCK_FAMILIES, SFIFA_STOCK_SCALE, formatSfifaCode, sfifaQuantityUnits } from "../../../shared/sfifaStock.js";
+import { SFIFA_METER_TYPES, SFIFA_STOCK_FAMILIES, SFIFA_STOCK_SCALE, formatSfifaCode, sfifaQuantityUnits } from "../../../shared/sfifaStock.js";
 import { loadSfifaRestocks } from "./sfifaStockApi.js";
 
 export default function SfifaStockHistoryDialog({ stock, token, onClose }) {
@@ -50,7 +50,7 @@ export default function SfifaStockHistoryDialog({ stock, token, onClose }) {
             <table className="sfifa-history-table"><caption className="sr-only">{t("sfifaStock.historyTitle")}</caption><thead><tr>{["historyDate", "historyQuantity", "historySource", "historyWorker"].map(key => <th key={key} scope="col">{t(`sfifaStock.${key}`)}</th>)}</tr></thead>
               <tbody>{state.entries.map((entry, index) => <tr key={`${entry.date}:${index}`} data-sfifa-receipt data-source={entry.source}>
                 <td><time dateTime={entry.date}><span>{date(entry.date)}</span><small>{time(entry.date)}</small></time></td>
-                <td className="sfifa-history-meters" data-sfifa-receipt-quantity data-value={entry.quantity}><bdi dir="ltr">+{number(entry.quantity)} {t("sfifaStock.unit")}</bdi></td>
+                <td className="sfifa-history-meters" data-sfifa-receipt-quantity data-value={entry.quantity}><bdi dir="ltr">+{number(entry.quantity)} {t("sfifaStock.unit")}</bdi>{entry.styleMeters && <dl className="mt-2 space-y-1 text-xs font-normal text-slate-500 dark:text-slate-400" aria-label={t("sfifaStock.styleMetersTitle")}>{SFIFA_METER_TYPES.filter(key => entry.styleMeters[key] > 0).map(key => <div key={key} data-sfifa-receipt-style={key} className="flex items-center gap-2"><dt>{t(`sfifaStock.meterTypes.${key}`)}</dt><dd><bdi dir="ltr">{number(entry.styleMeters[key])} {t("sfifaStock.unit")}</bdi></dd></div>)}</dl>}</td>
                 <td><span className={`sfifa-source-badge is-${entry.source}`}>{entry.source === "worker" && <IoPersonOutline size={16} />}{t(entry.source === "worker" ? "sfifaStock.historyProduction" : "sfifaStock.historyManual")}</span></td>
                 <td className="sfifa-history-worker">{entry.source === "worker" ? entry.workerName || t("sfifaStock.historyUnknownWorker") : "—"}</td>
               </tr>)}</tbody>

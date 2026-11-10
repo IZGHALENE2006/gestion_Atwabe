@@ -5,9 +5,10 @@ import EmployeModel from "../models/EmployeModele.js";
 import SfifaStock from "../models/SfifaStock.js";
 import TailoringWorker from "../models/TailoringWorker.js";
 import { protectWorkerMaterialDeletion } from '../utils/workerMaterials.js';
-import { SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, SFIFA_STOCK_SCALE, sfifaQuantityUnits, sfifaStockBarcode, validateSfifaClassification, validateSfifaStock } from "../../shared/sfifaStock.js";
+import { SFIFA_METER_TYPES, SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, SFIFA_STOCK_SCALE, sfifaQuantityUnits, sfifaStockBarcode, validateSfifaClassification, validateSfifaStock } from "../../shared/sfifaStock.js";
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
+const sameStyleMeters = (left, right) => left === undefined && right === undefined || Boolean(left && right && SFIFA_METER_TYPES.every(key => left[key] === right[key]));
 const groupUnits = quantity => sfifaQuantityUnits(quantity, { max: SFIFA_STOCK_GROUP_LIMIT });
 const publicRows = stock => {
   const base = { parentId: stock._id, width: stock.width, family: stock.family, __v: stock.__v ?? 0, createdAt: stock.createdAt, updatedAt: stock.updatedAt };
@@ -63,15 +64,15 @@ export async function addSfifaStock(req, res) {
         const processed = await SfifaStock.findOne({ idAdmin, "receipts.requestId": requestId });
         if (processed) {
           const receipt = processed.receipts.find(entry => entry.requestId === requestId);
-          if (processed.width !== input.width || processed.family !== input.family || receipt.code !== input.code || receipt.quantity !== input.quantity) throw fail("requestConflict", 409);
+          if (processed.width !== input.width || processed.family !== input.family || receipt.code !== input.code || receipt.quantity !== input.quantity || !sameStyleMeters(receipt.styleMeters, input.styleMeters)) throw fail("requestConflict", 409);
           return res.json(publicMutation(processed, input.code));
         }
         const existing = await SfifaStock.findOne({ idAdmin, width: input.width, family: input.family });
-        const receipt = { requestId, quantity: input.quantity, code: input.code, createdBy, date: new Date() };
+        const receipt = { requestId, quantity: input.quantity, code: input.code, ...(input.styleMeters ? { styleMeters: input.styleMeters } : {}), createdBy, date: new Date() };
         if (existing) {
           const previous = existing.receipts.find(entry => entry.requestId === requestId);
           if (previous) {
-            if (previous.code !== input.code || previous.quantity !== input.quantity) throw fail("requestConflict", 409);
+            if (previous.code !== input.code || previous.quantity !== input.quantity || !sameStyleMeters(previous.styleMeters, input.styleMeters)) throw fail("requestConflict", 409);
             return res.json(publicMutation(existing, input.code));
           }
           prepareStock(existing);
@@ -168,7 +169,7 @@ export async function restockSfifaVariant(req, res) {
         const processed = await SfifaStock.findOne({ idAdmin, "receipts.requestId": requestId });
         if (processed) {
           const receipt = processed.receipts.find(entry => entry.requestId === requestId);
-          if (String(processed._id) !== String(stock._id) || receipt.workId || receipt.code !== variant.code || receipt.quantity !== input.quantity) throw fail("requestConflict", 409);
+          if (String(processed._id) !== String(stock._id) || receipt.workId || receipt.code !== variant.code || receipt.quantity !== input.quantity || receipt.styleMeters !== undefined) throw fail("requestConflict", 409);
           return res.json(publicMutation(processed, variant.code));
         }
         const units = sfifaQuantityUnits(variant.quantity) + sfifaQuantityUnits(input.quantity);
@@ -203,7 +204,8 @@ export async function listSfifaRestocks(req, res) {
       index, date: receipt.date, quantity: receipt.quantity,
       source: receipt.workerId || receipt.workId ? "worker" : "manual",
       workerName: receipt.workerId || receipt.workId ? receipt.workerName || names.get(String(workerIdFor(receipt))) || "" : "",
-    })).sort((a, b) => new Date(b.date) - new Date(a.date) || b.index - a.index).map(entry => ({ date: entry.date, quantity: entry.quantity, source: entry.source, workerName: entry.workerName }));
+      ...(receipt.styleMeters ? { styleMeters: Object.fromEntries(SFIFA_METER_TYPES.map(key => [key, receipt.styleMeters[key]])) } : {}),
+    })).sort((a, b) => new Date(b.date) - new Date(a.date) || b.index - a.index).map(entry => ({ date: entry.date, quantity: entry.quantity, source: entry.source, workerName: entry.workerName, ...(entry.styleMeters ? { styleMeters: entry.styleMeters } : {}) }));
     res.json({ entries, hasUnassignedHistory: !row.isUnassigned && stock.receipts.some(receipt => receipt.code === undefined || receipt.code === null) });
   } catch (error) { sendError(res, error, "loadHistoryFailed"); }
 }

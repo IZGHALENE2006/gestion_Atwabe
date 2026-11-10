@@ -1,4 +1,6 @@
 export const feslaFrench = {
+  fabricStock: {"piece":"Rouleau de tissu","choosePiece":"Choisir le rouleau","available":"Stock actuel : {{meters}} m","hint":"Le métrage est déduit du rouleau à l’enregistrement, ajusté à la modification et restitué à l’annulation.","cancelConfirm":"Annuler cette commande ? Tous les mètres de tissu prélevés seront rendus aux rouleaux d’origine. La commande et les paiements restent dans l’historique ; ses montants sont exclus des bénéfices."},
+  salePricing: {"settingsHint":"Pour chaque sfifa, fixez le coût et le prix facturé par pièce. Le bénéfice correspond au prix facturé moins le coût. Les nouveaux tarifs s’appliquent aux nouvelles commandes.","automaticHint":"Prix final : tissu du magasin au prix de détail + prix facturé de la sfifa choisie. Le bénéfice de confection est le prix de la sfifa moins son coût. Le tissu du client ne coûte rien.","savedHint":"Cette commande conserve ses tarifs enregistrés. La marge du tissu figure séparément dans les bénéfices des tissus.","priceHint":"Calculé automatiquement : tissu au prix de détail + prix facturé de la sfifa.","expenseHint":"Tissu au prix de détail + coût de la sfifa. La marge du tissu est comptabilisée séparément dans les bénéfices des tissus.","legacyExpenseHint":"Valeur du tissu au prix de détail dans la commande ; sa marge figure séparément dans les bénéfices des tissus.","breakdown":"Prix, frais et bénéfice de la pièce","fabricAmount":"Tissu au prix de détail","sfifaAmount":"Prix facturé de la sfifa","sfifaCostAmount":"Coût de la sfifa","sfifaProfitAmount":"Bénéfice de la sfifa","totalAmount":"Total des frais","saleAmount":"Prix final de la pièce","costPrice":"Prix de revient par pièce","salePrice":"Prix facturé par pièce","profitMargin":"Bénéfice par pièce"},
   cancellation: {"action":"Annuler la commande","status":"Commande annulée","saved":"La commande a été annulée et retirée des totaux et bénéfices.","confirm":"Confirmer l’annulation de cette commande livrée ? Sa valeur et son bénéfice seront retirés des statistiques. La commande, sa livraison et ses paiements resteront conservés dans l’historique.","date":"Annulée le","by":"Annulée par","recordedBy":"Enregistré par","excluded":"Commande exclue des montants et bénéfices. Les paiements déjà reçus sont conservés dans l’historique."},
   measurements: {
     title: "Mensurations", unit: "cm", notesLabel: "Toutes les mesures de cette pièce", placeholder: "Épaule : 42 cm\nManche : 60 cm\nLongueur : 145 cm", hint: "Facultatif : saisissez librement toutes les mesures de cette pièce dans ce champ (4 000 caractères maximum).",
@@ -35,7 +37,7 @@ export const feslaFrench = {
     settingsTitle: "Tarifs des djellabas", settingsHint: "La sfifa et le total des artisans sont facturés une fois par djellaba. Les nouveaux tarifs s’appliquent aux nouvelles commandes.",
     saveSettings: "Enregistrer les tarifs", settingsSaved: "Les tarifs des djellabas ont été enregistrés.", reloadPrices: "Actualiser les prix",
     rates: { thinSfifaPrice: "Sfifa fine par djellaba", thickSfifaPrice: "Sfifa large par djellaba", laborPrice: "Total des artisans par djellaba" },
-    fabricMeters: "Mètres de tissu utilisés", metersUnit: "m", clientFabricFree: "Le tissu apporté par le client a un coût de 0 DH.", fabricPriceHint: "Le prix au mètre est celui du type de tissu enregistré dans Atwabe.",
+    fabricMeters: "Mètres de tissu utilisés", metersUnit: "m", clientFabricFree: "Le tissu apporté par le client a un coût de 0 DH.", fabricPriceHint: "Le prix au mètre est le prix de détail du tissu enregistré dans Atwabe.",
     breakdown: "Frais de cette djellaba", fabricAmount: "Coût du tissu", sfifaAmount: "Coût de la sfifa", laborAmount: "Total des artisans", totalAmount: "Total des frais",
     automaticHint: "Les frais de chaque djellaba sont calculés à partir du tissu, de la sfifa et des artisans.", savedPricesHint: "Les tarifs enregistrés avec cette commande restent conservés lorsque les réglages changent.",
     expenseHint: "Somme des frais de toutes les djellabas de la commande.", legacyUnknown: "Les frais de cette ancienne commande n’ont pas été enregistrés. Indiquez les mètres de chaque djellaba lors de sa modification pour les calculer.",
@@ -197,6 +199,7 @@ export const feslaFrench = {
   garmentsCount: "Nombre de djellabas : {{count}}",
   moreGarments: "Autres : {{count}}",
   errors: {
+    chooseFabricPiece: "Choisissez un rouleau de la couleur sélectionnée.", fabricStockRequired: "Cette commande doit conserver sa liaison avec le stock de tissu.", fabricStockUnavailable: "Le stock n’a pas pu être mis à jour. Réessayez ou actualisez les données pour terminer la synchronisation du stock, sans répéter le prélèvement.", insufficientFabricStock: "Le métrage disponible dans le rouleau est insuffisant pour ces pièces.", fabricStockReturnLimit: "La restitution dépasserait la capacité maximale du rouleau.",
     orderCancelled: "Cette commande a été annulée. Aucune modification, livraison ou nouveau paiement n’est autorisé.", orderNotDelivered: "Seule une commande déjà livrée peut être annulée.",
     invalidMeasurementNotes: "Saisissez les mesures en texte libre, avec 4 000 caractères maximum.",
     invalidMeasurements: "Vérifiez les mensurations de cette pièce.",
@@ -248,6 +251,8 @@ export const feslaFrench = {
 };
 
 export const feslaArabic = {
+  fabricStock: {"piece":"لفة الثوب","choosePiece":"اختر اللفة","available":"المتاح حاليًا: {{meters}} م","hint":"تُخصم الأمتار من اللفة عند حفظ الطلب، ويُحتسب الفرق عند تعديله، وتُعاد الأمتار عند إلغائه.","cancelConfirm":"هل تريد إلغاء هذا الطلب؟ ستُعاد جميع أمتار الثوب المخصومة إلى لفاتها الأصلية. يبقى الطلب والدفعات في السجل، وتُستبعد مبالغه من الأرباح."},
+  salePricing: {"settingsHint":"حدّد لكل سفيفة سعر التكلفة وسعر البيع لكل قطعة. الربح هو سعر البيع ناقص التكلفة. تُطبّق الأسعار الجديدة على الطلبات الجديدة.","automaticHint":"الثمن النهائي: ثمن ثوب المحل بسعر التقسيط + سعر بيع السفيفة المختارة. ربح الفصالة هو سعر بيع السفيفة ناقص تكلفتها. لا تُحتسب تكلفة ثوب الزبون.","savedHint":"يعتمد هذا الطلب على أسعاره المحفوظة. يظهر ربح الثوب بصورة مستقلة في أرباح الأثواب.","priceHint":"يُحسب تلقائيًا: ثمن الثوب بسعر التقسيط + سعر بيع السفيفة.","expenseHint":"ثمن الثوب بسعر التقسيط + تكلفة السفيفة. يُحتسب ربح الثوب بصورة مستقلة في أرباح الأثواب.","legacyExpenseHint":"قيمة الثوب بسعر التقسيط داخل الطلب؛ ويظهر ربحه بصورة مستقلة في أرباح الأثواب.","breakdown":"ثمن القطعة ومصاريفها وربحها","fabricAmount":"ثمن الثوب بسعر التقسيط","sfifaAmount":"سعر بيع السفيفة","sfifaCostAmount":"تكلفة السفيفة","sfifaProfitAmount":"ربح السفيفة","totalAmount":"مجموع المصاريف","saleAmount":"الثمن النهائي للقطعة","costPrice":"سعر التكلفة لكل قطعة","salePrice":"سعر البيع لكل قطعة","profitMargin":"الربح لكل قطعة"},
   cancellation: {
     action: "إلغاء الطلب", status: "طلب ملغى", saved: "تم إلغاء الطلب واستبعاد ثمنه وربحه من الإحصائيات.",
     confirm: "هل تؤكد إلغاء هذا الطلب المسلّم؟ سيُستبعد ثمنه وربحه من الإحصائيات، مع الاحتفاظ بالطلب وتاريخ تسليمه والدفعات المسجلة في السجل.",
@@ -288,7 +293,7 @@ export const feslaArabic = {
     settingsTitle: "إعدادات أسعار الجلابيب", settingsHint: "تُضاف السفيفة وإجمالي أجور العمال مرة واحدة لكل جلابة. تُطبّق الأسعار الجديدة على الطلبات الجديدة.",
     saveSettings: "حفظ الأسعار", settingsSaved: "تم حفظ أسعار الجلابيب.", reloadPrices: "تحديث الأسعار",
     rates: { thinSfifaPrice: "سعر السفيفة الرقيقة لكل جلابة", thickSfifaPrice: "سعر السفيفة العريضة لكل جلابة", laborPrice: "إجمالي أجور العمال لكل جلابة" },
-    fabricMeters: "عدد أمتار الثوب المستعملة", metersUnit: "م", clientFabricFree: "لا تُحتسب تكلفة الثوب الذي أحضره الزبون: 0 درهم.", fabricPriceHint: "يُؤخذ سعر المتر من نوع الثوب المسجل في قسم الأثواب.",
+    fabricMeters: "عدد أمتار الثوب المستعملة", metersUnit: "م", clientFabricFree: "لا تُحتسب تكلفة الثوب الذي أحضره الزبون: 0 درهم.", fabricPriceHint: "يُؤخذ سعر المتر من سعر التقسيط للثوب المسجل في قسم الأثواب.",
     breakdown: "مصاريف هذه الجلابة", fabricAmount: "تكلفة الثوب", sfifaAmount: "تكلفة السفيفة", laborAmount: "أجور العمال", totalAmount: "مجموع المصاريف",
     automaticHint: "تُحسب مصاريف كل جلابة من تكلفة الثوب والسفيفة وأجور العمال.", savedPricesHint: "تبقى الأسعار المسجلة مع هذا الطلب محفوظة عند تغيير الإعدادات.",
     expenseHint: "مجموع مصاريف جميع جلابيب الطلب.", legacyUnknown: "لم تُسجّل مصاريف هذا الطلب القديم. أدخل أمتار كل جلابة عند تعديله لحسابها.",
@@ -450,6 +455,7 @@ export const feslaArabic = {
   garmentsCount: "عدد الجلابيب: {{count}}",
   moreGarments: "إضافية: {{count}}",
   errors: {
+    chooseFabricPiece: "اختر لفة من لون الثوب المحدد.", fabricStockRequired: "يجب الحفاظ على ارتباط هذا الطلب بمخزون الأثواب.", fabricStockUnavailable: "تعذّر تحديث مخزون الثوب. أعد المحاولة أو حدّث البيانات لاستكمال مزامنة المخزون دون تكرار الخصم.", insufficientFabricStock: "الأمتار المتاحة في اللفة لا تكفي لقطع هذا الطلب.", fabricStockReturnLimit: "ستتجاوز الأمتار المعادة الحد الأقصى المسموح به للفة.",
     orderCancelled: "هذا الطلب ملغى؛ لا يمكن تعديله أو تسليمه أو تسجيل دفعة جديدة له.", orderNotDelivered: "يمكن إلغاء الطلب بعد تسجيل تسليمه فقط.",
     invalidMeasurementNotes: "اكتب القياسات نصيًا، في حدود ٤٬٠٠٠ حرف.",
     invalidMeasurements: "تحقق من قياسات هذه القطعة.",

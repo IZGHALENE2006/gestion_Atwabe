@@ -2,7 +2,7 @@ import Fabric from '../models/Fabric.js';
 import SfifaStock from '../models/SfifaStock.js';
 import WorkerWork from '../models/WorkerWork.js';
 import { FABRIC_LIMITS } from '../../shared/fabrics.js';
-import { SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, sfifaQuantityUnits } from '../../shared/sfifaStock.js';
+import { SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, sfifaQuantityUnits, sfifaStockStyles } from '../../shared/sfifaStock.js';
 import { usesWorkerMaterials, workerMaterialPending, workerMaterialRows, WORKER_SFIFA_METERS } from '../../shared/workerMaterials.js';
 import { tailoringGarmentType } from '../../shared/tailoring.js';
 
@@ -36,10 +36,12 @@ export async function resolveWorkerMaterials(input, details, idAdmin) {
   const fabrics = new Map(), sfifas = new Map();
   await Promise.all([...new Set(input.map(row => row.fabricId))].map(async id => fabrics.set(id, await Fabric.findOne({ _id: id, idAdmin }))));
   await Promise.all([...new Set(input.map(row => row.sfifaId))].map(async id => sfifas.set(id, await SfifaStock.findOne({ _id: id, idAdmin }))));
-  const result = input.map(row => {
+  const result = input.map((row, index) => {
     const fabric = fabrics.get(row.fabricId), color = fabric?.colors.find(color => same(color._id, row.colorId)), piece = color?.pieces.find(piece => same(piece._id, row.pieceId));
     const sfifa = sfifas.get(row.sfifaId), variant = sfifa?.variants?.find(variant => same(variant._id, row.variantId));
     if (!piece || (!variant && !same(sfifa?._id, row.variantId))) throw fail('materialStockUnavailable');
+    const styles = sfifaStockStyles(sfifa, variant?.code);
+    if (styles.length ? !styles.includes(row.sfifaStyle) : row.sfifaStyle !== undefined) throw Object.assign(fail('invalidWork', 400), { fields: { [`materials.${index}.sfifaStyle`]: 'chooseSfifaStyle' } });
     return { ...row, sfifaMeters: WORKER_SFIFA_METERS, fabricType: fabric.type, fabricColor: color.name, fabricReference: fabric.reference || '', pieceBarcode: piece.barcode, sfifaWidth: sfifa.width, sfifaFamily: sfifa.family, ...(variant ? { sfifaCode: variant.code } : {}) };
   });
   for (const group of groupsFor(result)) checkAndChange(group, group.kind === 'fabric' ? fabrics.get(String(group.id)) : sfifas.get(String(group.id)), false);

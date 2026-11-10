@@ -34,7 +34,7 @@ export default function FabricDeleteDialog({ target, token, onClose, onDeleted }
       if (dialogRef.current?.open) onDeleted(result, kind);
     } catch (failure) {
       const message = failure.response?.data?.message;
-      if (dialogRef.current?.open) setError(["workerMaterialsInUse", "forbidden", "notFound", "conflict"].includes(message) ? message : "deleteFailed");
+      if (dialogRef.current?.open) setError(["tailoringFabricInUse", "workerMaterialsInUse", "forbidden", "notFound", "conflict"].includes(message) ? message : "deleteFailed");
     } finally {
       savingRef.current = false;
       if (dialogRef.current?.open) setSaving(false);

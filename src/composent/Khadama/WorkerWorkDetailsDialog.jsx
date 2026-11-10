@@ -115,6 +115,7 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
               {work.shopBarcode && field(t('workers.shopFlow.pieceBarcode'), <bdi dir="ltr" className="work-detail-barcode" data-detail-piece-barcode>{shopPieceBarcode(work, index + 1)}</bdi>)}
               {row.pieceBarcode && field(t("workers.work.detailDialog.fabricBarcode"), <bdi dir="ltr" className="work-detail-barcode">{row.pieceBarcode}</bdi>)}
               {field(t("workers.work.materials.sfifa"), <><span>{t(`sfifaStock.widths.${row.sfifaWidth}`)}</span><bdi dir="ltr">{row.sfifaCode === undefined ? t("workers.work.materials.unassigned") : formatSfifaCode(row.sfifaCode, row.sfifaFamily)}</bdi><span><bdi>{number(row.sfifaMeters)}</bdi> {t("sfifaStock.unit")}</span></>)}
+              {row.sfifaStyle && field(t("workers.work.materials.sfifaStyle"), <span data-detail-sfifa-style={row.sfifaStyle}>{t(`sfifaStock.meterTypes.${row.sfifaStyle}`)}</span>)}
             </dl>
             {row.unitWage !== undefined && <div className="work-detail-piece-wage"><span>{t("workers.payroll.wage")}</span><strong><bdi>{money(row.unitWage)}</bdi></strong></div>}
           </li>)}</ul>

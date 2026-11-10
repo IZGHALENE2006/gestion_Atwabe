@@ -30,6 +30,20 @@ export const reduceFabricPiece = async ({ fabric, color, piece }, meters, reques
   }, { headers: { Authorization: `Bearer ${token}` } })
 ).data;
 
+export const sellFabricPiece = async ({ fabric, color, piece }, input, requestId, token) => (
+  await axios.post(`${api}/${encodeURIComponent(fabric._id)}/colors/${encodeURIComponent(color._id)}/pieces/${encodeURIComponent(piece._id)}/sales`, {
+    ...input, barcode: piece.barcode, version: fabric.__v, requestId,
+  }, { headers: { Authorization: `Bearer ${token}` } })
+).data;
+
+export const loadFabricSaleClients = async (token, signal) => (
+  await axios.get(`${api}/sale-clients`, { headers: { Authorization: `Bearer ${token}` }, signal })
+).data;
+
+export const loadFabricProfits = async (token, filters, signal) => (
+  await axios.get(`${api}/profits`, { params: filters, headers: { Authorization: `Bearer ${token}` }, signal })
+).data;
+
 export const loadFabricMovements = async (token, { barcode = "", offset = 0, signal } = {}) => (
   await axios.get(`${api}/movements`, { params: { barcode, offset }, headers: { Authorization: `Bearer ${token}` }, signal })
 ).data;

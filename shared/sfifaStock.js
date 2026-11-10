@@ -7,6 +7,12 @@ export const SFIFA_STOCK_FAMILIES = [
 export const SFIFA_STOCK_LIMIT = 1000000;
 export const SFIFA_STOCK_SCALE = 1000;
 export const SFIFA_STOCK_GROUP_LIMIT = SFIFA_STOCK_LIMIT * 31;
+export const SFIFA_METER_TYPES = ["single", "double", "gradient"];
+
+export function sfifaStockStyles(stock, code) {
+  const receipts = (stock?.receipts || []).filter(receipt => (receipt.code ?? null) === (code ?? null));
+  return SFIFA_METER_TYPES.filter(style => receipts.some(receipt => (sfifaQuantityUnits(receipt.styleMeters?.[style]) ?? 0) > 0));
+}
 
 export function sfifaQuantityUnits(raw, { max = SFIFA_STOCK_LIMIT } = {}) {
   if (typeof raw !== "number" && typeof raw !== "string") return null;
@@ -27,16 +33,37 @@ export function formatSfifaCode(code, family) {
   if (code === null || code === undefined) return "";
   return family === "01-30" ? String(code).padStart(2, "0") : String(code);
 }
+// An optional breakdown describes this addition, rather than current stock balances.
+export function parseSfifaStyleMeters(raw) {
+  if (raw === undefined) return undefined;
+  const invalid = fields => Object.assign(new Error("invalidStock"), { fields });
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || Object.keys(raw).some(key => !SFIFA_METER_TYPES.includes(key))) throw invalid({ styleMeters: "invalidStyleMeters" });
+  const blank = value => value === undefined || value === null || (typeof value === "string" && !value.trim());
+  if (SFIFA_METER_TYPES.every(key => blank(raw[key]))) return undefined;
+  const fields = {}, meters = {};
+  let total = 0;
+  for (const key of SFIFA_METER_TYPES) {
+    const units = blank(raw[key]) ? 0 : sfifaQuantityUnits(raw[key]);
+    if (units === null) fields[`styleMeters.${key}`] = "invalidBalance";
+    else { meters[key] = units / SFIFA_STOCK_SCALE; total += units; }
+  }
+  if (total > SFIFA_STOCK_LIMIT * SFIFA_STOCK_SCALE) fields.quantity = "quantityLimit";
+  if (Object.keys(fields).length) throw invalid(fields);
+  return { meters, quantity: total / SFIFA_STOCK_SCALE };
+}
 export function validateSfifaStock(input, { allowZero = false } = {}) {
   const fields = {};
   if (!SFIFA_STOCK_WIDTHS.includes(input?.width)) fields.width = "invalidWidth";
   if (!SFIFA_STOCK_FAMILIES.some(family => family.value === input?.family)) fields.family = "invalidFamily";
   const code = sfifaCodeNumber(input?.code, input?.family);
   if (code === null) fields.code = "invalidCode";
-  const units = sfifaQuantityUnits(input?.quantity);
-  if (units === null || (!allowZero && units === 0)) fields.quantity = allowZero ? "invalidBalance" : "invalidQuantity";
+  let styles;
+  try { styles = parseSfifaStyleMeters(input?.styleMeters); }
+  catch (error) { Object.assign(fields, error.fields); }
+  const units = sfifaQuantityUnits(styles ? styles.quantity : input?.quantity);
+  if (units === null || (!allowZero && units === 0)) fields.quantity ??= allowZero ? "invalidBalance" : "invalidQuantity";
   if (Object.keys(fields).length) throw Object.assign(new Error("invalidStock"), { fields });
-  return { width: input.width, family: input.family, code, quantity: units / SFIFA_STOCK_SCALE };
+  return { width: input.width, family: input.family, code, quantity: units / SFIFA_STOCK_SCALE, ...(styles ? { styleMeters: styles.meters } : {}) };
 }
 
 export function validateSfifaClassification(input, available) {

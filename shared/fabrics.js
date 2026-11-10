@@ -20,7 +20,7 @@ export function generateFabricBarcode(used = new Set()) {
   throw new Error("barcodeGenerationFailed");
 }
 
-export function validateFabric(input, { allowZeroMeters = false, requirePrice = false } = {}) {
+export function validateFabric(input, { allowZeroMeters = false, requirePrice = false, requirePrices = false } = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw invalid({ type: "required" });
   const fields = {};
   const text = (raw, path, required = false) => {
@@ -32,17 +32,19 @@ export function validateFabric(input, { allowZeroMeters = false, requirePrice = 
   };
   const type = text(input.type, "type", true);
   const reference = text(input.reference, "reference");
-  // Legacy stock remains valid without a price; never interpret an unknown price as zero.
-  let salePricePerMeter;
-  if (input.salePricePerMeter !== undefined) {
-    const raw = input.salePricePerMeter;
-    const price = (typeof raw === "number" || typeof raw === "string" ? String(raw).trim() : "")
-      .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x660))
-      .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 0x6f0))
-      .replace(/٫/g, ".").replace(",", ".");
-    salePricePerMeter = /^\d+(?:\.\d{1,2})?$/.test(price) ? Number(price) : NaN;
-    if (!Number.isFinite(salePricePerMeter) || salePricePerMeter <= 0 || salePricePerMeter > FABRIC_LIMITS.pricePerMeter) fields.salePricePerMeter = "invalidPrice";
-  } else if (requirePrice) fields.salePricePerMeter = "required";
+  // Legacy stock remains valid without prices; an unknown price is never zero.
+  const prices = {};
+  for (const key of ['purchasePricePerMeter', 'wholesalePricePerMeter', 'salePricePerMeter']) {
+    if (input[key] !== undefined) {
+      const raw = input[key];
+      const text = (typeof raw === 'number' || typeof raw === 'string' ? String(raw).trim() : '')
+        .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 0x660))
+        .replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 0x6f0)).replace(/٫/g, '.').replace(',', '.');
+      const price = /^\d+(?:\.\d{1,2})?$/.test(text) ? Number(text) : NaN;
+      if (!Number.isFinite(price) || price < (key === 'purchasePricePerMeter' ? 0 : 0.01) || price > FABRIC_LIMITS.pricePerMeter) fields[key] = key === 'purchasePricePerMeter' ? 'invalidPurchasePrice' : 'invalidPrice';
+      prices[key] = price;
+    } else if (requirePrices || (requirePrice && key === 'salePricePerMeter')) fields[key] = 'required';
+  }
   if (!Array.isArray(input.colors) || !input.colors.length || input.colors.length > FABRIC_LIMITS.colors) throw invalid({ ...fields, colors: "colorsRequired" });
   const barcodes = new Set();
   const colorKeys = new Set();
@@ -72,11 +74,11 @@ export function validateFabric(input, { allowZeroMeters = false, requirePrice = 
   });
   if (count > FABRIC_LIMITS.pieces) fields.colors = "tooManyPieces";
   if (Object.keys(fields).length) throw invalid(fields);
-  return { type, reference, ...(salePricePerMeter !== undefined ? { salePricePerMeter } : {}), colors };
+  return { type, reference, ...prices, colors };
 }
 
-export function validateFabricUpdate(input, current, { requirePrice = false } = {}) {
-  const value = validateFabric(input, { allowZeroMeters: true, requirePrice });
+export function validateFabricUpdate(input, current, { requirePrice = false, requirePrices = false } = {}) {
+  const value = validateFabric(input, { allowZeroMeters: true, requirePrice, requirePrices });
   const fields = {};
   const colorsById = new Map(current.colors.map((color) => [String(color._id), color]));
   const pieces = current.colors.flatMap((color) => color.pieces);

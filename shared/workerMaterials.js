@@ -1,4 +1,4 @@
-import { sfifaQuantityUnits } from './sfifaStock.js';
+import { SFIFA_METER_TYPES, sfifaQuantityUnits } from './sfifaStock.js';
 import { tailoringMoneyCents } from './tailoring.js';
 
 export const WORKER_SFIFA_METERS = 3;
@@ -10,7 +10,7 @@ export const usesWorkerMaterials = (category, workType, garmentType) => workType
 export const workerMaterialPending = work => ['pending', 'returning'].includes(work.materialStatus);
 export const workerMaterialRows = work => work.materialOperations ? work.materialOperations.filter(operation => operation.state !== 'failed').flatMap(operation => operation.rows) : work.materials || [];
 export const workerHasPieceWages = work => work.category === 'machine' && work.workType === 'shop' && workerMaterialRows(work).some(row => row.unitWage !== undefined);
-export const workerMaterialInputKey = rows => JSON.stringify((rows || []).map(row => ({ ...Object.fromEntries(['lineId', 'fabricId', 'colorId', 'pieceId', 'sfifaId', 'variantId', 'meters'].map(key => [key, key === 'meters' ? Number(row[key]) : String(row[key])])), ...(row.size !== undefined ? { size: row.size } : {}), ...(row.unitWage !== undefined ? { unitWage: Number(row.unitWage) } : {}) })).sort((a, b) => a.lineId.localeCompare(b.lineId)));
+export const workerMaterialInputKey = rows => JSON.stringify((rows || []).map(row => ({ ...Object.fromEntries(['lineId', 'fabricId', 'colorId', 'pieceId', 'sfifaId', 'variantId', 'meters'].map(key => [key, key === 'meters' ? Number(row[key]) : String(row[key])])), ...(row.sfifaStyle !== undefined ? { sfifaStyle: row.sfifaStyle } : {}), ...(row.size !== undefined ? { size: row.size } : {}), ...(row.unitWage !== undefined ? { unitWage: Number(row.unitWage) } : {}) })).sort((a, b) => a.lineId.localeCompare(b.lineId)));
 export const workerPieceSelectionKey = lineIds => JSON.stringify(Array.isArray(lineIds) ? lineIds.map(id => String(id).toLowerCase()).sort() : []);
 export function workerPieceWageCents(rows) {
   let total = 0n;
@@ -62,7 +62,9 @@ export function validateWorkerMaterialSelection(rows, lineIds) {
     if (wage === null) fields[`${prefix}.unitWage`] = 'invalidWage';
     const size = typeof row?.size === 'string' ? row.size.trim().toUpperCase() : row?.size;
     if (size !== undefined && size !== '' && !WORKER_GARMENT_SIZES.includes(size)) fields[`${prefix}.size`] = 'invalidSize';
-    return { lineId: row?.lineId, ...Object.fromEntries(['fabricId', 'colorId', 'pieceId', 'sfifaId', 'variantId'].map(key => [key, String(row?.[key] || '').toLowerCase()])), meters: units === null ? 0 : units / 1000, ...(size && WORKER_GARMENT_SIZES.includes(size) ? { size } : {}), ...(wage !== undefined && wage !== null ? { unitWage: wage / 100 } : {}) };
+    const sfifaStyle = row?.sfifaStyle;
+    if (sfifaStyle !== undefined && !SFIFA_METER_TYPES.includes(sfifaStyle)) fields[`${prefix}.sfifaStyle`] = 'chooseSfifaStyle';
+    return { lineId: row?.lineId, ...Object.fromEntries(['fabricId', 'colorId', 'pieceId', 'sfifaId', 'variantId'].map(key => [key, String(row?.[key] || '').toLowerCase()])), meters: units === null ? 0 : units / 1000, ...(sfifaStyle !== undefined && SFIFA_METER_TYPES.includes(sfifaStyle) ? { sfifaStyle } : {}), ...(size && WORKER_GARMENT_SIZES.includes(size) ? { size } : {}), ...(wage !== undefined && wage !== null ? { unitWage: wage / 100 } : {}) };
   });
   if (Object.keys(fields).length) throw Object.assign(new Error('invalidWork'), { fields });
   return result.sort((a, b) => a.lineId.localeCompare(b.lineId));

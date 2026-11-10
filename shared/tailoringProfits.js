@@ -15,7 +15,7 @@ export function tailoringDeliveryAmounts(order) {
   return { revenueAmount: revenue === null ? null : revenue / 100, expenseAmount: expense === null ? null : expense / 100, profitAmount: revenue === null || expense === null ? null : (revenue - expense) / 100, garmentCount: snapshot.garmentCount, legacy: !order.deliveryFinancials };
 }
 export function tailoringProfitEntries(orders, garmentType, { includeCancelled = false } = {}) {
-  return orders.filter(order => garmentType === "all" ? TAILORING_GARMENT_TYPES.includes(tailoringGarmentType(order)) : tailoringGarmentType(order) === garmentType).flatMap(order => {
+  return orders.filter(order => !order.stockOperation).filter(order => garmentType === "all" ? TAILORING_GARMENT_TYPES.includes(tailoringGarmentType(order)) : tailoringGarmentType(order) === garmentType).flatMap(order => {
     const amounts = tailoringDeliveryAmounts(order);
     return amounts && (!order.cancelledAt || includeCancelled) ? [{ order, orderId: String(order._id), clientName: order.clientName, phone: order.phone, barcode: tailoringOrderBarcode(order), deliveredAt: order.deliveredAt, ...(order.cancelledAt ? { cancelledAt: order.cancelledAt, cancelledBy: order.cancelledBy } : {}), ...amounts }] : [];
   }).sort((a, b) => new Date(b.cancelledAt || b.deliveredAt) - new Date(a.cancelledAt || a.deliveredAt) || b.orderId.localeCompare(a.orderId));
