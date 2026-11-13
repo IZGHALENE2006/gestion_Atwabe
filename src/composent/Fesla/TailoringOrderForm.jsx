@@ -1,15 +1,20 @@
+import { quoteTailoringAdjustments, tailoringSuggestedDeposit } from "../../../shared/tailoringAdjustments.js";
+import TailoringDiscountField from "./TailoringDiscountField.jsx";
+import TailoringPricingSummary from "./TailoringPricingSummary.jsx";
+import "./tailoringAdjustments.css";
+import { useSelector } from "react-redux";
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IoAddOutline, IoCloseOutline } from "react-icons/io5";
-import { MAX_TAILORING_ITEMS, todayTailoringDate, validateTailoringOrder, tailoringRemainingAmount, tailoringItemsTotal, tailoringOrderItems, tailoringGarmentType, tailoringProfitAmount, tailoringHasExpenses, tailoringUsesSfifa } from "../../../shared/tailoring.js";
+import { MAX_TAILORING_ITEMS, todayTailoringDate, validateTailoringOrder, tailoringRemainingAmount, tailoringOrderItems, tailoringGarmentType, tailoringProfitAmount, tailoringHasExpenses, tailoringUsesSfifa } from "../../../shared/tailoring.js";
 import { loadFabrics } from "../Atwabe/fabricsApi.js";
-import { djellabaItemCosts, djellabaItemSalePrice, djellabaCostsTotal, tailoringFabricCost, tailoringFabricCostsTotal, trouserCostsTotal } from "../../../shared/tailoringCosts.js";
+import { djellabaItemCosts, djellabaItemSalePrice, djellabaCostsTotal, tailoringFabricCost, tailoringFabricCostsTotal, trouserLaborRates, trouserLaborCostsTotal, trouserOrderCostsTotal } from "../../../shared/tailoringCosts.js";
 import DjellabaSettingsDialog from "./DjellabaSettingsDialog.jsx";
 import { saveTailoringOrder, loadDjellabaCostSettings } from "./feslaApi.js";
 import TailoringOrderItemForm from "./TailoringOrderItemForm.jsx";
 
-const newItem = garmentType => ({ lineId: crypto.randomUUID().replaceAll("-", "").slice(0, 24), price: "", fabricSource: "client", fabricType: "", fabricColor: "", fabricId: "", colorId: "", fabricPieceId: "", ...(garmentType === "shirts" ? { shirtType: "" } : garmentType === "trousers" ? { trouserType: "regular", fabricMeters: "" } : { fabricMeters: "", sfifa: { width: "thin", style: "fabric", color1: "", color2: "" } }), selection: null, removeImage: false });
+const newItem = garmentType => ({ lineId: crypto.randomUUID().replaceAll("-", "").slice(0, 24), price: "", fourFille: false, discount: { type: "amount", value: "" }, fabricSource: "client", fabricType: "", fabricColor: "", fabricId: "", colorId: "", fabricPieceId: "", ...(garmentType === "shirts" ? { shirtType: "" } : garmentType === "trousers" ? { trouserType: "regular", fabricMeters: "" } : { fabricMeters: "", sfifa: { width: "thin", style: "fabric", color1: "", color2: "" } }), selection: null, removeImage: false });
 const fieldId = name => `fesla-${name.replaceAll(".", "-")}`;
 function Field({ name, label, error, children }) {
   const { t } = useTranslation();
@@ -17,22 +22,23 @@ function Field({ name, label, error, children }) {
 }
 export default function TailoringOrderForm({ order, garmentType: sectionType = "djellaba", token, onClose, onSaved }) {
   const operations = useEmployeeOperations("tailoring");
+  const showProfit = useSelector(state => state.LoginAdmin.role === "admin");
   const { t, i18n } = useTranslation();
   const dialogRef = useRef(null), savingRef = useRef(false), submissionRef = useRef(null);
   const garmentType = order ? tailoringGarmentType(order) : sectionType;
-  const costText = key => t(["fesla." + garmentType + ".costs." + key, "fesla.costs." + key]);
+  const costText = key => garmentType === "shirts" && key === "settingsTitle" ? t("fesla.adjustments.shirtsSettingsTitle") : t(["fesla." + garmentType + ".costs." + key, "fesla.costs." + key]);
   const withExpenses = tailoringHasExpenses({ garmentType });
   const automaticCosts = tailoringUsesSfifa({ garmentType });
   const salePricingVersion = order ? order.costing?.pricingVersion || 1 : 3;
   const automaticSalePricing = automaticCosts && salePricingVersion >= 2;
   const trousers = garmentType === "trousers";
   const deductFabricStock = (automaticCosts || trousers) && (!order || Boolean(order.fabricStock));
-  const [manualExpenses, setManualExpenses] = useState(() => Boolean(order) && trouserCostsTotal(tailoringOrderItems(order).map(item => item.fabricCost), order.trouserCosting?.laborPrice ?? 0) !== order.expenseAmount);
+  const [manualExpenses, setManualExpenses] = useState(() => Boolean(order) && trouserOrderCostsTotal(tailoringOrderItems(order), order.trouserCosting) !== order.expenseAmount);
   const [costResult, setCostResult] = useState(null), [costAttempt, setCostAttempt] = useState(0), [settingsEditor, setSettingsEditor] = useState(false);
   const costState = costResult?.token === token && costResult.attempt === costAttempt ? costResult : { loading: true };
   const garmentText = (key, options) => t(garmentType === "djellaba" ? `fesla.${key}` : `fesla.${garmentType}.${key}`, options);
   const savedItems = tailoringOrderItems(order);
-  const [data, setData] = useState(() => ({ garmentType, ...(withExpenses ? { expenseAmount: String(order?.expenseAmount ?? "") } : {}), clientName: order?.clientName || "", phone: order?.phone || "", orderDate: order?.orderDate || todayTailoringDate(), readyDate: order?.readyDate || "", paidAmount: String(order?.paidAmount ?? 0), items: order ? tailoringOrderItems(order).map(item => ({ ...item, price: String(item.price), fabricId: item.fabricId || "", colorId: item.colorId || "", ...(garmentType !== "shirts" ? { fabricMeters: String(item.fabricMeters ?? "") } : {}), ...(!withExpenses ? { sfifa: { ...item.sfifa } } : {}), selection: null, removeImage: false })) : [newItem(garmentType)] }));
+  const [data, setData] = useState(() => ({ garmentType, discount: order?.adjustments?.discount || { type: "amount", value: "" }, ...(withExpenses ? { expenseAmount: String(order?.expenseAmount ?? "") } : {}), clientName: order?.clientName || "", phone: order?.phone || "", orderDate: order?.orderDate || todayTailoringDate(), readyDate: order?.readyDate || "", paidAmount: String(order?.paidAmount ?? 0), items: order ? tailoringOrderItems(order).map(item => ({ ...item, price: String(item.pricing?.basePrice ?? item.price), fourFille: item.pricing?.fourFille || false, discount: item.pricing?.discount || { type: "amount", value: "" }, fabricId: item.fabricId || "", colorId: item.colorId || "", ...(garmentType !== "shirts" ? { fabricMeters: String(item.fabricMeters ?? "") } : {}), ...(!withExpenses ? { sfifa: { ...item.sfifa } } : {}), selection: null, removeImage: false })) : [newItem(garmentType)] }));
   const [inventory, setInventory] = useState({ loading: true, fabrics: [], error: false });
   const [attempt, setAttempt] = useState(0), [fields, setFields] = useState({}), [error, setError] = useState("");
   const [saving, setSaving] = useState(false), [cameras, setCameras] = useState({});
@@ -41,7 +47,7 @@ export default function TailoringOrderForm({ order, garmentType: sectionType = "
 
   const costRates = order?.costing?.rates || (costState.value?.configured ? costState.value.rates : null);
   const costSettingsVersion = order?.costing?.settingsVersion ?? costState.value?.version;
-  const trouserLaborPrice = order ? order.trouserCosting?.laborPrice ?? 0 : costState.value ? costState.value.rates?.laborPrice ?? 0 : null;
+  const trouserRates = order ? trouserLaborRates(order.trouserCosting) : costState.value ? trouserLaborRates(costState.value.rates) : null;
   const trouserSettingsVersion = order ? order.trouserCosting?.settingsVersion ?? null : costState.value?.version;
   const quotedItems = data.items.map(item => {
     if (!automaticCosts && !trousers) return item;
@@ -52,11 +58,19 @@ export default function TailoringOrderForm({ order, garmentType: sectionType = "
     return { ...item, fabricUnitPrice: fabricUnitPrice ?? "" };
   });
   const garmentCosts = automaticCosts ? quotedItems.map(item => djellabaItemCosts(item, costRates, salePricingVersion)) : [];
-  const pricedItems = automaticSalePricing ? quotedItems.map((item, index) => ({ ...item, price: djellabaItemSalePrice(garmentCosts[index]) ?? "" })) : quotedItems;
-  const totalPrice = tailoringItemsTotal(pricedItems);
+  const baseItems = automaticSalePricing ? quotedItems.map((item, index) => ({ ...item, price: djellabaItemSalePrice(garmentCosts[index]) ?? "" })) : quotedItems;
+  const fourFilleUnitPrice = trousers ? 0 : order?.adjustments ? order.adjustments.fourFilleUnitPrice : costState.value?.fourFillePrice ?? 0;
+  const adjustmentSettingsVersion = order?.adjustments ? order.adjustments.settingsVersion : costState.value?.version ?? null;
+  const adjustmentInput = { version: 1, fourFilleUnitPrice, settingsVersion: adjustmentSettingsVersion, discount: data.discount };
+  let quote = null;
+  try { quote = quoteTailoringAdjustments(baseItems, fourFilleUnitPrice, data.discount); } catch { /* Validation explains invalid values on save. */ }
+  const pricedItems = baseItems.map(item => { try { return quoteTailoringAdjustments([item], fourFilleUnitPrice).items[0]; } catch { return { ...item, pricing: undefined }; } });
+  const totalPrice = quote?.totalPrice ?? null;
+  const suggestedDeposit = tailoringSuggestedDeposit(totalPrice);
   const fabricCosts = trousers ? pricedItems.map(tailoringFabricCost) : [];
   const fabricTotal = trousers ? tailoringFabricCostsTotal(fabricCosts) : null;
-  const suggestedExpenses = trousers && trouserLaborPrice !== null ? trouserCostsTotal(fabricCosts, trouserLaborPrice) : null;
+  const trouserLaborTotal = trousers && trouserRates ? trouserLaborCostsTotal(pricedItems, trouserRates) : null;
+  const suggestedExpenses = trousers && trouserRates ? trouserOrderCostsTotal(pricedItems.map((item, index) => ({ ...item, fabricCost: fabricCosts[index] })), trouserRates) : null;
   const expenseAmount = automaticCosts ? djellabaCostsTotal(garmentCosts) : trousers && !manualExpenses ? suggestedExpenses : data.expenseAmount;
   const profit = totalPrice !== null && expenseAmount !== null ? tailoringProfitAmount(totalPrice, expenseAmount) : null;
   const remaining = totalPrice === null ? null : tailoringRemainingAmount(totalPrice, data.paidAmount);
@@ -80,22 +94,23 @@ export default function TailoringOrderForm({ order, garmentType: sectionType = "
     return () => controller.abort();
   }, [token, attempt]);
   useEffect(() => {
-    if (!automaticCosts && !trousers) return;
     const controller = new AbortController();
     loadDjellabaCostSettings(token, controller.signal, garmentType, salePricingVersion).then(value => {
       if (!controller.signal.aborted) setCostResult({ token, attempt: costAttempt, value, loading: false });
     }).catch(() => { if (!controller.signal.aborted) setCostResult({ token, attempt: costAttempt, loading: false, error: true }); });
     return () => controller.abort();
-  }, [token, automaticCosts, trousers, costAttempt, garmentType, salePricingVersion]);
+  }, [token, costAttempt, garmentType, salePricingVersion]);
   const close = () => { if (!savingRef.current) { dialogRef.current.close(); onClose(); } };
   const submit = async event => {
     event.preventDefault();
     if (savingRef.current || cameraBusy) return;
-    if (trousers && !order && !costState.value) { setError("costSettingsFailed"); return; }
+    if (!order?.adjustments && !costState.value) { setError("costSettingsFailed"); return; }
     if (automaticCosts && !order?.costing && !costRates) { setError(costState.error ? "costSettingsFailed" : "costSettingsRequired"); return; }
     let input;
-    try { input = validateTailoringOrder(automaticCosts ? { ...data, deductFabricStock, automaticCosting: true, ...(automaticSalePricing ? { salePricingVersion } : {}), costSettingsVersion, items: pricedItems } : trousers ? { ...data, expenseAmount, deductFabricStock, fabricCosting: true, ...(!order || order.fabricSalesVersion === 1 ? { recordFabricSales: true } : {}), laborCosting: true, costSettingsVersion: trouserSettingsVersion, items: pricedItems } : data); }
-    catch (failure) { setFields(failure.fields || {}); setError("invalidOrder"); dialogRef.current.querySelector(`#${fieldId(Object.keys(failure.fields || {})[0] || "clientName")}`)?.focus(); return; }
+    const draft = { ...data, adjustments: adjustmentInput, items: baseItems };
+    delete draft.discount;
+    try { input = validateTailoringOrder(automaticCosts ? { ...draft, deductFabricStock, automaticCosting: true, ...(automaticSalePricing ? { salePricingVersion } : {}), costSettingsVersion, items: baseItems } : trousers ? { ...draft, expenseAmount, deductFabricStock, fabricCosting: true, ...(!order || order.fabricSalesVersion === 1 ? { recordFabricSales: true } : {}), laborCosting: true, costSettingsVersion: trouserSettingsVersion, items: baseItems } : draft); }
+    catch (failure) { setFields(failure.fields || {}); setError("invalidOrder"); const first = Object.keys(failure.fields || {})[0] || "clientName"; const target = first === "adjustments.discount" ? "fesla-order-discount-value" : fieldId(first) + (first.endsWith(".discount") ? "-value" : ""); dialogRef.current.querySelector(`#${target}`)?.focus(); return; }
     const files = data.items.map(item => item.selection?.file);
     if (files.reduce((sum, file) => sum + (file?.size || 0), 0) > 25 * 1024 * 1024) { setError("imagesTotalTooLarge"); return; }
     const fingerprint = JSON.stringify(input);
@@ -107,7 +122,7 @@ export default function TailoringOrderForm({ order, garmentType: sectionType = "
     } catch (failure) {
       if (dialogRef.current?.open) {
         const code = failure.response?.data?.message;
-        setError(["fabricStockRequired", "fabricStockUnavailable", "insufficientFabricStock", "fabricStockReturnLimit", "invalidOrder", "invalidRequest", "requestConflict", "fabricNotFound", "notFound", "forbidden", "conflict", "imageTooLarge", "imagesTotalTooLarge", "imageTypeInvalid", "imageUploadInvalid", "itemsRequired", "costSettingsRequired", "costSettingsChanged", "fabricPriceMissing", "fabricPriceChanged"].includes(code) ? code : "saveFailed");
+        setError(["sfifaStockUnavailable", "insufficientSfifaStock", "sfifaStockReturnLimit", "fabricStockRequired", "fabricStockUnavailable", "insufficientFabricStock", "fabricStockReturnLimit", "invalidOrder", "invalidRequest", "requestConflict", "fabricNotFound", "notFound", "forbidden", "conflict", "imageTooLarge", "imagesTotalTooLarge", "imageTypeInvalid", "imageUploadInvalid", "itemsRequired", "costSettingsRequired", "costSettingsChanged", "fabricPriceMissing", "fabricPriceChanged"].includes(code) ? code : "saveFailed");
         setFields(failure.response?.data?.fields || {});
       }
     } finally { savingRef.current = false; if (dialogRef.current?.open) setSaving(false); }
@@ -121,17 +136,18 @@ export default function TailoringOrderForm({ order, garmentType: sectionType = "
         <Field name="orderDate" label={t("fesla.orderDate")} error={fields.orderDate}><input {...props("orderDate")} type="date" dir="ltr" value={data.orderDate} onChange={event => patch({ orderDate: event.target.value })} required /></Field>
         <Field name="readyDate" label={t("fesla.readyDate")} error={fields.readyDate}><input {...props("readyDate")} type="date" dir="ltr" min={data.orderDate} value={data.readyDate} onChange={event => patch({ readyDate: event.target.value })} required /></Field>
       </fieldset>
-      {(automaticCosts || trousers) && <section className="fesla-costs-notice"><p>{automaticSalePricing ? t("fesla.salePricing." + (order ? "savedHint" : "automaticHint")) : costText(order && trousers || order?.costing ? "savedPricesHint" : "automaticHint")}</p>{!(order && trousers) && !order?.costing && (costState.loading ? <p role="status">{t("common.loading")}</p> : costState.error ? <p role="alert">{t("fesla.errors.costSettingsFailed")}</p> : !costRates && !trousers && <p role="alert">{t("fesla.errors.costSettingsRequired")}</p>)}<div>{costState.value?.canEdit && <button type="button" data-edit-cost-settings disabled={saving} onClick={() => setSettingsEditor(true)}>{costText("settingsTitle")}</button>}{!(order && trousers) && !order?.costing && <button type="button" disabled={saving} onClick={() => { setCostAttempt(value => value + 1); reloadFabrics(); }}>{costText("reloadPrices")}</button>}</div></section>}
+      <section className="fesla-costs-notice"><p>{automaticSalePricing ? t("fesla.salePricing." + (order ? "savedHint" : "automaticHint")) : garmentType === "shirts" ? t("fesla.adjustments.fourFilleSettingsHint") : costText(order && trousers || order?.costing ? "savedPricesHint" : "automaticHint")}</p>{!(order && trousers) && !order?.costing && (costState.loading ? <p role="status">{t("common.loading")}</p> : costState.error ? <p role="alert">{t("fesla.errors.costSettingsFailed")}</p> : !costRates && automaticCosts && <p role="alert">{t("fesla.errors.costSettingsRequired")}</p>)}<div>{costState.value?.canEdit && <button type="button" data-edit-cost-settings disabled={saving} onClick={() => setSettingsEditor(true)}>{costText("settingsTitle")}</button>}{!(order && trousers) && !order?.costing && <button type="button" disabled={saving} onClick={() => { setCostAttempt(value => value + 1); reloadFabrics(); }}>{costText("reloadPrices")}</button>}</div></section>
       <div className="fesla-items-heading"><div><h3>{garmentText("orderGarments")}</h3><p>{garmentText("garmentsHint")}</p></div><span>{garmentText("garmentsCount", { count: data.items.length })}</span></div>
-      <div className="space-y-5">{pricedItems.map((item, index) => <TailoringOrderItemForm deductFabricStock={deductFabricStock} pricingVersion={salePricingVersion} automaticSalePricing={automaticSalePricing} costPreview={trousers ? fabricCosts[index] : garmentCosts[index]} garmentType={garmentType} key={item.lineId} item={item} index={index} savedItem={savedItems.find(saved => saved.lineId === item.lineId)} order={order} token={token} inventory={inventory} reloadFabrics={reloadFabrics} errors={fields} onChange={patchItem} onRemove={removeItem} onCameraBusy={cameraChanged} disabled={saving} canRemove={data.items.length > 1 && !cameraBusy} />)}</div>
+      <div className="space-y-5">{pricedItems.map((item, index) => <TailoringOrderItemForm basePrice={baseItems[index].price} canDiscount={operations.discount} fourFilleUnitPrice={fourFilleUnitPrice} showProfit={showProfit} deductFabricStock={deductFabricStock} pricingVersion={salePricingVersion} automaticSalePricing={automaticSalePricing} costPreview={trousers ? fabricCosts[index] : garmentCosts[index]} garmentType={garmentType} key={item.lineId} item={item} index={index} savedItem={savedItems.find(saved => saved.lineId === item.lineId)} order={order} token={token} inventory={inventory} reloadFabrics={reloadFabrics} errors={fields} onChange={patchItem} onRemove={removeItem} onCameraBusy={cameraChanged} disabled={saving} canRemove={data.items.length > 1 && !cameraBusy} />)}</div>
       <button type="button" data-add-tailoring-item className="fesla-add-item" disabled={saving || cameraBusy || data.items.length >= MAX_TAILORING_ITEMS} onClick={() => patch({ items: [...data.items, newItem(garmentType)] })}><IoAddOutline size={21} aria-hidden="true" />{garmentText("addGarment")}</button>
       <fieldset disabled={saving} className="grid min-w-0 gap-4 rounded-xl border border-slate-200 p-4 sm:grid-cols-2 dark:border-slate-700">
         <legend className="px-2 text-sm font-bold">{t("fesla.payment")}</legend>
+        <div className="sm:col-span-2"><TailoringDiscountField id="fesla-order-discount" label={t("fesla.adjustments.orderDiscount")} value={data.discount} disabled={saving || !operations.discount} error={fields["adjustments.discount"]} onChange={discount => patch({ discount })} /><p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t("fesla.adjustments.orderDiscountHint")}</p>{quote && <TailoringPricingSummary pricing={quote.adjustments} />}{fields.adjustments && <p role="alert" className="fesla-action-error">{t("fesla.errors." + fields.adjustments)}</p>}</div>
         <div className="fesla-form-total"><label htmlFor="fesla-totalPrice">{t("fesla.totalPrice")}</label><output id="fesla-totalPrice" aria-live="polite"><bdi>{money(totalPrice)} {t("fesla.currency")}</bdi></output>{fields.totalPrice && <p role="alert">{t(`fesla.errors.${fields.totalPrice}`)}</p>}</div>
-        <Field name="paidAmount" label={`${t("fesla.paidAmount")} (${t("fesla.currency")})`} error={fields.paidAmount}><input {...props("paidAmount")} disabled={!operations.payment} type="text" inputMode="decimal" dir="ltr" value={data.paidAmount} onChange={event => patch({ paidAmount: event.target.value })} maxLength={12} required /></Field>
-        {withExpenses && <Field name="expenseAmount" label={t("fesla.expenseAmount") + " (" + t("fesla.currency") + ")"} error={fields.expenseAmount}><input {...props("expenseAmount")} type="text" inputMode="decimal" dir="ltr" value={expenseAmount ?? ""} onChange={event => { setManualExpenses(true); patch({ expenseAmount: event.target.value }); }} placeholder="0.00" maxLength={12} required /><p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t(trousers ? "fesla.trousers.editableExpenseHint" : "fesla.expenseHint")}</p>{trousers && <div className="mt-2 space-y-2 text-xs text-slate-600 dark:text-slate-300"><p>{t("fesla.trousers.suggestedFabricCost")}: <bdi data-fabric-expenses={fabricTotal ?? ""}>{money(fabricTotal)} {t("fesla.currency")}</bdi></p><p>{t("fesla.trousers.suggestedLaborCost")}: <bdi data-labor-expenses={trouserLaborPrice === null ? "" : Number((trouserLaborPrice * data.items.length).toFixed(2))}>{money(trouserLaborPrice === null ? null : trouserLaborPrice * data.items.length)} {t("fesla.currency")}</bdi></p><p>{t("fesla.trousers.suggestedExpenses")}: <bdi data-suggested-expenses={suggestedExpenses ?? ""}>{money(suggestedExpenses)} {t("fesla.currency")}</bdi></p>{manualExpenses && <button type="button" data-use-fabric-cost disabled={suggestedExpenses === null} className="rounded-lg border border-blue-200 px-3 py-2 font-bold text-blue-700 disabled:opacity-50 dark:border-blue-800 dark:text-blue-300" onClick={() => { setManualExpenses(false); setFields({}); setError(""); }}>{t("fesla.trousers.useSuggestedExpenses")}</button>}</div>}</Field>}
+        <Field name="paidAmount" label={`${t("fesla.paidAmount")} (${t("fesla.currency")})`} error={fields.paidAmount}><input {...props("paidAmount")} disabled={!operations.payment} type="text" inputMode="decimal" dir="ltr" value={data.paidAmount} onChange={event => patch({ paidAmount: event.target.value })} maxLength={12} required /><div className="fesla-deposit-hint"><span>{t("fesla.adjustments.depositTitle")}</span><strong><bdi data-suggested-deposit={suggestedDeposit ?? ""}>{money(suggestedDeposit)} {t("fesla.currency")}</bdi></strong><small>{t("fesla.adjustments.depositOptional")}</small>{operations.payment && <button type="button" data-use-suggested-deposit disabled={suggestedDeposit === null} onClick={() => patch({ paidAmount: String(suggestedDeposit) })}>{t("fesla.adjustments.useDeposit")}</button>}</div></Field>
+        {withExpenses && <Field name="expenseAmount" label={t("fesla.expenseAmount") + " (" + t("fesla.currency") + ")"} error={fields.expenseAmount}><input {...props("expenseAmount")} type="text" inputMode="decimal" dir="ltr" value={expenseAmount ?? ""} onChange={event => { setManualExpenses(true); patch({ expenseAmount: event.target.value }); }} placeholder="0.00" maxLength={12} required /><p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t(trousers ? "fesla.trousers.editableExpenseHint" : "fesla.expenseHint")}</p>{trousers && <div className="mt-2 space-y-2 text-xs text-slate-600 dark:text-slate-300"><p>{t("fesla.trousers.suggestedFabricCost")}: <bdi data-fabric-expenses={fabricTotal ?? ""}>{money(fabricTotal)} {t("fesla.currency")}</bdi></p><p>{t("fesla.trousers.suggestedLaborCost")}: <bdi data-labor-expenses={trouserLaborTotal ?? ""}>{money(trouserLaborTotal)} {t("fesla.currency")}</bdi></p><p>{t("fesla.trousers.suggestedExpenses")}: <bdi data-suggested-expenses={suggestedExpenses ?? ""}>{money(suggestedExpenses)} {t("fesla.currency")}</bdi></p>{manualExpenses && <button type="button" data-use-fabric-cost disabled={suggestedExpenses === null} className="rounded-lg border border-blue-200 px-3 py-2 font-bold text-blue-700 disabled:opacity-50 dark:border-blue-800 dark:text-blue-300" onClick={() => { setManualExpenses(false); setFields({}); setError(""); }}>{t("fesla.trousers.useSuggestedExpenses")}</button>}</div>}</Field>}
         {automaticCosts && <div className="fesla-form-total"><label htmlFor="fesla-expenseAmount">{t("fesla.expenseAmount")}</label><output id="fesla-expenseAmount" aria-live="polite" data-order-expenses={expenseAmount ?? ""}><bdi>{money(expenseAmount)} {t("fesla.currency")}</bdi></output><p>{automaticSalePricing ? t("fesla.salePricing." + (salePricingVersion === 3 ? "expenseHint" : "legacyExpenseHint")) : costText("expenseHint")}</p></div>}
-        {(automaticCosts || withExpenses) && <div className={"fesla-form-profit" + (profit < 0 ? " is-loss" : "")}><label htmlFor="fesla-profitAmount">{t("fesla.profitAmount")}</label><output id="fesla-profitAmount" aria-live="polite" data-order-profit={profit ?? ""}><bdi>{money(profit)} {t("fesla.currency")}</bdi></output><p>{t("fesla.profitHint")}</p></div>}
+        {showProfit && (automaticCosts || withExpenses) && <div className={"fesla-form-profit" + (profit < 0 ? " is-loss" : "")}><label htmlFor="fesla-profitAmount">{t("fesla.profitAmount")}</label><output id="fesla-profitAmount" aria-live="polite" data-order-profit={profit ?? ""}><bdi>{money(profit)} {t("fesla.currency")}</bdi></output><p>{t("fesla.profitHint")}</p></div>}
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-blue-50 p-3 text-sm font-bold text-blue-800 sm:col-span-2 dark:bg-blue-950/40 dark:text-blue-200"><label htmlFor="fesla-remainingAmount">{t("fesla.remainingAmount")}</label><output id="fesla-remainingAmount" aria-live="polite"><bdi>{money(remaining)} {t("fesla.currency")}</bdi></output></div>
       </fieldset>
       {error && <div role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{t(`fesla.errors.${error}`)}{["fabricNotFound", "fabricPriceMissing", "fabricPriceChanged", "fabricStockUnavailable", "insufficientFabricStock"].includes(error) && <button type="button" disabled={saving} onClick={reloadFabrics} className="ms-2 font-bold underline">{t("fabrics.reloadStock")}</button>}</div>}

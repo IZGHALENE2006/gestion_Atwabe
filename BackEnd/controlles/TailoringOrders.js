@@ -1,3 +1,7 @@
+import { ensureSfifaStyleBalances } from "../utils/sfifaStyleBalances.js";
+import SfifaStock from '../models/SfifaStock.js';
+import { sfifaStockStyles } from '../../shared/sfifaStock.js';
+import { hasTailoringSfifa } from '../utils/tailoringSfifaStock.js';
 import { moduleOperationPermissions } from "../../shared/employeePermissions.js";
 import mongoose from "mongoose";
 import { createHash } from "node:crypto";
@@ -8,6 +12,7 @@ import TailoringOrder from "../models/TailoringOrder.js";
 import { validateTailoringOrder, tailoringRemainingAmount, tailoringMoneyCents, tailoringOrderItems, tailoringGarmentType, tailoringProfitAmount, tailoringHasExpenses } from "../../shared/tailoring.js";
 import { createTailoringDeliveryFinancials } from "../../shared/tailoringProfits.js";
 import { saveTailoringFabricStock, resumeTailoringFabricStock } from "../utils/tailoringFabricStock.js";
+import { applyTailoringAdjustments } from "../utils/tailoringAdjustments.js";
 import { priceDjellabaOrder } from "../utils/tailoringCosts.js";
 import { tailoringOrderBarcode } from "../../shared/tailoringBarcode.js";
 import { createTailoringReceipt, publicTailoringReceipt, tailoringPaymentReference } from '../../shared/tailoringReceipts.js';
@@ -71,7 +76,8 @@ async function orderInput(req, idAdmin, current) {
   const previous = tailoringOrderItems(current), items = [];
   for (const item of value.items) items.push(await resolveFabric(item, idAdmin, previous.find(entry => entry.lineId === item.lineId)));
   const first = items[0];
-  return priceDjellabaOrder({ ...value, items, fabricSource: first.fabricSource, fabricType: first.fabricType, fabricReference: first.fabricReference, fabricColor: first.fabricColor, fabricId: first.fabricId, colorId: first.colorId, ...(tailoringGarmentType(value) === "trousers" ? { trouserType: first.trouserType } : tailoringGarmentType(value) === "shirts" ? { shirtType: first.shirtType } : { sfifa: first.sfifa }) }, idAdmin, current, req.tailoringAccess.creator);
+  const priced = await priceDjellabaOrder({ ...value, items, fabricSource: first.fabricSource, fabricType: first.fabricType, fabricReference: first.fabricReference, fabricColor: first.fabricColor, fabricId: first.fabricId, colorId: first.colorId, ...(tailoringGarmentType(value) === "trousers" ? { trouserType: first.trouserType } : tailoringGarmentType(value) === "shirts" ? { shirtType: first.shirtType } : { sfifa: first.sfifa }) }, idAdmin, current, req.tailoringAccess.creator);
+  return applyTailoringAdjustments(priced, idAdmin, current, req.tailoringAccess.permissions);
 }
 const orderPhotos = order => new Set([order?.photo, ...(order?.items || []).map(item => item.photo)].filter(Boolean));
 async function attachPhotos(req, value, current, createdPhotos) {
@@ -88,6 +94,15 @@ async function attachPhotos(req, value, current, createdPhotos) {
     items.push({ ...item, photo: uploaded || (removeImage ? "" : previous.find(old => old.lineId === item.lineId)?.photo || "") });
   }
   return { ...value, items, photo: items[0].photo };
+}
+export async function listTailoringSfifaOptions(req, res) {
+  try {
+    const { idAdmin } = await accessFor(req, ['add', 'update']);
+    const stocks = await SfifaStock.find({ idAdmin }).lean();
+    for (const stock of stocks) await ensureSfifaStyleBalances(stock);
+    const items = stocks.flatMap(stock => [...(stock.variants || []).map(row => ({ stockId: stock._id, variantId: row._id, width: stock.width, family: stock.family, code: row.code, quantity: row.quantity, styles: sfifaStockStyles(stock, row.code) })), ...((stock.unassignedQuantity ?? stock.quantity) > 0 ? [{ stockId: stock._id, variantId: stock._id, width: stock.width, family: stock.family, quantity: stock.unassignedQuantity ?? stock.quantity, styles: sfifaStockStyles(stock) }] : [])]);
+    res.json({ items });
+  } catch (error) { sendError(res, error, 'sfifaStockUnavailable'); }
 }
 export async function listTailoringOrders(req, res) {
   try {
@@ -122,7 +137,7 @@ export async function addTailoringOrder(req, res) {
     const input = await attachPhotos(req, await orderInput(req, idAdmin), null, createdPhotos);
     const document = { ...input, _id: new mongoose.Types.ObjectId(), idAdmin, createdBy, creator, requestId, requestFingerprint };
     document.customerReceipt = createTailoringReceipt(document, { issuedAt: new Date() });
-    const order = input.deductFabricStock ? await saveTailoringFabricStock(document, { create: true }) : await TailoringOrder.create(document);
+    const order = (input.deductFabricStock || hasTailoringSfifa(input)) ? await saveTailoringFabricStock(document, { create: true }) : await TailoringOrder.create(document);
     committed = true;
     res.status(201).json(publicOrder(order));
   } catch (error) {
@@ -160,7 +175,7 @@ export async function updateTailoringOrder(req, res) {
     }
     if (order.fabricStock && !input.deductFabricStock) throw fail("fabricStockRequired", 400);
     order.set(input);
-    const savedOrder = order.fabricStock || input.deductFabricStock ? await saveTailoringFabricStock(order) : await order.save();
+    const savedOrder = order.fabricStock || hasTailoringSfifa(order) || input.deductFabricStock ? await saveTailoringFabricStock(order, { trackFabric: Boolean(order.fabricStock || input.deductFabricStock) }) : await order.save();
     committed = true;
     const retained = orderPhotos(savedOrder);
     await Promise.all([...previous].filter(photo => !retained.has(photo)).map(deleteTailoringPhoto));
@@ -240,12 +255,12 @@ export async function cancelTailoringOrder(req, res) {
     // A lost response or repeated click must not replace the original audit entry.
     if (order.cancelledAt) return res.json(publicOrder(order));
     checkActionVersion(req, order);
-    if (!order.deliveredAt && !order.fabricStock) throw fail("orderNotDelivered", 409);
+    if (!order.deliveredAt && !order.fabricStock && !order.sfifaStock) throw fail("orderNotDelivered", 409);
     if (order.deliveredAt) order.deliveryFinancials ||= createTailoringDeliveryFinancials(order);
     order.cancelledAt = new Date();
     order.cancelledBy = req.tailoringAccess.creator;
-    // Restore only the stock actually debited by this order, in the cancellation transaction.
-    const savedOrder = order.fabricStock ? await saveTailoringFabricStock(order) : await order.save();
+    // Return reserved materials only when cancellation occurs before delivery.
+    const savedOrder = (order.fabricStock || order.sfifaStock) ? await saveTailoringFabricStock(order) : await order.save();
     res.json(publicOrder(savedOrder));
   } catch (error) { sendError(res, error, "saveFailed"); }
 }

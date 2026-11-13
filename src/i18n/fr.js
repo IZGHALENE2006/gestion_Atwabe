@@ -1,3 +1,4 @@
+import { fabricInvoicesFrench } from './fabricInvoices.js';
 import { employeePayrollFrench } from './employeePayroll.js';
 import { productBatchesFrench } from "./productBatches.js";
 import { sideExpensesFrench } from "./sideExpenses.js";
@@ -14,6 +15,7 @@ import { sfifaStockFrench } from "./sfifaStock.js";
 import { globalSearchFrench } from './globalSearch.js';
 export default {
   globalSearch: globalSearchFrench,
+      fabricInvoices: fabricInvoicesFrench,
   employeePayroll: employeePayrollFrench,
   creditDocuments: creditDocumentsFrench,
   employeePermissions: employeePermissionsFrench,

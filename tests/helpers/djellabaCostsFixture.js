@@ -8,7 +8,7 @@ import WorkerWork from "../../BackEnd/models/WorkerWork.js";
 import SfifaStock from "../../BackEnd/models/SfifaStock.js";
 import { generateFabricBarcode } from "../../shared/fabrics.js";
 export const owner = "111111111111111111111111", otherOwner = "222222222222222222222222", employee = "333333333333333333333333";
-export const query = fn => ({ select() { return this; }, sort() { return this; }, lean() { return this; }, then(resolve, reject) { return Promise.resolve().then(fn).then(resolve, reject); } });
+export const query = fn => ({ session() { return this; }, select() { return this; }, sort() { return this; }, lean() { return this; }, then(resolve, reject) { return Promise.resolve().then(fn).then(resolve, reject); } });
 export const garment = patch => ({ lineId: randomUUID().replaceAll("-", "").slice(0,24), price: 500, fabricSource: "client", fabricType: "قطن", fabricMeters: "2", fabricUnitPrice: 0, sfifa: { width: "thin", style: "fabric" }, ...patch });
 export const orderInput = patch => ({ clientName: "أمينة", phone: "0612345678", orderDate: "2026-10-27", readyDate: "2026-11-05", garmentType: "djellaba", automaticCosting: true, costSettingsVersion: 0, paidAmount: 100, items: [garment()], requestId: randomUUID(), ...patch });
 export function djellabaFixture(t) {

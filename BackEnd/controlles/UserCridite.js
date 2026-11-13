@@ -273,6 +273,7 @@ export const DeleteCreditProduct = async (req, res) => {
     const result = await mutateCredit(req.params.id, ownerId, user => {
       const index = user.produit.findIndex(item => item.id === req.params.productId);
       if (index === -1) throw creditFailure("Credit product not found", 404);
+      if (user.produit[index].fabricInvoiceId) throw creditFailure('fabricInvoiceLinked', 409);
       const line = user.produit[index], lineTotal = round2(line.lineTotal ?? toNumber(line.prix) * toNumber(line.Quantite, 1)), upfront = round2(toNumber(line.Paiement)), qty = Math.max(1, Math.floor(toNumber(line.Quantite, 1)));
       user.produit.splice(index, 1); user.Total = round2(Math.max(toNumber(user.Total) - lineTotal, 0)); user.Paye = Math.min(round2(Math.max(toNumber(user.Paye) - upfront, 0)), user.Total); user.Qauntite = Math.max(toNumber(user.Qauntite) - qty, 0);
       return {};
@@ -290,6 +291,8 @@ export const DeleteUsercridite = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    const linked = await UserCriditModele.findOne({ _id: id, idUser: ownerId });
+    if (linked?.creditInvoices.some(invoice => invoice.origin === 'fabric')) throw creditFailure('fabricInvoiceLinked', 409);
     const deleted = await UserCriditModele.findOneAndDelete({
       _id: id,
       idUser: ownerId,

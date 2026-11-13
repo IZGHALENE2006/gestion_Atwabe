@@ -201,13 +201,13 @@ test("dates validate real calendar days and enforce preparation after the order"
   assert.throws(() => validateTailoringOrder(input({ readyDate: "2026-10-06" })), error => error.fields.readyDate === "readyBeforeOrder");
   assert.equal(validateTailoringOrder(input({ readyDate: "2026-10-07" })).readyDate, "2026-10-07");
 });
-test("one sfifa width supports all three color styles and requires two named colors where needed", () => {
+test("sfifa supports three color styles and keeps gradient color validation", () => {
   for (const width of ["thin", "thick"]) for (const style of ["fabric", "twoTone", "gradient"]) {
     const value = validateTailoringOrder(input({ sfifa: { width, style, color1: "ذهبي", color2: "أبيض" } }));
     assert.equal(value.sfifa.width, width); assert.equal(value.sfifa.style, style);
     assert.equal(value.sfifa.color1, style === "fabric" ? "" : "ذهبي");
   }
-  for (const sfifa of [[{ width: "thin" }, { width: "thick" }], { width: ["thin", "thick"], style: "fabric" }, { width: "thin", style: "twoTone" }, "{bad", { width: "thick", style: "unknown" }]) assert.throws(() => validateTailoringOrder(input({ sfifa })), /invalidOrder/);
+  for (const sfifa of [[{ width: "thin" }, { width: "thick" }], { width: ["thin", "thick"], style: "fabric" }, { width: "thin", style: "gradient" }, "{bad", { width: "thick", style: "unknown" }]) assert.throws(() => validateTailoringOrder(input({ sfifa })), /invalidOrder/);
 });
 test("client fields reject missing values, invalid phones, control characters and excessive lengths", () => {
   for (const change of [{ clientName: "" }, { clientName: "x".repeat(161) }, { phone: "abc" }, { phone: "123" }, { fabricType: "" }, { fabricType: "x\ny" }, { sfifa: { width: "thin", style: "gradient", color1: "x", color2: "" } }, { fabricSource: "unknown" }]) assert.throws(() => validateTailoringOrder(input(change)), /invalidOrder/);
@@ -419,7 +419,7 @@ test("multiple garments validate independently and their exact prices determine 
   assert.equal(value.totalPrice, 800.35); assert.equal(value.paidAmount, 200.25); assert.equal(tailoringRemainingAmount(value.totalPrice, value.paidAmount), 600.1);
   assert.equal(value.items.length, 3); assert.equal(value.items[1].sfifa.color1, "ذهبي");
   assert.throws(() => validateTailoringOrder(input({ items: [garment({ price: "1.001" })] })), error => error.fields["items.0.price"] === "invalidMoney");
-  assert.throws(() => validateTailoringOrder(input({ items: [garment({ sfifa: { width: "thick", style: "twoTone" } })] })), error => Boolean(error.fields["items.0.sfifa.color1"]));
+  assert.throws(() => validateTailoringOrder(input({ items: [garment({ sfifa: { width: "thick", style: "gradient" } })] })), error => Boolean(error.fields["items.0.sfifa.color1"]));
   for (const bad of [[], {}, "broken", Array.from({ length: 51 }, () => garment())]) assert.throws(() => validateTailoringOrder(input({ items: bad })), error => error.fields.items === "invalidItems");
   assert.throws(() => validateTailoringOrder(input({ items: [items[0], items[0]] })), error => error.fields["items.1.lineId"] === "invalidItem");
   assert.throws(() => validateTailoringOrder(input({ items: [garment({ price: 10 })], paidAmount: 11 })), error => error.fields.paidAmount === "paidExceedsPrice");
@@ -671,4 +671,24 @@ test("shirt orders cannot change sections and existing trousers keep their origi
   const legacyValue=validateTailoringOrder(oldBody);
   const legacy=new TailoringOrder({...legacyValue,fabricId:null,colorId:null,items:legacyValue.items.map(item=>({...item,fabricId:null,colorId:null})),idAdmin:owner,createdBy:owner,requestId:oldBody.requestId,requestFingerprint:"0e3089d4154740443a689c49d6d20a22e5719de2537a82c6e5f863b615c8a22d",__v:0});await legacy.validate();f.records.push(legacy);
   const retry=await request({body:oldBody});assert.equal(retry.status,200);assert.equal((await retry.json())._id,String(legacy._id));assert.equal(f.create.mock.callCount(),1);
+});
+
+test("two-tone colors are optional independently for single and multiple garment orders", async t => {
+  setup(t);
+  for (const width of ["thin", "thick"]) for (const colors of [{}, {color1: "ذهبي"}, {color2: "أبيض"}, {color1: " ", color2: " "}]) {
+    const sfifa = {width, style: "twoTone", ...colors};
+    const single = validateTailoringOrder(input({sfifa}));
+    assert.equal(single.sfifa.color1, (colors.color1 || "").trim());
+    assert.equal(single.sfifa.color2, (colors.color2 || "").trim());
+    const response = await request({body: input({paidAmount: 0, items: [garment({sfifa})]})});
+    assert.equal(response.status, 201, JSON.stringify(await response.clone().json()));
+    const order = await response.json();
+    assert.equal(order.items[0].sfifa.color1, single.sfifa.color1);
+    assert.equal(order.items[0].sfifa.color2, single.sfifa.color2);
+  }
+});
+test("optional two-tone colors still reject malformed values and invalid text", () => {
+  for (const key of ["color1", "color2"]) for (const value of [123, {}, "x".repeat(121), "a\nb"]) {
+    assert.throws(() => validateTailoringOrder(input({sfifa:{width:"thin",style:"twoTone",[key]:value}})), error => Boolean(error.fields["sfifa."+key]));
+  }
 });

@@ -4,7 +4,7 @@ import { MAX_TAILORING_ITEMS } from "../../shared/tailoring.js";
 const types = new Set(["image/jpeg", "image/png", "image/webp"]);
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024, files: MAX_TAILORING_ITEMS, fields: 20, parts: MAX_TAILORING_ITEMS + 20, fieldSize: 512 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024, files: MAX_TAILORING_ITEMS, fields: 32, parts: MAX_TAILORING_ITEMS + 32, fieldSize: 512 * 1024 },
   fileFilter(_req, file, callback) { callback(types.has(file.mimetype) ? null : new Error("imageTypeInvalid"), types.has(file.mimetype)); },
 }).fields([{ name: "image", maxCount: 1 }, { name: "images", maxCount: MAX_TAILORING_ITEMS }]);
 export function uploadTailoringImages(req, res, next) {

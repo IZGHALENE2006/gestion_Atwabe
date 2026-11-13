@@ -2,7 +2,7 @@ import Fabric from "../models/Fabric.js";
 import { createFabricSaleFinancials } from "../../shared/fabricProfits.js";
 import { tailoringCostSettingsModel } from "./tailoringCostSettings.js";
 import { tailoringMoneyCents, tailoringOrderItems, tailoringItemsTotal } from "../../shared/tailoring.js";
-import { tailoringRateFields, djellabaItemCosts, djellabaItemSalePrice, djellabaCostsTotal, tailoringFabricCost } from "../../shared/tailoringCosts.js";
+import { tailoringRateFields, djellabaItemCosts, djellabaItemSalePrice, djellabaCostsTotal, tailoringFabricCost, trouserLaborRates } from "../../shared/tailoringCosts.js";
 const fail = (message, status = 409) => Object.assign(new Error(message), { status });
 export async function priceDjellabaOrder(value, idAdmin, current, actor) {
   if (value.garmentType === "trousers") return priceTrouserOrder(value, idAdmin, current, actor);
@@ -54,7 +54,7 @@ export async function priceDjellabaOrder(value, idAdmin, current, actor) {
   if (expenseAmount === null) throw Object.assign(fail("invalidOrder", 400), { fields: { totalPrice: "costsTooLarge" } });
   const totalPrice = tailoringItemsTotal(items);
   if (totalPrice === null) throw Object.assign(fail("invalidOrder", 400), { fields: { totalPrice: "costsTooLarge" } });
-  if (tailoringMoneyCents(value.paidAmount) > tailoringMoneyCents(totalPrice)) throw Object.assign(fail("invalidOrder", 400), { fields: { paidAmount: "paidExceedsPrice" } });
+  if (!value.adjustments && tailoringMoneyCents(value.paidAmount) > tailoringMoneyCents(totalPrice)) throw Object.assign(fail("invalidOrder", 400), { fields: { paidAmount: "paidExceedsPrice" } });
   const { automaticCosting: _mode, costSettingsVersion: _version, salePricingVersion: _pricingVersion, ...stored } = value;
   return { ...stored, totalPrice, items, expenseAmount, costing: { rates, settingsVersion, calculatedAt: new Date(), ...(pricingVersion >= 2 ? { pricingVersion } : {}) } };
 }
@@ -91,14 +91,15 @@ async function priceTrouserOrder(value, idAdmin, current, actor) {
   }
   let trouserCosting = current?.trouserCosting;
   if (value.laborCosting) {
-    let laborPrice = trouserCosting?.laborPrice ?? 0, settingsVersion = trouserCosting?.settingsVersion ?? null;
+    let rates = trouserCosting?.laborPrice != null && trouserCosting.regularLaborPrice == null ? { laborPrice: trouserCosting.laborPrice } : trouserLaborRates(trouserCosting);
+    let settingsVersion = trouserCosting?.settingsVersion ?? null;
     // Existing orders retain their original rates, including older orders with no labor setting.
     if (!current) {
       const settings = await tailoringCostSettingsModel("trousers").findOne({ idAdmin });
-      laborPrice = settings?.laborPrice ?? 0; settingsVersion = settings?.__v ?? null;
+      rates = trouserLaborRates(settings); settingsVersion = settings?.__v ?? null;
     }
     if (settingsVersion !== value.costSettingsVersion) throw fail("costSettingsChanged");
-    trouserCosting = { laborPrice, settingsVersion, calculatedAt: trouserCosting?.calculatedAt || new Date() };
+    trouserCosting = { ...rates, settingsVersion, calculatedAt: trouserCosting?.calculatedAt || new Date() };
   }
   const { fabricCosting: _mode, laborCosting: _laborMode, recordFabricSales: _recordMode, costSettingsVersion: _version, ...stored } = value;
   return { ...stored, ...(recordFabricSales ? { fabricSalesVersion: 1 } : {}), ...(trouserCosting ? { trouserCosting } : {}), ...(value.items ? { items } : {}) };

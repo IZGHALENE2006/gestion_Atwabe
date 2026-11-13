@@ -1,3 +1,4 @@
+import { publicTailoringItemPricing, publicTailoringAdjustments } from './tailoringAdjustments.js';
 import { tailoringGarmentType, tailoringOrderItems, tailoringMoneyCents, tailoringRemainingAmount } from './tailoring.js';
 import { tailoringOrderBarcode } from './tailoringBarcode.js';
 
@@ -5,6 +6,7 @@ import { tailoringOrderBarcode } from './tailoringBarcode.js';
 // stock identifiers or the complete order into a printable document.
 export function publicTailoringReceipt(receipt) {
   return {
+    ...(receipt.adjustments ? { adjustments: publicTailoringAdjustments(receipt.adjustments) } : {}),
     kind: receipt.kind, reference: receipt.reference, orderBarcode: receipt.orderBarcode,
     issuedAt: receipt.issuedAt, historical: receipt.historical === true,
     garmentType: receipt.garmentType, clientName: receipt.clientName, phone: receipt.phone,
@@ -12,6 +14,7 @@ export function publicTailoringReceipt(receipt) {
     totalPrice: receipt.totalPrice, paidAmount: receipt.paidAmount, remainingAmount: receipt.remainingAmount,
     ...(receipt.kind === 'payment' ? { paymentAmount: receipt.paymentAmount } : {}),
     items: receipt.items.map((item, index) => ({
+      ...(item.pricing ? { pricing: publicTailoringItemPricing(item.pricing) } : {}),
       number: index + 1, price: item.price, fabricSource: item.fabricSource,
       fabricType: item.fabricType, fabricReference: item.fabricReference || '', fabricColor: item.fabricColor || '',
       ...(item.fabricMeters !== undefined ? { fabricMeters: item.fabricMeters } : {}),
@@ -27,6 +30,7 @@ export function createTailoringReceipt(order, { kind = 'order', reference, issue
   const totalPrice = (tailoringMoneyCents(order.totalPrice ?? 0) ?? 0) / 100;
   const paidAmount = (tailoringMoneyCents(order.paidAmount ?? 0) ?? 0) / 100;
   return publicTailoringReceipt({
+    ...(order.adjustments ? { adjustments: order.adjustments } : {}),
     kind, reference: reference || barcode + '-O', orderBarcode: barcode, issuedAt, historical,
     garmentType: tailoringGarmentType(order), clientName: order.clientName, phone: order.phone,
     orderDate: order.orderDate, readyDate: order.readyDate,

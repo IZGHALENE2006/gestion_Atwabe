@@ -1,3 +1,4 @@
+import { ensureSfifaStyleBalances, changeSfifaTypeBalance } from './sfifaStyleBalances.js';
 import Fabric from '../models/Fabric.js';
 import SfifaStock from '../models/SfifaStock.js';
 import WorkerWork from '../models/WorkerWork.js';
@@ -44,13 +45,17 @@ export async function resolveWorkerMaterials(input, details, idAdmin) {
     if (styles.length ? !styles.includes(row.sfifaStyle) : row.sfifaStyle !== undefined) throw Object.assign(fail('invalidWork', 400), { fields: { [`materials.${index}.sfifaStyle`]: 'chooseSfifaStyle' } });
     return { ...row, sfifaMeters: WORKER_SFIFA_METERS, fabricType: fabric.type, fabricColor: color.name, fabricReference: fabric.reference || '', pieceBarcode: piece.barcode, sfifaWidth: sfifa.width, sfifaFamily: sfifa.family, ...(variant ? { sfifaCode: variant.code } : {}) };
   });
-  for (const group of groupsFor(result)) checkAndChange(group, group.kind === 'fabric' ? fabrics.get(String(group.id)) : sfifas.get(String(group.id)), false);
+  for (const group of groupsFor(result)) {
+    const document = group.kind === 'fabric' ? fabrics.get(String(group.id)) : sfifas.get(String(group.id));
+    if (group.kind === 'sfifa') await ensureSfifaStyleBalances(document);
+    checkAndChange(group, document, false);
+  }
   return result;
 }
 function checkAndChange(group, document, release) {
   const changes = new Map();
   for (const row of group.rows) {
-    const key = String(row[group.kind === 'fabric' ? 'pieceId' : 'variantId']);
+    const key = String(row[group.kind === 'fabric' ? 'pieceId' : 'variantId']) + (group.kind === 'sfifa' ? ':' + (row.sfifaStyle || 'unclassified') : '');
     if (!changes.has(key)) changes.set(key, { row, quantity: 0 });
     changes.get(key).quantity += units(group.kind === 'fabric' ? row.meters : row.sfifaMeters);
   }
@@ -65,6 +70,7 @@ function checkAndChange(group, document, release) {
     const after = units(target[key] ?? (unassigned ? document.quantity : 0)) + (release ? quantity : -quantity);
     if (after < 0) throw fail(group.kind === 'fabric' ? 'insufficientFabric' : 'insufficientSfifa');
     if (after > units(group.kind === 'fabric' ? FABRIC_LIMITS.meters : SFIFA_STOCK_LIMIT)) throw fail('materialsReturnLimit');
+    if (group.kind === 'sfifa') changeSfifaTypeBalance(document, row.variantId, release ? quantity : -quantity, row.sfifaStyle, 'insufficientSfifa');
     target[key] = after / 1000; total += quantity;
   }
   if (group.kind === 'sfifa') {
@@ -82,6 +88,7 @@ async function changeGroup(group, work, operation, release) {
       const debit = document.workerMaterialDebits?.find(entry => entry.operationId === operationId);
       if (release && (!debit || debit.returnedAt)) return;
       if (!release && debit) { if (debit.returnedAt) throw fail('workRequestConflict'); return; }
+      if (group.kind === 'sfifa') await ensureSfifaStyleBalances(document);
       checkAndChange(group, document, release);
       if (release) debit.returnedAt = new Date();
       else { document.workerMaterialDebits ||= []; document.workerMaterialDebits.push({ operationId, workId: work._id, date: new Date() }); }

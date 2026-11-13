@@ -54,9 +54,9 @@ test('failed order edits and cancellations roll back their stock changes',async 
 test('transaction retry does not double-consume or double-restore metres',async t=>{
  const f=tailoringStockFixture(t);f.controls.retryTransactionOnce=true;const saved=await create(f);assert.equal(f.meters(),32);f.controls.retryTransactionOnce=true;const res=await request('/tailoring-orders/'+saved._id+'/cancel',{version:saved.__v});assert.equal(res.status,200);assert.equal(f.meters(),35);
 });
-test('delivery and payments keep the debit; cancelling a delivered order restores it and excludes profits',async t=>{
+test('delivery and payments keep the debit; cancelling a delivered order keeps consumed metres and excludes profits',async t=>{
  const f=tailoringStockFixture(t),saved=await create(f);let res=await request('/tailoring-orders/'+saved._id+'/payments',{version:saved.__v,requestId:randomUUID(),amount:10});assert.equal(res.status,200);assert.equal(f.meters(),32);
- res=await request('/tailoring-orders/'+saved._id+'/deliver',{version:res.data.__v});assert.equal(res.status,200);assert.equal(f.meters(),32);res=await request('/tailoring-orders/'+saved._id+'/cancel',{version:res.data.__v});assert.equal(res.status,200);assert.equal(f.meters(),35);assert.equal(res.data.paidAmount,10);assert.equal((await report()).summary.profitAmount,0);
+ res=await request('/tailoring-orders/'+saved._id+'/deliver',{version:res.data.__v});assert.equal(res.status,200);assert.equal(f.meters(),32);res=await request('/tailoring-orders/'+saved._id+'/cancel',{version:res.data.__v});assert.equal(res.status,200);assert.equal(f.meters(),32);assert.equal(res.data.fabricStock.returnedAt,undefined);assert.equal(res.data.paidAmount,10);assert.equal((await report()).summary.profitAmount,0);
 });
 test('active roll references prevent deleting stock until cancellation',async t=>{
  const f=tailoringStockFixture(t),saved=await create(f);let fabric=f.fabrics.get(String(f.fabric._id));assert.equal(fabric.tailoringOrderIds.length,1);await assert.rejects(protectTailoringFabricDeletion(fabric,null),{message:'tailoringFabricInUse'});await protectTailoringFabricDeletion(fabric,new Set([String(fabric.colors[1].pieces[0]._id)]));

@@ -44,7 +44,7 @@ const garmentSchema = new mongoose.Schema({
   fabricType: { type: String, required: true },
   fabricColor: { type: String, default: "" },
   fabricReference: { type: String, default: "" },
-  sfifa: { width: String, style: String, color1: String, color2: String },
+  sfifa: { width: String, style: String, color1: String, color2: String, stock: { type: new mongoose.Schema({ stockId: mongoose.Schema.Types.ObjectId, variantId: mongoose.Schema.Types.ObjectId, meters: Number, meterType: String, family: String, code: Number }, { _id: false }) } },
   trouserType: { type: String, enum: TROUSER_TYPES, default: undefined },
   shirtType: { type: String, maxlength: 120, default: undefined },
 }, { _id: false });

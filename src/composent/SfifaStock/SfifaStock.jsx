@@ -1,3 +1,4 @@
+import SfifaStockDetailsDialog from "./SfifaStockDetailsDialog.jsx";
 import useSearchTarget from "../../hooks/useSearchTarget.js";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
@@ -65,6 +66,7 @@ export default function SfifaStock() {
     </>}
   </div>{editor?.token === token && ["new", "edit"].includes(editor.mode) && <SfifaStockForm key={editor.stock?._id || "new"} token={token} stock={editor.stock} initial={{ width: filters.width || "thin", family: filters.family || SFIFA_STOCK_FAMILIES[0].value }} onClose={() => setEditor(null)} onSaved={saved} onReload={reload} />}
   {editor?.token === token && ["restock", "delete"].includes(editor.mode) && <SfifaStockActionDialog key={editor.mode + editor.stock._id} mode={editor.mode} stock={editor.stock} token={token} onClose={() => setEditor(null)} onSaved={saved} onReload={reload} />}
+  {editor?.token === token && editor.mode === "details" && <SfifaStockDetailsDialog key={editor.stock._id} stock={editor.stock} token={token} onClose={() => setEditor(null)} />}
   {editor?.token === token && editor.mode === "history" && <SfifaStockHistoryDialog key={editor.stock._id} stock={editor.stock} token={token} onClose={() => setEditor(null)} />}
   {editor?.token === token && editor.mode === "barcode" && <SfifaStockBarcodeDialog stock={editor.stock} onClose={() => setEditor(null)} />}</main>;
 }

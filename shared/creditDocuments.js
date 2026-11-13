@@ -4,7 +4,7 @@ export const creditRound = value => {
 };
 export const creditCustomer = user => ({ name: user.name || "", phone: user.phone || "", cin: user.cin || "" });
 export const creditPaymentReference = (userId, payment, index) => payment.reference || (payment.id ? `RC-${payment.id.toUpperCase()}` : `RC-${String(userId).toUpperCase()}-${String(index + 1).padStart(4, "0")}`);
-export const creditInvoiceReference = invoice => `CI-${invoice.id.toUpperCase()}`;
+export const creditInvoiceReference = invoice => `${invoice.origin === 'fabric' ? 'FI' : 'CI'}-${invoice.id.toUpperCase()}`;
 
 export function creditDocument(user, selection = {}) {
   const customer = creditCustomer(user);

@@ -1,3 +1,4 @@
+import { createFabricInvoice, listFabricInvoices, resumeFabricInvoice, payFabricInvoice, fabricInvoiceCustomers } from '../controlles/FabricInvoices.js';
 import express from "express";
 import { auth } from "../middleware/auth.js";
 import { listFabrics, addFabric, updateFabric, deleteFabric, deleteFabricColor, deleteFabricPiece, reduceFabricPiece, listFabricMovements, fabricWriteAccess, getFabricPhoto, sellFabricPiece, listFabricSaleClients, listFabricProfits } from "../controlles/Fabrics.js";
@@ -10,6 +11,11 @@ router.get("/", listFabrics);
 router.get("/movements", listFabricMovements);
 router.get("/profits", listFabricProfits);
 router.get("/sale-clients", listFabricSaleClients);
+router.get('/invoices', listFabricInvoices);
+router.get('/invoice-customers', fabricInvoiceCustomers);
+router.post('/invoices', createFabricInvoice);
+router.post('/invoices/:id/resume', resumeFabricInvoice);
+router.post('/invoices/:id/payments', payFabricInvoice);
 router.get("/:id/photo", getFabricPhoto);
 router.post("/", fabricWriteAccess("add"), uploadFabricPhoto, addFabric);
 router.put("/:id", fabricWriteAccess(["update", "addColor", "addPiece"]), uploadFabricPhoto, updateFabric);

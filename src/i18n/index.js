@@ -1,3 +1,4 @@
+import { fabricInvoicesArabic } from './fabricInvoices.js';
 import { employeePayrollArabic } from './employeePayroll.js';
 import { productBatchesArabic } from "./productBatches.js";
 import { sideExpensesArabic } from "./sideExpenses.js";
@@ -20,6 +21,7 @@ const resources = {
   ar: {
     translation: {
       globalSearch: globalSearchArabic,
+      fabricInvoices: fabricInvoicesArabic,
       creditDocuments: creditDocumentsArabic,
       employeePayroll: employeePayrollArabic,
       employeePermissions: employeePermissionsArabic,

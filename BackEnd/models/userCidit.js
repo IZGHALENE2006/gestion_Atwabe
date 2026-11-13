@@ -16,6 +16,8 @@ const CreditProductSchema = new mongoose.Schema(
     actor: { type: creditActorSchema, default: undefined },
     invoiceId: { type: String, default: undefined },
     batchId: String, batchNumber: Number,
+    unit: { type: String, enum: ['piece', 'meter'] },
+    fabricInvoiceId: mongoose.Schema.Types.ObjectId,
     productId: { type: mongoose.Schema.Types.ObjectId, default: undefined },
     lineTotal: { type: Number, min: 0, default: undefined },
     discountAmount: { type: Number, min: 0, default: undefined },
@@ -37,7 +39,8 @@ const CreditProductSchema = new mongoose.Schema(
     Quantite: {
       type: Number,
       default: 1,
-      min: 1,
+      min: 0.001,
+      validate: function (value) { return this.unit === 'meter' || value >= 1; },
     },
     Date: {
       type: Date,
@@ -77,7 +80,7 @@ PaymentSchema.pre("validate", function () {
   const b = this.balanceSnapshot;
   if (b && (creditRound(b.paidBefore + this.amount) !== creditRound(b.paidAfter) || creditRound(Math.max(b.total - b.paidBefore, 0)) !== creditRound(b.remainingBefore) || creditRound(Math.max(b.total - b.paidAfter, 0)) !== creditRound(b.remainingAfter))) this.invalidate("balanceSnapshot", "Inconsistent payment receipt");
 });
-const invoiceSchema = new mongoose.Schema({ id: { type: String, required: true }, ...requestFields, actor: { type: creditActorSchema, default: undefined }, origin: { type: String, enum: ["manual", "cashier"], default: undefined }, Date: { type: Date, required: true }, customer: { type: customerSchema, required: true }, line: { type: CreditProductSchema, default: undefined }, lines: { type: [CreditProductSchema], default: undefined }, total: moneyField, paid: moneyField, remaining: moneyField }, { _id: false });
+const invoiceSchema = new mongoose.Schema({ id: { type: String, required: true }, ...requestFields, actor: { type: creditActorSchema, default: undefined }, origin: { type: String, enum: ["manual", "cashier", "fabric"], default: undefined }, Date: { type: Date, required: true }, customer: { type: customerSchema, required: true }, line: { type: CreditProductSchema, default: undefined }, lines: { type: [CreditProductSchema], default: undefined }, total: moneyField, paid: moneyField, remaining: moneyField }, { _id: false });
 invoiceSchema.pre("validate", function () { if (!this.line && !this.lines?.length) this.invalidate("lines", "Invoice purchases are required"); });
 
 const UserCriditShema = new mongoose.Schema(

@@ -23,6 +23,7 @@ const fabricSchema = new mongoose.Schema({
   photo: { type: String, default: "" },
   colors: { type: [colorSchema], required: true },
   movements: { type: [fabricMovementSchema], default: [] },
+  invoiceDebits: { type: [new mongoose.Schema({ invoiceId: { type: mongoose.Schema.Types.ObjectId, required: true }, recordedAt: Date, returnedAt: Date, rows: { type: [new mongoose.Schema({ colorId: mongoose.Schema.Types.ObjectId, pieceId: mongoose.Schema.Types.ObjectId, barcode: String, meters: Number, beforeMeters: Number, remainingMeters: Number }, { _id: false })], required: true } }, { _id: false })], default: undefined },
   tailoringStockOperations: { type: [new mongoose.Schema({ operationId: { type: String, required: true }, orderId: { type: mongoose.Schema.Types.ObjectId, required: true }, date: { type: Date, required: true }, returnedAt: Date }, { _id: false })], default: undefined },
   tailoringOrderIds: { type: [mongoose.Schema.Types.ObjectId], default: undefined },
   workerMaterialDebits: { type: [workerMaterialDebitSchema], default: undefined },

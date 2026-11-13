@@ -9,7 +9,7 @@ export const supportsWorkerMaterialHistory = (category, workType, garmentType) =
 export const usesWorkerMaterials = (category, workType, garmentType) => workType === 'shop' && supportsWorkerMaterialHistory(category, workType, garmentType);
 export const workerMaterialPending = work => ['pending', 'returning'].includes(work.materialStatus);
 export const workerMaterialRows = work => work.materialOperations ? work.materialOperations.filter(operation => operation.state !== 'failed').flatMap(operation => operation.rows) : work.materials || [];
-export const workerHasPieceWages = work => work.category === 'machine' && work.workType === 'shop' && workerMaterialRows(work).some(row => row.unitWage !== undefined);
+export const workerHasPieceWages = work => work.pieceCompletion === true || work.category === 'machine' && work.workType === 'shop' && workerMaterialRows(work).some(row => row.unitWage !== undefined);
 export const workerMaterialInputKey = rows => JSON.stringify((rows || []).map(row => ({ ...Object.fromEntries(['lineId', 'fabricId', 'colorId', 'pieceId', 'sfifaId', 'variantId', 'meters'].map(key => [key, key === 'meters' ? Number(row[key]) : String(row[key])])), ...(row.sfifaStyle !== undefined ? { sfifaStyle: row.sfifaStyle } : {}), ...(row.size !== undefined ? { size: row.size } : {}), ...(row.unitWage !== undefined ? { unitWage: Number(row.unitWage) } : {}) })).sort((a, b) => a.lineId.localeCompare(b.lineId)));
 export const workerPieceSelectionKey = lineIds => JSON.stringify(Array.isArray(lineIds) ? lineIds.map(id => String(id).toLowerCase()).sort() : []);
 export function workerPieceWageCents(rows) {

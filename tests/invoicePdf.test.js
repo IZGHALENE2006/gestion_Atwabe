@@ -295,3 +295,15 @@ test("sales PDF distinguishes revenue from profit and repeats all columns across
     assertSummaryRow(pages.at(-1), i18n.t("salesRevenue.profit"), "350.00 DH");
   }
 });
+
+test('fabric invoice PDF shows fractional meters and the unpaid balance consistently in Arabic and French', async () => {
+  for (const language of ['ar', 'fr']) {
+    await i18n.changeLanguage(language);
+    const data = { _id: 'FI-2026-TEST', invoiceOrigin: 'fabric', DateFacture: '2026-11-11T10:00:00Z', clientName: 'فاطمة', clientPhone: '0612345678', nameEmp: 'خديجة', Product: [{ code: '2073688603298', name: 'قطن أزرق', quantite: 2, unit: 'meter', price: 30, TotalPrix: 60 }, { code: '2459081950021', name: 'حرير أخضر', quantite: 1.25, unit: 'meter', price: 45, TotalPrix: 56.25 }], TotalQauntite: 3.25, TotalPrix: 116.25, totalOrder: 116.25, amountPaid: 50, remainingAmount: 66.25, PrixReture: 0 };
+    const pages = await inspectPDF(await createFacturePDF(data)); assert.equal(pages.length, 1);
+    assertSummaryRow(pages[0], i18n.t('creditDocuments.remaining'), '66.25 DH');
+    assertSummaryRow(pages[0], i18n.t('receiptPrint.paid'), '50.00 DH');
+    assert.ok(pages[0].text.includes('1.25')); assert.ok(pages[0].text.includes('0612345678'));
+    assert.ok(!pages[0].items.some(item => item.str.trim() === '0.00 DH'));
+  }
+});

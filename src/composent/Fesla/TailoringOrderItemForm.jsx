@@ -1,3 +1,6 @@
+import TailoringDiscountField from "./TailoringDiscountField.jsx";
+import TailoringPricingSummary from "./TailoringPricingSummary.jsx";
+import TailoringSfifaPicker from "./TailoringSfifaPicker.jsx";
 import { TAILORING_MEASUREMENT_NOTES_LIMIT } from "../../../shared/tailoringMeasurements.js";
 import { tailoringMeasurementText } from "./tailoringMeasurementText.js";
 import { useCallback } from "react";
@@ -12,8 +15,8 @@ function Field({ index, name, label, error, children }) {
   const { t } = useTranslation();
   return <div className="min-w-0"><label htmlFor={fieldId(index, name)} className="mb-2 block text-sm font-semibold">{label}</label>{children}{error && <p id={fieldId(index, name) + "-error"} className="mt-2 text-xs text-rose-600 dark:text-rose-400">{t("fesla.errors." + error)}</p>}</div>;
 }
-export default function TailoringOrderItemForm({ deductFabricStock = false, pricingVersion = 1, automaticSalePricing = false, costPreview, garmentType, item, index, savedItem, order, token, inventory, reloadFabrics, errors, onChange, onRemove, onCameraBusy, disabled, canRemove }) {
-  const { t } = useTranslation();
+export default function TailoringOrderItemForm({ basePrice, canDiscount, fourFilleUnitPrice = 0, showProfit = true, deductFabricStock = false, pricingVersion = 1, automaticSalePricing = false, costPreview, garmentType, item, index, savedItem, order, token, inventory, reloadFabrics, errors, onChange, onRemove, onCameraBusy, disabled, canRemove }) {
+  const { t, i18n } = useTranslation();
   const withSfifa = tailoringUsesSfifa({ garmentType });
   const trousers = garmentType === "trousers";
   const garmentText = (key, options) => t(garmentType === "djellaba" ? `fesla.${key}` : `fesla.${garmentType}.${key}`, options);
@@ -34,7 +37,13 @@ export default function TailoringOrderItemForm({ deductFabricStock = false, pric
     <header><h3 id={"fesla-item-title-" + index}>{garmentText("garmentNumber", { number: index + 1 })}</h3>{canRemove && <button type="button" data-remove-tailoring-item={index} disabled={disabled} onClick={() => onRemove(item.lineId)} aria-label={garmentText("removeGarmentNamed", { number: index + 1 })}><IoTrashOutline size={18} aria-hidden="true" />{t("fesla.removeGarment")}</button>}</header>
     {garmentType === "shirts" && <fieldset disabled={disabled}><Field index={index} name="shirtType" label={t("fesla.shirtType")} error={fields.shirtType}><input {...props("shirtType")} value={item.shirtType ?? ""} onChange={event => patch({ shirtType: event.target.value })} placeholder={t("fesla.shirtTypePlaceholder")} maxLength={120} required /></Field></fieldset>}
     {trousers && <fieldset disabled={disabled}><Field index={index} name="trouserType" label={t("fesla.trouserType")} error={fields.trouserType}><select {...props("trouserType")} value={item.trouserType} onChange={event => patch({ trouserType: event.target.value })} required>{TAILORING_TROUSER_TYPES.map(type => <option key={type} value={type}>{t("fesla.trouserTypes." + type)}</option>)}</select></Field></fieldset>}
-    <fieldset disabled={disabled}><Field index={index} name="price" label={garmentText("garmentPrice") + " (" + t("fesla.currency") + ")"} error={fields.price}><input {...props("price")} type="text" inputMode="decimal" dir="ltr" value={item.price} readOnly={automaticSalePricing} data-automatic-garment-price={automaticSalePricing ? "true" : undefined} onChange={event => patch({ price: event.target.value })} placeholder="0.00" maxLength={12} required />{automaticSalePricing && <p className="mt-2 text-xs text-blue-700 dark:text-blue-300">{t("fesla.salePricing.priceHint")}</p>}</Field></fieldset>
+    <fieldset disabled={disabled}><Field index={index} name="price" label={garmentText("garmentPrice") + " (" + t("fesla.currency") + ")"} error={fields.price}><input {...props("price")} type="text" inputMode="decimal" dir="ltr" value={basePrice} readOnly={automaticSalePricing} data-automatic-garment-price={automaticSalePricing ? "true" : undefined} onChange={event => patch({ price: event.target.value })} placeholder="0.00" maxLength={12} required />{automaticSalePricing && <p className="mt-2 text-xs text-blue-700 dark:text-blue-300">{t("fesla.salePricing.priceHint")}</p>}</Field></fieldset>
+    <fieldset disabled={disabled} className="fesla-piece-pricing">
+      {!trousers && <label className="fesla-four-fille" htmlFor={fieldId(index, "fourFille")}><input id={fieldId(index, "fourFille")} type="checkbox" checked={item.fourFille === true} onChange={event => patch({ fourFille: event.target.checked })} /><span><strong dir="ltr">4fille <bdi>+{fourFilleUnitPrice} {t("fesla.currency")}</bdi></strong><small>{t("fesla.adjustments.fourFilleHint")}</small></span></label>}
+      <TailoringDiscountField id={fieldId(index, "discount")} label={t("fesla.adjustments.pieceDiscount")} value={item.discount} disabled={disabled || !canDiscount} error={fields.discount} onChange={discount => patch({ discount })} />
+      {item.pricing && <TailoringPricingSummary item pricing={item.pricing} />}
+      <div className="fesla-piece-net"><span>{t("fesla.adjustments.pieceTotal")}</span><output data-piece-final-price={index} data-value={item.pricing ? item.price : ""} aria-live="polite"><bdi>{item.pricing ? new Intl.NumberFormat(i18n.language === "ar" ? "ar-MA" : "fr-MA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.price) : "—"} {t("fesla.currency")}</bdi></output></div>
+    </fieldset>
     <fieldset disabled={disabled} data-tailoring-measurements className="min-w-0 rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900 dark:bg-blue-950/20">
       <legend className="px-2 text-sm font-bold text-blue-800 dark:text-blue-200">{t("fesla.measurements.title")}</legend>
       <p className="mb-3 text-xs leading-6 text-slate-500 dark:text-slate-400">{t("fesla.measurements.hint")}</p>
@@ -53,11 +62,12 @@ export default function TailoringOrderItemForm({ deductFabricStock = false, pric
       </fieldset>
       {withSfifa && <fieldset disabled={saving} className="grid min-w-0 gap-4 rounded-xl border border-slate-200 p-4 sm:grid-cols-2 dark:border-slate-700">
         <legend className="px-2 text-sm font-bold">{t("fesla.sfifa")}</legend>
-        <Field index={index} name="sfifa.width" label={t("fesla.sfifaWidth")} error={fields["sfifa.width"]}><select {...props("sfifa.width")} value={item.sfifa.width} onChange={(event) => trim({ width: event.target.value })}>{SFIFA_WIDTHS.map((width) => <option key={width} value={width}>{t(`fesla.widths.${width}`)}</option>)}</select></Field>
-        <Field index={index} name="sfifa.style" label={t("fesla.sfifaStyle")} error={fields["sfifa.style"]}><select {...props("sfifa.style")} value={item.sfifa.style} onChange={(event) => trim({ style: event.target.value, color1: "", color2: "" })}>{SFIFA_STYLES.map((style) => <option key={style} value={style}>{t(`fesla.styles.${style}`)}</option>)}</select></Field>
-        {twoColors && <><Field index={index} name="sfifa.color1" label={t("fesla.color1")} error={fields["sfifa.color1"]}><input {...props("sfifa.color1")} value={item.sfifa.color1} onChange={(event) => trim({ color1: event.target.value })} maxLength={120} placeholder={t("fesla.colorPlaceholder")} required /></Field><Field index={index} name="sfifa.color2" label={t("fesla.color2")} error={fields["sfifa.color2"]}><input {...props("sfifa.color2")} value={item.sfifa.color2} onChange={(event) => trim({ color2: event.target.value })} maxLength={120} placeholder={t("fesla.colorPlaceholder")} required /></Field></>}
+        <Field index={index} name="sfifa.width" label={t("fesla.sfifaWidth")} error={fields["sfifa.width"]}><select {...props("sfifa.width")} value={item.sfifa.width} onChange={(event) => trim({ width: event.target.value, ...(item.sfifa.stock ? { stock: { stockId: "", variantId: "", meters: item.sfifa.stock.meters } } : {}) })}>{SFIFA_WIDTHS.map((width) => <option key={width} value={width}>{t(`fesla.widths.${width}`)}</option>)}</select></Field>
+        <Field index={index} name="sfifa.style" label={t("fesla.sfifaStyle")} error={fields["sfifa.style"]}><select {...props("sfifa.style")} disabled={Boolean(item.sfifa.stock)} value={item.sfifa.style} onChange={(event) => trim({ style: event.target.value, color1: "", color2: "" })}>{SFIFA_STYLES.map((style) => <option key={style} value={style}>{t(`fesla.styles.${style}`)}</option>)}</select></Field>
+        <TailoringSfifaPicker token={token} index={index} sfifa={item.sfifa} savedStock={order?.sfifaStock?.rows.find(row => row.lineId === item.lineId)} fields={fields} disabled={saving} onChange={sfifa => patch({ sfifa })} />
+        {twoColors && <><Field index={index} name="sfifa.color1" label={t("fesla.color1")} error={fields["sfifa.color1"]}><input {...props("sfifa.color1")} value={item.sfifa.color1} onChange={(event) => trim({ color1: event.target.value })} maxLength={120} placeholder={t("fesla.colorPlaceholder")} required={!item.sfifa.stock && item.sfifa.style !== "twoTone"} /></Field><Field index={index} name="sfifa.color2" label={t("fesla.color2")} error={fields["sfifa.color2"]}><input {...props("sfifa.color2")} value={item.sfifa.color2} onChange={(event) => trim({ color2: event.target.value })} maxLength={120} placeholder={t("fesla.colorPlaceholder")} required={!item.sfifa.stock && item.sfifa.style !== "twoTone"} /></Field></>}
       </fieldset>}
-    {withSfifa && <DjellabaCostBreakdown pricingVersion={pricingVersion} garmentType={garmentType} costs={costPreview} meters={item.fabricMeters} />}
+    {withSfifa && <DjellabaCostBreakdown showProfit={showProfit} pricingVersion={pricingVersion} garmentType={garmentType} costs={costPreview} meters={item.fabricMeters} />}
     {trousers && <TrouserFabricCost cost={costPreview} meters={item.fabricMeters} />}
     {fields.photo && <p role="alert" className="text-sm text-rose-600">{t("fesla.errors." + fields.photo)}</p>}
   </section>;

@@ -1,7 +1,7 @@
 import express from "express";
 import { auth } from "../middleware/auth.js";
 import { uploadTailoringImages } from "../middleware/tailoringUpload.js";
-import { addTailoringOrder, getTailoringPhoto, listTailoringOrders, tailoringWriteAccess, updateTailoringOrder, addTailoringPayment, deliverTailoringOrder, cancelTailoringOrder } from "../controlles/TailoringOrders.js";
+import { addTailoringOrder, getTailoringPhoto, listTailoringOrders, listTailoringSfifaOptions, tailoringWriteAccess, updateTailoringOrder, addTailoringPayment, deliverTailoringOrder, cancelTailoringOrder } from "../controlles/TailoringOrders.js";
 
 import { getDjellabaCostSettings, saveDjellabaCostSettings } from "../controlles/DjellabaCostSettings.js";
 import { listTailoringTracking } from "../controlles/TailoringTracking.js";
@@ -9,6 +9,7 @@ import { listTailoringTracking } from "../controlles/TailoringTracking.js";
 const router = express.Router();
 router.use(auth);
 router.get("/", listTailoringOrders);
+router.get("/sfifa-options", listTailoringSfifaOptions);
 router.get("/work-status", listTailoringTracking);
 router.get("/cost-settings", getDjellabaCostSettings);
 router.put("/cost-settings", saveDjellabaCostSettings);

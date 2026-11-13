@@ -35,7 +35,7 @@ const writes = [
   ...Object.entries({ invoice: "addInvoice", quote: "addQuote", delivery: "addDelivery", return: "addReturn", credit: "addCreditNote" }).map(([documentType, operation]) => ["invoices", operation, "POST", documentType === "invoice" ? "/addVentes" : "/sales-documents", documentType === "invoice" ? { invoiceOrigin: "manual" } : { documentType }]),
 ];
 for (const [module, operation, method, path, body] of writes) test(`${module}.${operation} authorizes its operation independently`, () => {
-  assert.equal(employeeCanRequest(permission(module, [operation]), method, path, body), true);
+  assert.equal(employeeCanRequest(permission(module, module === "workers" && ["pay", "advance"].includes(operation) ? ["financials", operation] : [operation]), method, path, body), true);
   assert.equal(employeeCanRequest(permission(module, []), method, path, body), false);
   assert.equal(employeeCanRequest({ ...permission(module, [operation]), moduleAccess: [] }, method, path, body), false);
   for (const other of EMPLOYEE_OPERATIONS[module].filter(key => key !== operation && !(module === "fabrics" && operation === "update" && ["addColor", "addPiece"].includes(key)))) assert.equal(employeeCanRequest(permission(module, [other]), method, path, body), false, `${other} must not authorize ${operation}`);
@@ -43,7 +43,7 @@ for (const [module, operation, method, path, body] of writes) test(`${module}.${
 test("explicit operation sets deny absent grants even when legacy global flags are true", () => {
   for (const module of EMPLOYEE_MODULES) for (const operation of EMPLOYEE_OPERATIONS[module]) {
     assert.equal(canEmployeeOperation("Employe", permission(module, []), module, operation), false);
-    assert.equal(canEmployeeOperation("Employe", permission(module, [operation]), module, operation), true);
+    assert.equal(canEmployeeOperation("Employe", permission(module, module === "workers" && ["payroll", "pay", "advance", "download"].includes(operation) ? ["financials", operation] : [operation]), module, operation), true);
     assert.equal(canEmployeeOperation("admin", { moduleAccess: [] }, module, operation), true);
   }
   assert.equal(canEmployeeOperation("Employe", permission("products", ["add"]), "credit", "add"), false);
@@ -82,7 +82,7 @@ test("history endpoints and direct page links respect their specific grants", ()
   assert.equal(employeeCanRequest(permission("sfifa", ["history"]), "GET", "/sfifa-stock/id/history"), true);
   assert.equal(employeeCanRequest(permission("fabrics", []), "GET", "/fabrics/movements"), false);
   assert.equal(employeeCanRequest(permission("workers", []), "GET", "/tailoring-workers/id/payroll"), false);
-  assert.equal(employeeCanRequest(permission("workers", ["pay"]), "GET", "/tailoring-workers/id/payroll"), true);
+  assert.equal(employeeCanRequest(permission("workers", ["financials", "pay"]), "GET", "/tailoring-workers/id/payroll"), true);
   assert.equal(employeeCanRequest(permission("workers", ["increase"]), "GET", "/tailoring-workers/id/work/orders"), true);
   assert.equal(employeeCanRequest(permission("cashier", ["sell"]), "GET", "/Product/Get"), true);
   assert.equal(employeeCanRequest(permission("cashier", ["sell"]), "POST", "/Product/Add"), false);
@@ -132,7 +132,8 @@ test("worker completion does not grant assignment, worker editing, increases, pa
   assert.equal(assigned.status, 201, JSON.stringify(assigned));
   const work = assigned.data;
   const completed = await request(`${url}/${work._id}/completions`, { quantity: 1, version: work.__v, requestId: randomUUID() }, "POST", workerStaff);
-  assert.equal(completed.status, 201, JSON.stringify(completed)); assert.equal(completed.data.remainingQuantity, 2); assert.equal(completed.data.completions[0].earningAmount, 20);
+  assert.equal(completed.status, 201, JSON.stringify(completed)); assert.equal(completed.data.remainingQuantity, 2); assert.equal(completed.data.completions[0].earningAmount, undefined);
+  assert.equal(f.records[0].completions[0].earningAmount, 20);
   for (const [path, method] of [[url, "POST"], [`${url}/${work._id}/increases`, "POST"], [`${url}/${work._id}/cancel`, "POST"], [`/tailoring-workers/${f.worker._id}/payments`, "POST"], [`/tailoring-workers/${f.worker._id}`, "PUT"]]) assert.equal((await request(path, {}, method, workerStaff)).status, 403);
   f.staff.operationPermissions.workers = [];
   assert.equal((await request(`${url}/${work._id}/completions`, { quantity: 1, version: completed.data.__v, requestId: randomUUID() }, "POST", workerStaff)).status, 403);

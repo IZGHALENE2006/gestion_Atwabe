@@ -174,6 +174,7 @@ test("one account combines all departments but never combines workers or shops; 
   const staff = { id: employee, role: "Employe", idAdmin: otherOwner, action: { update: true } };
   assert.equal((await request(f.worker, "/payments", payment({ type: "advance" }), staff)).status, 403);
   f.staff.action.update = true;
+  f.staff.operationPermissions = { workers: ["financials", "advance"] };
   assert.equal((await request(f.worker, "/payments", payment({ type: "advance" }), staff)).status, 201);
   f.staff.moduleAccess = ["cashier"];
   assert.equal((await request(f.worker, "/payroll", undefined, staff)).status, 403);

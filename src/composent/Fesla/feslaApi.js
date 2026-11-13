@@ -14,7 +14,7 @@ export const saveTailoringOrder = async (input, selection, removeImage, token, o
     const file = selection.find(entry => entry.lineId === item.lineId)?.selection?.file;
     return { ...item, ...(file ? { imageIndex: images.push(file) - 1 } : {}) };
   }) } : input;
-  for (const [key, value] of Object.entries(payload)) body.append(key, ["sfifa", "items", "measurements"].includes(key) ? JSON.stringify(value) : value ?? "");
+  for (const [key, value] of Object.entries(payload)) body.append(key, ["sfifa", "items", "measurements", "adjustments"].includes(key) ? JSON.stringify(value) : value ?? "");
   for (const image of images) body.append("images", image);
   if (!input.items && selection?.file) body.append("image", selection.file);
   if (order) { body.append("version", String(order.__v)); body.append("removeImage", String(removeImage)); }
@@ -25,4 +25,6 @@ export const saveTailoringOrder = async (input, selection, removeImage, token, o
 export const loadTailoringTracking = async (token, signal) => (await axios.get(api + "/work-status", { headers: headers(token), signal })).data;
 
 export const loadDjellabaCostSettings = async (token, signal, garmentType = "djellaba", pricingVersion = 3) => (await axios.get(api + "/cost-settings", { headers: headers(token), signal, params: { ...(garmentType !== "djellaba" ? { garment: garmentType } : {}), ...(garmentType !== "trousers" ? { pricingVersion } : {}) } })).data;
-export const saveDjellabaCostSettings = async (rates, version, token, garmentType = "djellaba") => (await axios.put(api + "/cost-settings", { rates, version }, { headers: headers(token), params: { ...(garmentType !== "djellaba" ? { garment: garmentType } : {}), ...(garmentType !== "trousers" ? { pricingVersion: 3 } : {}) } })).data;
+export const saveDjellabaCostSettings = async (rates, version, token, garmentType = "djellaba", fourFillePrice) => (await axios.put(api + "/cost-settings", { rates, version, ...(fourFillePrice === undefined ? {} : { fourFillePrice }) }, { headers: headers(token), params: { ...(garmentType !== "djellaba" ? { garment: garmentType } : {}), ...(garmentType !== "trousers" ? { pricingVersion: 3 } : {}) } })).data;
+
+export const loadTailoringSfifaOptions = async (token, signal) => (await axios.get(api + "/sfifa-options", { headers: headers(token), signal })).data;

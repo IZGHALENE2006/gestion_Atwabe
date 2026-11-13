@@ -1,10 +1,13 @@
+import { tailoringItemPricingSchema, tailoringAdjustmentsSchema } from "./tailoringPricingSchema.js";
+import { quoteTailoringAdjustments, publicTailoringItemPricing, tailoringAllowsFourFille } from "../../shared/tailoringAdjustments.js";
+import { SFIFA_METER_TYPES, sfifaQuantityUnits } from "../../shared/sfifaStock.js";
 import mongoose from "mongoose";
 import { createFabricSaleFinancials } from "../../shared/fabricProfits.js";
 import { TAILORING_MEASUREMENT_FIELDS, TAILORING_MEASUREMENT_NOTES_LIMIT, tailoringMeasurement, validateTailoringMeasurementNotes } from "../../shared/tailoringMeasurements.js";
 import { tailoringReceiptSchema } from './tailoringReceiptSchema.js';
 import { SFIFA_STYLES, SFIFA_WIDTHS, TAILORING_SOURCES, TAILORING_GARMENT_TYPES, TAILORING_TROUSER_TYPES, validTailoringDate, tailoringMoneyCents, tailoringHasExpenses, tailoringFabricMeters, tailoringGarmentType, tailoringUsesSfifa } from "../../shared/tailoring.js";
 
-import { DJELLABA_RATE_FIELDS, DJELLABA_SFIFA_COST_FIELDS, validateDjellabaRates, djellabaItemCosts, djellabaCostsTotal, djellabaItemSalePrice, tailoringFabricCost } from "../../shared/tailoringCosts.js";
+import { DJELLABA_RATE_FIELDS, DJELLABA_SFIFA_COST_FIELDS, TROUSER_LABOR_RATE_FIELDS, validateDjellabaRates, djellabaItemCosts, djellabaCostsTotal, djellabaItemSalePrice, tailoringFabricCost } from "../../shared/tailoringCosts.js";
 
 const costMoney = { type: Number, required: true, validate: value => tailoringMoneyCents(value) !== null };
 const itemCostsSchema = new mongoose.Schema({ ...Object.fromEntries(["fabricUnitPrice", "fabricAmount", "sfifaAmount", "laborAmount", "totalAmount"].map(key => [key, { ...costMoney }])), sfifaCostAmount: { ...costMoney, required: false } }, { _id: false });
@@ -22,7 +25,15 @@ const actorSchema = new mongoose.Schema({
   name: { type: String, default: "" },
   role: { type: String, enum: ["admin", "Employe"], required: true },
 }, { _id: false });
+const sfifaSelectionSchema = new mongoose.Schema({
+  stockId: { type: mongoose.Schema.Types.ObjectId, required: true }, variantId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  family: String, code: Number, meters: { type: Number, required: true, validate: value => (sfifaQuantityUnits(value) ?? 0) > 0 }, meterType: { type: String, enum: SFIFA_METER_TYPES },
+}, { _id: false });
+const sfifaStockRowSchema = new mongoose.Schema({
+  ...sfifaSelectionSchema.obj, lineId: { type: String, required: true }, width: { type: String, enum: SFIFA_WIDTHS, required: true }, family: { type: String, required: true }, code: Number,
+}, { _id: false });
 const sfifaSchema = new mongoose.Schema({
+  stock: { type: sfifaSelectionSchema },
   width: { type: String, enum: SFIFA_WIDTHS, required: true },
   style: { type: String, enum: SFIFA_STYLES, required: true },
   color1: { type: String, maxlength: 120, default: "" },
@@ -50,6 +61,7 @@ const fabricSaleSchema = new mongoose.Schema({
   profitAmount: { type: Number, min: -1000000000000, max: 1000000000000 },
 }, { _id: false });
 const itemSchema = new mongoose.Schema({
+  pricing: { type: tailoringItemPricingSchema },
   fabricPieceId: { type: mongoose.Schema.Types.ObjectId },
   fabricPieceBarcode: { type: String },
   fabricSale: { type: fabricSaleSchema },
@@ -72,14 +84,20 @@ const itemSchema = new mongoose.Schema({
   photo: { type: String, default: "", match: /^(?:[a-f\d-]{36}\.(?:jpg|png|webp))?$/ },
 }, { _id: false });
 const schema = new mongoose.Schema({
+  adjustments: { type: tailoringAdjustmentsSchema },
   idAdmin: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Admin" },
   createdBy: { type: mongoose.Schema.Types.ObjectId, required: true },
   creator: { type: new mongoose.Schema({ id: { type: mongoose.Schema.Types.ObjectId, required: true }, name: { type: String, default: "" }, role: { type: String, enum: ["admin", "Employe"], required: true } }, { _id: false }), immutable: true },
   garmentType: { type: String, enum: TAILORING_GARMENT_TYPES, immutable: true },
   stockOperation: { type: mongoose.Schema.Types.Mixed },
   fabricStock: { type: new mongoose.Schema({ version: { type: Number, enum: [1], required: true }, returnedAt: Date, rows: { type: [new mongoose.Schema({ fabricId: { type: mongoose.Schema.Types.ObjectId, required: true }, colorId: { type: mongoose.Schema.Types.ObjectId, required: true }, pieceId: { type: mongoose.Schema.Types.ObjectId, required: true }, barcode: { type: String, required: true }, meters: { type: Number, required: true, validate: value => tailoringFabricMeters(value) !== null } }, { _id: false })], required: true } }, { _id: false }) },
+  sfifaStock: { type: new mongoose.Schema({ version: { type: Number, enum: [1], required: true }, returnedAt: Date, rows: { type: [sfifaStockRowSchema], required: true } }, { _id: false }) },
   fabricSalesVersion: { type: Number, enum: [1] },
-  trouserCosting: { type: new mongoose.Schema({ laborPrice: { type: Number, required: true, validate: value => tailoringMoneyCents(value) !== null }, settingsVersion: { type: Number, default: null, validate: value => value === null || Number.isSafeInteger(value) && value >= 0 }, calculatedAt: { type: Date, required: true } }, { _id: false }) },
+  trouserCosting: { type: new mongoose.Schema({
+    laborPrice: { ...costMoney, required: false },
+    ...Object.fromEntries(TROUSER_LABOR_RATE_FIELDS.map(key => [key, { ...costMoney, required: function () { return this.laborPrice == null || TROUSER_LABOR_RATE_FIELDS.some(field => this[field] != null); } }])),
+    settingsVersion: { type: Number, default: null, validate: value => value === null || Number.isSafeInteger(value) && value >= 0 }, calculatedAt: { type: Date, required: true },
+  }, { _id: false }) },
   costing: { type: costingSchema },
   expenseAmount: { type: Number, required: function () { return tailoringHasExpenses(this); }, validate: value => tailoringMoneyCents(value) !== null },
   requestId: { type: String, required: true },
@@ -116,7 +134,15 @@ const schema = new mongoose.Schema({
   deliveryFabricItems: { type: [itemSchema], default: undefined },
 }, { timestamps: true, optimisticConcurrency: true });
 schema.pre("validate", function () {
-  if (this.cancelledAt && (!this.cancelledBy || (!this.deliveredAt && !this.fabricStock) || (this.deliveredAt && !this.deliveryFinancials))) this.invalidate("cancelledAt", "Cancellation requires delivery, financial snapshot and actor");
+  if (this.adjustments) {
+    try {
+      if (!tailoringAllowsFourFille(this.garmentType) && (this.adjustments.fourFilleUnitPrice !== 0 || this.items?.some(item => item.pricing?.fourFille))) throw new Error("4fille is unavailable for this garment");
+      if (!this.items?.length || this.items.some(item => !item.pricing)) throw new Error("Missing piece pricing");
+      const quote = quoteTailoringAdjustments(this.items.map(item => ({ price: item.pricing.basePrice, fourFille: item.pricing.fourFille, discount: item.pricing.discount })), this.adjustments.fourFilleUnitPrice, this.adjustments.discount);
+      if (quote.totalPrice !== this.totalPrice || quote.adjustments.subtotal !== this.adjustments.subtotal || quote.adjustments.discountAmount !== this.adjustments.discountAmount || quote.items.some((item, i) => item.price !== this.items[i].price || JSON.stringify(item.pricing) !== JSON.stringify(publicTailoringItemPricing(this.items[i].pricing)))) throw new Error("Inconsistent pricing");
+    } catch { this.invalidate("adjustments", "Invalid price adjustments"); }
+  } else if (this.items?.some(item => item.pricing)) this.invalidate("adjustments", "Price adjustments are required");
+  if (this.cancelledAt && (!this.cancelledBy || (!this.deliveredAt && !this.fabricStock && !this.sfifaStock) || (this.deliveredAt && !this.deliveryFinancials))) this.invalidate("cancelledAt", "Cancellation requires delivery, financial snapshot and actor");
   if (this.cancelledBy && !this.cancelledAt) this.invalidate("cancelledBy", "Cancellation date is required");
   if (this.trouserCosting && this.garmentType !== "trousers") this.invalidate("trouserCosting", "Trouser labor rates require a trouser order");
   if (this.deliveryFinancials && !this.deliveredAt) this.invalidate("deliveryFinancials", "Delivery is required for recognized profit");
@@ -143,7 +169,7 @@ schema.pre("validate", function () {
     if (!calculated || Object.keys(calculated).some(key => tailoringMoneyCents(calculated[key]) !== tailoringMoneyCents(item.costs[key]))) return null;
     return calculated;
   });
-  if (this.costing.pricingVersion >= 2 && this.items.some((item, index) => !expected[index] || tailoringMoneyCents(item.price) !== tailoringMoneyCents(djellabaItemSalePrice(expected[index])))) this.invalidate('items', 'Invalid automatic sale prices');
+  if (this.costing.pricingVersion >= 2 && this.items.some((item, index) => !expected[index] || tailoringMoneyCents(this.adjustments ? item.pricing?.basePrice : item.price) !== tailoringMoneyCents(djellabaItemSalePrice(expected[index])))) this.invalidate('items', 'Invalid automatic sale prices');
   const total = djellabaCostsTotal(expected);
   if (total === null || tailoringMoneyCents(total) !== tailoringMoneyCents(this.expenseAmount)) this.invalidate("expenseAmount", "Invalid cost snapshot");
 });

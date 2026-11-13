@@ -1,3 +1,4 @@
+import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import WorkerShopWorkPicker from './WorkerShopWorkPicker.jsx';
 import { WORKER_SFIFA_FAMILIES, SFIFA_CUSTOMER_FAMILY, workerSfifaCreditsStock } from '../../../shared/workerSfifa.js';
 import { workerSfifaFamilyLabel, workerSfifaNumberLabel } from './workerSfifaLabels.js';
@@ -18,6 +19,7 @@ import { usesWorkerMaterials, workerHasPieceWages, WORKER_MATERIAL_PIECE_LIMIT }
 
 export default function WorkerWorkForm({ token, worker, category, workType = "shop", garmentType, work, onClose, onSaved, onReload }) {
   const { t, i18n } = useTranslation();
+  const canSeeFinancials = useEmployeeOperations("workers").financials;
   const dialogRef = useRef(null), savingRef = useRef(false), submissionRef = useRef(null);
   const isShopTransfer = !work && workType === 'shop' && ['finishing', 'mesbanto'].includes(category) && Boolean(garmentType);
   const isSfifa = category === "sfifa";
@@ -121,7 +123,7 @@ export default function WorkerWorkForm({ token, worker, category, workType = "sh
           {!work && !withMaterials && <div className="work-field"><label htmlFor="worker-work-unitWage">{t(`workers.payroll.${isSfifa ? "wagePerMeter" : "wagePerPiece"}`)}</label><input {...fieldProps("unitWage")} inputMode="decimal" dir="ltr" value={data.unitWage} onChange={event => patch({ unitWage: event.target.value })} maxLength={13} placeholder="0.00" required /><p className="work-field-hint">{t("workers.payroll.wageHint")}</p>{errorFor("unitWage")}</div>}
           {withMaterials && <WorkerMaterialPicker token={token} workerId={worker._id} workType={workType} garmentType={garmentType} lineIds={data.lineIds} value={data.materials} onChange={materials => patch({ materials })} onAddPiece={addPiece} onRemovePiece={removePiece} wages disabled={saving || error === 'materialsPending'} fields={fields} />}
         </fieldset>
-        {work && validCompletion && <p className="payroll-month-due">{t("workers.payroll.earningPreview")} <strong data-completion-earning>{work.unitWage === undefined && !isPieceCompletion ? t("workers.payroll.unpriced") : money(workerCompletionEarning(work, entered, new Date(), data.lineIds).earningAmount)}</strong></p>}
+        {canSeeFinancials && work && validCompletion && <p className="payroll-month-due">{t("workers.payroll.earningPreview")} <strong data-completion-earning>{work.unitWage === undefined && !isPieceCompletion ? t("workers.payroll.unpriced") : money(workerCompletionEarning(work, entered, new Date(), data.lineIds).earningAmount)}</strong></p>}
         {isSfifa && <div className="work-transfer-note"><IoCubeOutline aria-hidden="true" /><p>{t(isClientSfifa ? "workers.work.sfifa.clientCompletionHint" : work ? "workers.work.design.stockTransfer" : "workers.work.sfifa.assignmentHint")}{work && validCompletion && !isClientSfifa && <strong data-work-preview-credit>+ {amount(entered)}</strong>}</p></div>}
         {error && <div role="alert" className="work-feedback work-feedback-error"><p>{t(`workers.work.errors.${error}`)}</p>{error === "garmentInProgress" && <WorkerBlockingNotice blockers={blockers} />}{["shopWorkNotFound", "shopMachinePending", "shopFinishingRequired", "shopFinishingPending", "shopAlreadyAssigned", "materialsPending", "workConflict", "workerSectionChanged", "workNotFound", "orderNotFound", "orderAlreadyDelivered", "orderGarmentsChanged", "garmentAlreadyAssigned", "garmentInProgress"].includes(error) && <button type="button" onClick={onReload} disabled={saving} className="work-text-button">{t("workers.work.reload")}</button>}</div>}
       </div>

@@ -44,7 +44,7 @@ test("fabric metres and money use exact precision and round fabric cost once to 
 });
 
 test("settings start unconfigured and save only the three rates under the current shop", async t => {
-  const f=djellabaFixture(t);let response=await request("GET","/cost-settings");assert.deepEqual(await response.json(),{configured:false,version:null,rates:null,canEdit:true});assert.equal(f.settings.size,0);
+  const f=djellabaFixture(t);let response=await request("GET","/cost-settings");assert.deepEqual(await response.json(),{configured:false,version:null,rates:null,fourFillePrice:0,canEdit:true});assert.equal(f.settings.size,0);
   response=await request("PUT","/cost-settings",{rates:{thinSfifaPrice:"10,25",thickSfifaPrice:20,laborPrice:30,idAdmin:otherOwner},version:null,idAdmin:otherOwner});assert.equal(response.status,200);const saved=await response.json();assert.equal(saved.version,0);assert.equal(saved.rates.thinSfifaPrice,10.25);assert.equal(f.settings.get(owner).updatedBy.toString(),owner);
   assert.equal((await (await request("GET","/cost-settings",undefined,{actor:stranger})).json()).configured,false);
   assert.equal((await (await request("GET","/cost-settings",undefined,{actor:staffClaims})).json()).rates.laborPrice,30);

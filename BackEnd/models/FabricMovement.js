@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { FABRIC_LIMITS, isFabricBarcode } from "../../shared/fabrics.js";
 
 const saleSchema = new mongoose.Schema({
+  invoiceId: mongoose.Schema.Types.ObjectId,
   pricingMode: { type: String, required: true, enum: ['retail', 'wholesale'] },
   unitPrice: { type: Number, required: true, min: 0.01, max: FABRIC_LIMITS.pricePerMeter },
   subtotal: { type: Number, required: true, min: 0, max: 1000000000000 },

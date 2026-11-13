@@ -1,3 +1,4 @@
+import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import { shopPieceBarcode } from '../../../shared/workerShopFlow.js';
 import WorkerShopFlowInfo from './WorkerShopFlowInfo.jsx';
 import { workerSfifaFamilyLabel, workerSfifaNumberLabel } from './workerSfifaLabels.js';
@@ -12,6 +13,7 @@ import "./workerWorkDetails.css";
 
 export default function WorkerWorkDetailsDialog({ work, worker, category, onClose }) {
   const { t, i18n } = useTranslation();
+  const canSeeFinancials = useEmployeeOperations("workers").financials;
   const dialogRef = useRef(null), bodyRef = useRef(null);
   const [tab, setTab] = useState("overview");
   const locale = i18n.language === "ar" ? "ar-MA" : "fr-MA";
@@ -70,11 +72,11 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
         <div className="work-detail-section-heading"><h3>{t("workers.work.detailDialog.summary")}</h3><span className={`work-status-badge ${done && !pending ? "work-status-done" : "work-status-pending"}`}>{done && !pending ? <IoCheckmarkCircleOutline aria-hidden="true" /> : <IoTimeOutline aria-hidden="true" />}{t(pending ? "workers.work.materialProcessing" : done ? "workers.work.done" : "workers.work.inProgress")}</span></div>
         <dl className="work-detail-stats">
           {["quantity", "completedQuantity", "remainingQuantity"].map(key => <div key={key} data-detail-stat={key} className={`work-detail-stat work-detail-stat-${key}`}><dt>{t(`workers.work.${isSfifa ? "sfifa" : "design"}.${key}`)}</dt><dd>{quantity(work[key])}</dd></div>)}
-          <div className="work-detail-stat work-detail-stat-earned" data-detail-stat="earned"><dt><IoWalletOutline aria-hidden="true" />{t("workers.payroll.earnedShort")}</dt><dd>{work.unitWage === undefined && !pieceWages && !completions.some(event => event.earningAmount !== undefined) ? <span className="work-detail-unpriced">{t("workers.payroll.unpriced")}</span> : <bdi>{money(earned)}</bdi>}</dd></div>
+          {canSeeFinancials && <div className="work-detail-stat work-detail-stat-earned" data-detail-stat="earned"><dt><IoWalletOutline aria-hidden="true" />{t("workers.payroll.earnedShort")}</dt><dd>{work.unitWage === undefined && !pieceWages && !completions.some(event => event.earningAmount !== undefined) ? <span className="work-detail-unpriced">{t("workers.payroll.unpriced")}</span> : <bdi>{money(earned)}</bdi>}</dd></div>}
         </dl>
         {work.shopBarcode && <bdi dir="ltr" className="work-detail-barcode shop-flow-barcode">{work.shopBarcode}</bdi>}
         <WorkerShopFlowInfo flow={work.flow} />
-        {unpriced > 0 && <p className="work-detail-note">{t("workers.payroll.unpricedHint", { count: unpriced })}</p>}
+        {canSeeFinancials && unpriced > 0 && <p className="work-detail-note">{t("workers.payroll.unpricedHint", { count: unpriced })}</p>}
         <div className="work-detail-progress"><div><span>{t("workers.work.design.progress")}</span><strong><bdi>{number(Math.round(progress))}%</bdi></strong></div><progress max="100" value={progress} aria-label={t("workers.work.design.progress")} /></div>
         <section className="work-detail-section">
           <h3>{t("workers.work.detailDialog.information")}</h3>
@@ -83,8 +85,8 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
             {garmentType && field(t("workers.work.detailDialog.garmentType"), t(`fesla.garmentTypes.${garmentType}`))}
             {work.trouserType && field(t("workers.work.trousers.typeLabel"), t(`workers.work.trousers.styles.${work.trouserType}`))}
             {work.shopTrouser && <>{field(t("workers.work.materials.fabric"), <span dir="auto" data-detail-trouser-fabric>{work.shopTrouser.fabricType}{work.shopTrouser.fabricReference ? ` · ${work.shopTrouser.fabricReference}` : ""}</span>)}{field(t("workers.work.pieceCards.size"), <bdi dir="ltr" data-detail-trouser-size>{work.shopTrouser.size}</bdi>)}</>}
-            {field(t("workers.payroll.wage"), pieceWages ? t("workers.work.pieceCards.variableWages") : work.unitWage === undefined ? t("workers.payroll.unpriced") : <><bdi>{money(work.unitWage)}</bdi><small>{t(isSfifa ? "workers.payroll.perMeter" : "workers.payroll.perPiece")}</small></>)}
-            {totalWageCents !== null && field(t("workers.work.pieceCards.totalWages"), <bdi>{money(totalWageCents / 100)}</bdi>)}
+            {canSeeFinancials && field(t("workers.payroll.wage"), pieceWages ? t("workers.work.pieceCards.variableWages") : work.unitWage === undefined ? t("workers.payroll.unpriced") : <><bdi>{money(work.unitWage)}</bdi><small>{t(isSfifa ? "workers.payroll.perMeter" : "workers.payroll.perPiece")}</small></>)}
+            {canSeeFinancials && totalWageCents !== null && field(t("workers.work.pieceCards.totalWages"), <bdi>{money(totalWageCents / 100)}</bdi>)}
           </dl>
           {isSfifa && <div className="work-detail-sfifa"><span>{t(`sfifaStock.widths.${work.sfifa.width}`)}</span><bdi dir="auto">{workerSfifaNumberLabel(work.sfifa, t)}</bdi>{work.sfifa.code !== undefined && <bdi dir="ltr">{workerSfifaFamilyLabel(work.sfifa.family, t)}</bdi>}</div>}
         </section>
@@ -100,6 +102,7 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
             <div className="work-detail-piece-heading"><span className="work-detail-piece-number">{number(index + 1)}</span><h4>{t(tailoringGarmentType(work.tailoring) === "djellaba" ? "fesla.garmentNumber" : `fesla.${tailoringGarmentType(work.tailoring)}.garmentNumber`, { number: index + 1 })}</h4></div>
             <p dir="auto" className="work-detail-fabric-name">{item.fabricType}{item.fabricColor ? ` · ${item.fabricColor}` : ""}</p>
             {item.sfifa?.width && <p>{t(`fesla.widths.${item.sfifa.width}`)} · {t(`fesla.styles.${item.sfifa.style}`)}{item.sfifa.style !== "fabric" && [item.sfifa.color1, item.sfifa.color2].filter(Boolean).map((color, colorIndex) => <span key={colorIndex}> · <bdi>{color}</bdi></span>)}</p>}
+            {item.sfifa?.stock && <p data-worker-order-sfifa>{t("fesla.stockSfifa.fromStock")} · <bdi>{item.sfifa.stock.family}</bdi> · <bdi>{item.sfifa.stock.code ?? ""}</bdi> · <bdi>{item.sfifa.stock.meters}</bdi> {t("sfifaStock.unit")}</p>}
             {item.trouserType && <p>{t(`fesla.trouserTypes.${item.trouserType}`)}</p>}
             {item.shirtType && <p>{t("fesla.shirtType")}: <bdi>{item.shirtType}</bdi></p>}
           </li>)}</ul>
@@ -117,7 +120,7 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
               {field(t("workers.work.materials.sfifa"), <><span>{t(`sfifaStock.widths.${row.sfifaWidth}`)}</span><bdi dir="ltr">{row.sfifaCode === undefined ? t("workers.work.materials.unassigned") : formatSfifaCode(row.sfifaCode, row.sfifaFamily)}</bdi><span><bdi>{number(row.sfifaMeters)}</bdi> {t("sfifaStock.unit")}</span></>)}
               {row.sfifaStyle && field(t("workers.work.materials.sfifaStyle"), <span data-detail-sfifa-style={row.sfifaStyle}>{t(`sfifaStock.meterTypes.${row.sfifaStyle}`)}</span>)}
             </dl>
-            {row.unitWage !== undefined && <div className="work-detail-piece-wage"><span>{t("workers.payroll.wage")}</span><strong><bdi>{money(row.unitWage)}</bdi></strong></div>}
+            {canSeeFinancials && row.unitWage !== undefined && <div className="work-detail-piece-wage"><span>{t("workers.payroll.wage")}</span><strong><bdi>{money(row.unitWage)}</bdi></strong></div>}
           </li>)}</ul>
         </section>}
       </> : <section className={`work-detail-history work-detail-history-${tab}`}>
@@ -128,7 +131,7 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
             <span className="work-detail-event-icon" aria-hidden="true">{tab === "completions" ? <IoCheckmarkCircleOutline /> : <IoAddCircleOutline />}</span>
             <article className="work-detail-event"><div className="work-detail-event-heading"><strong><span>{t(`workers.work.detailDialog.${tab === "completions" ? "completed" : "added"}`)}</span><b className="work-detail-event-quantity">+ {quantity(event.quantity)}</b></strong><time dateTime={event.date}>{date(event.date)}</time></div>
               <p className="work-detail-event-balance">{t(tab === "additions" ? "workers.work.increaseEntry" : isSfifa ? "workers.work.sfifa.balanceEntry" : "workers.work.balanceEntry", { before: number(event.before), after: number(event.after) })}</p>
-              {tab === "completions" && <div className="work-detail-event-earning"><IoWalletOutline aria-hidden="true" /><span>{t("workers.payroll.earnedShort")}</span><strong>{event.earningAmount === undefined ? t("workers.payroll.unpriced") : <bdi>{money(event.earningAmount)}</bdi>}</strong></div>}
+              {canSeeFinancials && tab === "completions" && <div className="work-detail-event-earning"><IoWalletOutline aria-hidden="true" /><span>{t("workers.payroll.earnedShort")}</span><strong>{event.earningAmount === undefined ? t("workers.payroll.unpriced") : <bdi>{money(event.earningAmount)}</bdi>}</strong></div>}
               {tab === "completions" && pieceNumbers.length > 0 && <p className="work-detail-event-pieces">{t("workers.work.pieceCards.completedNumbers", { numbers: pieceNumbers.join(i18n.language === "ar" ? "، " : ", ") })}</p>}
             </article>
           </li>;

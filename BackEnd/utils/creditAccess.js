@@ -20,3 +20,4 @@ export function assertCreditActor(recordedActor, actor, ownerId) {
   // Before employee access existed, only the owner could create these records.
   if (String(recordedActor?.id || ownerId) !== actor.id || (recordedActor?.role && recordedActor.role !== actor.role)) throw Object.assign(new Error("creditActorConflict"), { status: 403 });
 }
+

@@ -1,3 +1,6 @@
+import { ensureSfifaStyleBalances } from './sfifaStyleBalances.js';
+import SfifaStock from '../models/SfifaStock.js';
+import { resolveTailoringSfifaRows, tailoringSfifaGroups, changeTailoringSfifa, applyStandaloneSfifaGroup, tailoringStockSnapshot, hasTailoringSfifa } from './tailoringSfifaStock.js';
 import mongoose from 'mongoose';
 import Fabric from '../models/Fabric.js';
 import TailoringOrder from '../models/TailoringOrder.js';
@@ -34,6 +37,7 @@ function change(fabric, group, reverse = false) {
   }
 }
 async function applyGroup(order, operation, group, reverse = false) {
+  if (group.kind === "sfifa") return applyStandaloneSfifaGroup(order, operation, group, reverse);
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const fabric = await Fabric.findOne({ _id: group.id, idAdmin: order.idAdmin });
@@ -56,17 +60,18 @@ export async function resumeTailoringFabricStock(order) {
   if (!order?.stockOperation) return order;
   let persisted = true;
   try {
-    const operation = order.stockOperation, groups = groupsFor(operation.beforeRows, operation.rows);
+    const operation = order.stockOperation, groups = [...groupsFor(operation.beforeRows, operation.rows), ...tailoringSfifaGroups(operation.beforeSfifaRows, operation.sfifaRows)];
     if (operation.phase === 'applying') {
       try { for (const group of groups) await applyGroup(order, operation, group); }
       catch (error) {
-        if (!['insufficientFabricStock', 'fabricStockReturnLimit', 'fabricStockUnavailable'].includes(error.message) || error.status === 503) throw error;
+        if (!['insufficientFabricStock', 'fabricStockReturnLimit', 'fabricStockUnavailable', 'insufficientSfifaStock', 'sfifaStockReturnLimit', 'sfifaStockUnavailable'].includes(error.message) || error.status === 503) throw error;
         operation.phase = 'rollingBack'; operation.failureCode = error.message;
         order.markModified('stockOperation'); await order.save();
       }
       if (operation.phase === 'applying') {
         if (operation.kind === 'update') order.set(operation.next);
-        order.fabricStock = { version: 1, rows: order.cancelledAt ? operation.beforeRows : operation.rows, ...(order.cancelledAt ? { returnedAt: order.cancelledAt } : {}) };
+        if (operation.trackFabric !== false) order.fabricStock = tailoringStockSnapshot(order, operation.beforeRows, operation.rows);
+        if (operation.trackSfifa) order.sfifaStock = tailoringStockSnapshot(order, operation.beforeSfifaRows, operation.sfifaRows);
         order.stockOperation = undefined;
         await order.save();
         if (operation.kind === 'update') await cleanup(operation.previousPhotos, order);
@@ -89,13 +94,13 @@ export async function resumeTailoringFabricStock(order) {
   }
 }
 
-export async function saveStandaloneTailoringStock(document, { create = false } = {}) {
+export async function saveStandaloneTailoringStock(document, { create = false, trackFabric = Boolean(document.fabricStock || document.deductFabricStock) } = {}) {
   let order = create ? new TailoringOrder(document) : await TailoringOrder.findOne({ _id: document._id, idAdmin: document.idAdmin });
   if (!create && (!order || order.__v !== document.__v || order.stockOperation)) throw fail('conflict');
   const beforeRows = order.fabricStock?.returnedAt ? [] : order.fabricStock?.rows?.map(plain) || [];
   const candidate = create ? order : new TailoringOrder(document.toObject());
   const rows = [], fabrics = new Map();
-  if (!candidate.cancelledAt) for (const [index, item] of (candidate.items || []).entries()) {
+  if (trackFabric && !candidate.cancelledAt) for (const [index, item] of (candidate.items || []).entries()) {
     if (item.fabricSource !== 'shop') continue;
     if (tailoringFabricMeters(item.fabricMeters) === null || !mongoose.isObjectIdOrHexString(item.fabricPieceId)) throw Object.assign(fail('invalidOrder', 400), { fields: { ['items.' + index + '.fabricPieceId']: 'chooseFabricPiece' } });
     const id = String(item.fabricId);
@@ -106,6 +111,15 @@ export async function saveStandaloneTailoringStock(document, { create = false } 
     item.fabricPieceBarcode = piece.barcode;
     rows.push({ fabricId: fabric._id, colorId: color._id, pieceId: piece._id, barcode: piece.barcode, meters: item.fabricMeters });
   }
+  if (candidate.cancelledAt && candidate.deliveredAt) rows.push(...beforeRows);
+  const beforeSfifaRows = order.sfifaStock?.returnedAt ? [] : order.sfifaStock?.rows?.map(plain) || [];
+  const sfifa = candidate.cancelledAt ? { rows: candidate.deliveredAt ? beforeSfifaRows : [], stocks: new Map() } : await resolveTailoringSfifaRows(candidate);
+  for (const group of tailoringSfifaGroups(beforeSfifaRows, sfifa.rows)) {
+    const stock = sfifa.stocks.get(group.id) || await SfifaStock.findOne({ _id: group.id, idAdmin: order.idAdmin });
+    if (!stock) throw fail('sfifaStockUnavailable');
+    await ensureSfifaStyleBalances(stock);
+    changeTailoringSfifa(stock, group);
+  }
   // Preflight before persisting intent; the actual write repeats the availability check.
   for (const group of groupsFor(beforeRows, rows)) {
     const fabric = fabrics.get(group.id) || await Fabric.findOne({ _id: group.id, idAdmin: order.idAdmin });
@@ -115,9 +129,9 @@ export async function saveStandaloneTailoringStock(document, { create = false } 
   const next = candidate.toObject();
   for (const key of ['_id', '__v', 'idAdmin', 'createdAt', 'updatedAt', 'stockOperation']) delete next[key];
   const previousPhotos = { photo: order.photo, items: order.items?.map(item => ({ photo: item.photo })) };
-  const operation = { id: new mongoose.Types.ObjectId().toString(), kind: create ? 'create' : 'update', phase: 'applying', beforeRows, rows, ...(create ? {} : { next, previousPhotos }) };
+  const operation = { id: new mongoose.Types.ObjectId().toString(), kind: create ? 'create' : 'update', phase: 'applying', beforeRows, rows, trackFabric, trackSfifa: hasTailoringSfifa(candidate), beforeSfifaRows, sfifaRows: sfifa.rows, ...(create ? {} : { next, previousPhotos }) };
   try {
-    if (create) { order.fabricStock = { version: 1, rows: [] }; order.stockOperation = operation; order = await TailoringOrder.create(order.toObject()); }
+    if (create) { if (trackFabric) order.fabricStock = { version: 1, rows: [] }; if (operation.trackSfifa) order.sfifaStock = { version: 1, rows: [] }; order.stockOperation = operation; order = await TailoringOrder.create(order.toObject()); }
     else { order.stockOperation = operation; await order.save(); }
   } catch (error) {
     if (error.code === 11000 || error.name === 'VersionError') throw error;

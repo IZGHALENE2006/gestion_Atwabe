@@ -1,4 +1,5 @@
 export const sfifaStockFrench = {
+  ...{"details":"Détails","detailsTitle":"Détails du stock de sfifa","rowActions":"Actions de la sfifa","remainingTotal":"Total des mètres restants","remainingTypesHint":"Solde de chaque type de couleurs pour ce numéro","unclassifiedMeters":"Mètres sans type précisé","unclassifiedHint":"Mètres ajoutés ou corrigés sans préciser les couleurs ; ils restent séparés pour conserver un total exact.","remainingRules":"Le métrage est prélevé sur le type choisi à la sauvegarde. Il est restitué seulement si la commande est annulée avant livraison."},
   history: "Historique des ajouts",
   historyTitle: "Historique des ajouts de sfifa",
   historyHint: "Tous les mètres ajoutés à ce numéro, du plus récent au plus ancien.",
@@ -75,7 +76,7 @@ export const sfifaStockFrench = {
   updated: "La longueur de sfifa en mètres a été mise à jour.",
   retry: "Réessayer",
   reload: "Actualiser le stock",
-  errors: {
+  errors: { loadDetailsFailed: "Impossible de charger les détails du stock. Réessayez.", tailoringSfifaInUse: "Cette sfifa est réservée pour une commande de confection active.",
     workerMaterialsInUse: "Cette matière est affectée à un travail annulable. Annulez le travail avant de la supprimer.",
     loadHistoryFailed: "Impossible de charger l’historique des ajouts. Réessayez.",
     deleteFailed: "Impossible de supprimer la sfifa. Réessayez.",
@@ -100,6 +101,7 @@ export const sfifaStockFrench = {
 };
 
 export const sfifaStockArabic = {
+  ...{"details":"التفاصيل","detailsTitle":"تفاصيل مخزون السفيفة","rowActions":"عمليات السفيفة","remainingTotal":"إجمالي الأمتار المتبقية","remainingTypesHint":"المتبقي من كل نوع ألوان في هذا الرقم","unclassifiedMeters":"أمتار غير محددة النوع","unclassifiedHint":"أمتار أُضيفت أو عُدّلت دون تحديد نوع ألوانها؛ تُعرض منفصلة للحفاظ على دقة الإجمالي.","remainingRules":"تُخصم أمتار الطلب من النوع المختار عند الحفظ، وتُعاد عند الإلغاء قبل التسليم فقط."},
   history: "سجل التزويد",
   historyTitle: "سجل تزويد السفيفة",
   historyHint: "جميع الأمتار المضافة لهذا الرقم، من الأحدث إلى الأقدم.",
@@ -177,6 +179,8 @@ export const sfifaStockArabic = {
   retry: "إعادة المحاولة",
   reload: "تحديث المخزون",
   errors: {
+    loadDetailsFailed: "تعذّر تحميل تفاصيل السفيفة. حاول مجددًا.",
+    tailoringSfifaInUse: "هذه السفيفة محجوزة لطلب فصالة. ألغِ الطلب أو غيّر السفيفة أولًا قبل حذفها.",
     workerMaterialsInUse: "هذه المادة مرتبطة بعمل قابل للإلغاء. ألغِ العمل أولًا قبل حذفها.",
     loadHistoryFailed: "تعذر تحميل سجل التزويد. حاول مجددًا.",
     deleteFailed: "تعذر حذف السفيفة. حاول مجددًا.",

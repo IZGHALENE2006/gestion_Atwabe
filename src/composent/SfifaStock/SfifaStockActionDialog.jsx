@@ -31,7 +31,7 @@ export default function SfifaStockActionDialog({ mode, stock, token, onClose, on
     } catch (failure) {
       if (dialogRef.current?.open) {
         const code = failure.response?.data?.fields?.quantity || failure.response?.data?.message;
-        setError(["workerMaterialsInUse", "invalidQuantity", "quantityLimit", "invalidStock", "invalidRequest", "requestConflict", "stockConflict", "notFound", "forbidden"].includes(code) ? code : restocking ? "saveFailed" : "deleteFailed");
+        setError(["tailoringSfifaInUse", "workerMaterialsInUse", "invalidQuantity", "quantityLimit", "invalidStock", "invalidRequest", "requestConflict", "stockConflict", "notFound", "forbidden"].includes(code) ? code : restocking ? "saveFailed" : "deleteFailed");
       }
     } finally { busyRef.current = false; if (dialogRef.current?.open) setBusy(false); }
   };

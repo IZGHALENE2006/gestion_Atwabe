@@ -1,3 +1,6 @@
+import { ensureSfifaStyleBalances } from './sfifaStyleBalances.js';
+import SfifaStock from '../models/SfifaStock.js';
+import { resolveTailoringSfifaRows, tailoringSfifaGroups, changeTailoringSfifa, tailoringStockSnapshot, hasTailoringSfifa } from './tailoringSfifaStock.js';
 import mongoose from 'mongoose';
 import Fabric from '../models/Fabric.js';
 import TailoringOrder from '../models/TailoringOrder.js';
@@ -11,7 +14,7 @@ const same = (a, b) => String(a) === String(b);
 const units = value => Math.round(value * 1000);
 
 // Use a transaction when supported; standalone MongoDB uses a durable, replayable stock operation.
-export async function saveTailoringFabricStock(document, { create = false } = {}) {
+export async function saveTailoringFabricStock(document, { create = false, trackFabric = Boolean(document.fabricStock || document.deductFabricStock) } = {}) {
   let session;
   try {
     session = await mongoose.startSession();
@@ -29,7 +32,7 @@ export async function saveTailoringFabricStock(document, { create = false } = {}
         return fabric;
       };
       const after = [];
-      if (!order.cancelledAt) for (const [index, item] of (order.items || []).entries()) {
+      if (trackFabric && !order.cancelledAt) for (const [index, item] of (order.items || []).entries()) {
         if (item.fabricSource !== 'shop') continue;
         if (tailoringFabricMeters(item.fabricMeters) === null || !mongoose.isObjectIdOrHexString(item.fabricPieceId)) throw Object.assign(fail('invalidOrder', 400), { fields: { ['items.' + index + '.fabricPieceId']: 'chooseFabricPiece' } });
         const fabric = await fabricFor(item.fabricId), color = fabric.colors.find(row => same(row._id, item.colorId));
@@ -38,6 +41,21 @@ export async function saveTailoringFabricStock(document, { create = false } = {}
         item.fabricPieceBarcode = piece.barcode;
         after.push({ fabricId: fabric._id, colorId: color._id, pieceId: piece._id, barcode: piece.barcode, meters: item.fabricMeters });
       }
+      if (order.cancelledAt && order.deliveredAt) after.push(...before);
+      const beforeSfifa = previous?.sfifaStock?.returnedAt ? [] : previous?.sfifaStock?.rows || [];
+      const resolved = order.cancelledAt ? { rows: order.deliveredAt ? beforeSfifa : [], stocks: new Map() } : await resolveTailoringSfifaRows(order, session);
+      const sfifaGroups = tailoringSfifaGroups(beforeSfifa, resolved.rows);
+      for (const group of sfifaGroups) {
+        const stock = resolved.stocks.get(group.id) || await SfifaStock.findOne({ _id: group.id, idAdmin: order.idAdmin }).session(session);
+        if (!stock) throw fail('sfifaStockUnavailable');
+        await ensureSfifaStyleBalances(stock, session);
+        changeTailoringSfifa(stock, group);
+        const active = new Set((stock.tailoringOrderIds || []).map(String));
+        if (resolved.rows.some(row => same(row.stockId, group.id))) active.add(String(order._id)); else active.delete(String(order._id));
+        stock.tailoringOrderIds = [...active];
+        await stock.save({ session });
+      }
+      if (hasTailoringSfifa(order)) order.sfifaStock = tailoringStockSnapshot(order, beforeSfifa, resolved.rows);
       const changes = new Map();
       for (const [rows, sign] of [[before, 1], [after, -1]]) for (const row of rows) {
         const key = [row.fabricId, row.colorId, row.pieceId].join(':');
@@ -54,7 +72,7 @@ export async function saveTailoringFabricStock(document, { create = false } = {}
         if (remaining > units(FABRIC_LIMITS.meters)) throw fail('fabricStockReturnLimit');
         piece.meters = remaining / 1000; dirty.add(String(fabric._id));
       }
-      order.fabricStock = { version: 1, rows: order.cancelledAt ? previous.fabricStock.rows : after, ...(order.cancelledAt ? { returnedAt: order.cancelledAt } : {}) };
+      if (trackFabric) order.fabricStock = tailoringStockSnapshot(order, before, after);
       await order.validate();
       for (const id of [...dirty].sort()) {
         const fabric = fabrics.get(id);
@@ -68,7 +86,7 @@ export async function saveTailoringFabricStock(document, { create = false } = {}
       return order.save({ session });
     });
   } catch (error) {
-    if (error.code === 20 || /Transaction numbers are only allowed|does not support retryable writes/i.test(error.message)) return saveStandaloneTailoringStock(document, { create });
+    if (error.code === 20 || /Transaction numbers are only allowed|does not support retryable writes/i.test(error.message)) return saveStandaloneTailoringStock(document, { create, trackFabric });
     if (error.status || error.name === 'VersionError' || error.code === 11000) throw error;
     // Other database failures leave the transaction rolled back.
     throw fail('fabricStockUnavailable', 503);

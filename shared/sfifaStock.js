@@ -9,9 +9,11 @@ export const SFIFA_STOCK_SCALE = 1000;
 export const SFIFA_STOCK_GROUP_LIMIT = SFIFA_STOCK_LIMIT * 31;
 export const SFIFA_METER_TYPES = ["single", "double", "gradient"];
 
-export function sfifaStockStyles(stock, code) {
+export function sfifaStockStyles(stock, code, { includeExhausted = false } = {}) {
+  const target = code === undefined || code === null ? stock?.unassignedStyleMeters : stock?.variants?.find(row => row.code === code)?.styleMeters;
+  if (target !== undefined && !includeExhausted) return SFIFA_METER_TYPES.filter(style => (sfifaQuantityUnits(target[style]) ?? 0) > 0);
   const receipts = (stock?.receipts || []).filter(receipt => (receipt.code ?? null) === (code ?? null));
-  return SFIFA_METER_TYPES.filter(style => receipts.some(receipt => (sfifaQuantityUnits(receipt.styleMeters?.[style]) ?? 0) > 0));
+  return SFIFA_METER_TYPES.filter(style => (sfifaQuantityUnits(target?.[style]) ?? 0) > 0 || receipts.some(receipt => (sfifaQuantityUnits(receipt.styleMeters?.[style]) ?? 0) > 0));
 }
 
 export function sfifaQuantityUnits(raw, { max = SFIFA_STOCK_LIMIT } = {}) {

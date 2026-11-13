@@ -19,7 +19,8 @@ export function invoicePresentation(invoice, settings, t, seller = "", locale = 
   if (visible.vat && totals.hasVat) add("vat", `${t("invoiceCreate.vat")}${totals.vatRate == null ? "" : ` (${totals.vatRate}%)`}`, money(totals.vatAmount));
   add("total", t(totals.hasVat ? "invoiceCreate.totalTTC" : "salesPdf.total"), money(totals.total));
   if (!isNote && visible.paid) add("paid", t("receiptPrint.paid"), money(totals.paid));
-  if (!isNote && visible.change) add("change", t("receiptPrint.change"), money(totals.change));
+  if (!isNote && visible.change && invoice.invoiceOrigin !== 'fabric') add("change", t("receiptPrint.change"), money(totals.change));
+  if (invoice.invoiceOrigin === 'fabric') add('remaining', t('creditDocuments.remaining'), money(invoice.remainingAmount));
   const paymentMethod = isNote ? "" : getPaymentMethodLabel(invoice.paymentMethod);
   const sellerName = visible.seller ? invoice.nameEmp || seller : "";
   const clientName = visible.client ? invoice.clientName : "";
@@ -32,6 +33,7 @@ export function invoicePresentation(invoice, settings, t, seller = "", locale = 
     ...(visible.date ? [{ key: "date", label: t("salesPdf.date"), value: date }] : []),
     ...(sellerName ? [{ key: "seller", label: t("salesPdf.seller"), value: sellerName }] : []),
     ...(clientName ? [{ key: "client", label: t("invoicePage.client"), value: clientName }] : []),
+    ...(invoice.invoiceOrigin === "fabric" && invoice.clientPhone ? [{ key: "clientPhone", label: t("creditDocuments.phone"), value: invoice.clientPhone }] : []),
     ...(visible.paymentMethod && paymentMethod ? [{ key: "paymentMethod", label: t("invoiceCreate.paymentMethod"), value: paymentMethod }] : []),
   ];
   const hasLineDiscounts = visible.discounts && totals.lineDiscountAmount > 0;
@@ -48,7 +50,7 @@ export function invoicePresentation(invoice, settings, t, seller = "", locale = 
   const productRows = (invoice.Product ?? []).map((line) => ({
     code: line.code || line.barcode || "—",
     description: line.name + (line.batchNumber ? ' · ' + t('productBatches.batch', { number: line.batchNumber }) : ''),
-    quantity: documentQuantity(invoice, line.quantite),
+    quantity: documentQuantity(invoice, line.quantite) + (line.unit === "meter" ? " " + t("fabricInvoices.meter") : ""),
     price: money(line.price || 0),
     discount: Number(line.discountAmount || 0) > 0 ? `${line.discountValue}${line.discountType === "percent" ? "%" : " DH"}\n-${money(line.discountAmount)}` : "—",
     // Legacy line totals were stored before the invoice-level discount.
@@ -59,10 +61,10 @@ export function invoicePresentation(invoice, settings, t, seller = "", locale = 
     ...(visible.date ? [{ key: "date", label: t("salesPdf.date"), value: date }] : []),
     ...(visible.paymentMethod && paymentMethod ? [{ key: "paymentMethod", label: t("invoiceCreate.paymentMethod"), value: paymentMethod }] : []),
     ...(visible.paid ? [{ key: "paid", label: t("invoiceSettings.fields.paid"), value: money(totals.paid) }] : []),
-    ...(visible.change ? [{ key: "change", label: t("receiptPrint.change"), value: money(totals.change) }] : []),
+    ...(invoice.invoiceOrigin === 'fabric' ? [{ key: 'remaining', label: t('creditDocuments.remaining'), value: money(invoice.remainingAmount) }] : visible.change ? [{ key: "change", label: t("receiptPrint.change"), value: money(totals.change) }] : []),
   ];
   return {
-    title: t(documentTitleKey(invoice)), note: isNote ? invoice.note || "" : "",
+    title: t(invoice.invoiceOrigin === "fabric" ? "fabricInvoices.title" : documentTitleKey(invoice)), note: isNote ? invoice.note || "" : "",
     config, visible, totals, rows, metadata, columns, productRows, payment,
     vatBreakdown: showVat ? getInvoiceVatBreakdown(invoice) : [],
     hasLineDiscounts,

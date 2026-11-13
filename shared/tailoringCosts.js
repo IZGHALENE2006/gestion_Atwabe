@@ -4,11 +4,18 @@ export const DJELLABA_RATE_FIELDS = ["thinSfifaPrice", "thickSfifaPrice", "labor
 export const DJELLABA_SALE_RATE_FIELDS = ["thinSfifaPrice", "thickSfifaPrice"];
 export const DJELLABA_SFIFA_COST_FIELDS = ["thinSfifaCostPrice", "thickSfifaCostPrice"];
 export const DJELLABA_COST_SALE_RATE_FIELDS = ["thinSfifaCostPrice", "thinSfifaPrice", "thickSfifaCostPrice", "thickSfifaPrice"];
-export const tailoringRateFields = (garmentType, pricingVersion = 1) => garmentType === "trousers" ? ["laborPrice"] : pricingVersion === 3 ? DJELLABA_COST_SALE_RATE_FIELDS : pricingVersion === 2 ? DJELLABA_SALE_RATE_FIELDS : DJELLABA_RATE_FIELDS;
+export const TROUSER_LABOR_RATE_FIELDS = ["regularLaborPrice", "qandrissiLaborPrice"];
+export const tailoringRateFields = (garmentType, pricingVersion = 1) => garmentType === "shirts" ? [] : garmentType === "trousers" ? TROUSER_LABOR_RATE_FIELDS : pricingVersion === 3 ? DJELLABA_COST_SALE_RATE_FIELDS : pricingVersion === 2 ? DJELLABA_SALE_RATE_FIELDS : DJELLABA_RATE_FIELDS;
+// Older settings and saved orders used the same rate for both trouser types.
+export function trouserLaborRates(source) {
+  const rates = source ?? { laborPrice: 0 };
+  return Object.fromEntries(TROUSER_LABOR_RATE_FIELDS.map(key => [key, rates[key] ?? rates.laborPrice]));
+}
 export function validateDjellabaRates(input, garmentType = "djellaba", pricingVersion = 1) {
   const fields = {}, rates = {};
+  const values = garmentType === "trousers" && !TROUSER_LABOR_RATE_FIELDS.some(key => Object.hasOwn(input ?? {}, key)) && Object.hasOwn(input ?? {}, "laborPrice") ? trouserLaborRates(input) : input;
   for (const key of tailoringRateFields(garmentType, pricingVersion)) {
-    const cents = tailoringMoneyCents(input?.[key]);
+    const cents = tailoringMoneyCents(values?.[key]);
     if (cents === null) fields[key] = "invalidMoney";
     else rates[key] = cents / 100;
   }
@@ -32,6 +39,18 @@ export function trouserCostsTotal(costs, laborPrice = 0) {
   if (fabric === null || labor === null) return null;
   const total = BigInt(fabric) + BigInt(labor) * BigInt(costs.length);
   return total <= 99999999999n ? Number(total) / 100 : null;
+}
+export function trouserLaborCostsTotal(items, source) {
+  if (!Array.isArray(items)) return null;
+  const rates = trouserLaborRates(source);
+  return djellabaCostsTotal(items.map(item => ({ totalAmount: item?.trouserType === "regular" ? rates.regularLaborPrice : item?.trouserType === "qandrissi" ? rates.qandrissiLaborPrice : null })));
+}
+export function trouserOrderCostsTotal(items, rates) {
+  if (!Array.isArray(items)) return null;
+  return djellabaCostsTotal([
+    { totalAmount: tailoringFabricCostsTotal(items.map(item => item?.fabricCost)) },
+    { totalAmount: trouserLaborCostsTotal(items, rates) },
+  ]);
 }
 export function djellabaItemCosts(item, rates, pricingVersion = 1) {
   const fabric = tailoringFabricCost(item);

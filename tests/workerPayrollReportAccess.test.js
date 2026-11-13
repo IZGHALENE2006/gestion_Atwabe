@@ -11,10 +11,10 @@ before(async()=>{process.env.JWT_SECRET="isolated-worker-pdf-permission";server=
 after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));if(previous===undefined)delete process.env.JWT_SECRET;else process.env.JWT_SECRET=previous;});
 test("worker PDF export is an independent configurable permission and does not authorize payments",async t=>{
   const g=workerMaterialsFixture(t),f=creditCheckoutFixture(t),employee=f.rows(Employee).find(row=>String(row._id)===employeeId);
-  const permissions=validateEmployeePermissions({moduleAccess:["workers"],operationPermissions:{workers:["download"]}});Object.assign(employee,permissions);
+  const permissions=validateEmployeePermissions({moduleAccess:["workers"],operationPermissions:{workers:["financials","download"]}});Object.assign(employee,permissions);
   assert.equal(employeeCanRequest(employee,"GET","/tailoring-workers/id/payroll"),true);assert.equal(employeeCanRequest(employee,"POST","/tailoring-workers/id/payments",{type:"settlement"}),false);
   const token=jwt.sign({id:employeeId,role:"Employe"},process.env.JWT_SECRET),headers={Authorization:"Bearer "+token};
   const response=await fetch(base+"/tailoring-workers/"+g.worker._id+"/payroll",{headers});assert.equal(response.status,200);const data=await response.json();assert.equal(data.permissions.download,true);assert.equal(data.permissions.pay,false);assert.equal(data.permissions.payroll,false);
   employee.operationPermissions.workers=[];const blocked=await fetch(base+"/tailoring-workers/"+g.worker._id+"/payroll",{headers});assert.equal(blocked.status,403);
-  employee.operationPermissions.workers=["download"];employee.moduleAccess=[];const disabled=await fetch(base+"/tailoring-workers/"+g.worker._id+"/payroll",{headers});assert.equal(disabled.status,403);
+  employee.operationPermissions.workers=["financials","download"];employee.moduleAccess=[];const disabled=await fetch(base+"/tailoring-workers/"+g.worker._id+"/payroll",{headers});assert.equal(disabled.status,403);
 });

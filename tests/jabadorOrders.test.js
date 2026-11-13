@@ -47,7 +47,7 @@ test("jabador prices start unconfigured and remain independent from djellaba pri
   f.staff.action.update = false;
   assert.equal((await request("PUT", settingsPath, { rates, version: 0 }, { actor: staffClaims })).status, 403);
   assert.equal((await request("PUT", settingsPath, { rates: { ...rates, laborPrice: 50 }, version: 9 })).status, 409);
-  assert.equal((await request("GET", "/cost-settings?garment=shirts")).status, 400);
+  assert.equal((await request("GET", "/cost-settings?garment=unknown")).status, 400);
 });
 
 test("jabador orders require sfifa and fabric metres just like djellabas", () => {

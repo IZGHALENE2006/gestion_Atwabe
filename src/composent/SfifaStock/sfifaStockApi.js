@@ -14,3 +14,5 @@ export const restockSfifaStock = async (stock, quantity, requestId, token) => (a
 export const deleteSfifaStock = async (stock, token) => (await axios.delete(stockPath(stock), { data: { version: stock.__v }, headers: headers(token) })).data;
 
 export const loadSfifaRestocks = async (stock, token, signal) => (await axios.get(stockPath(stock) + "/history", { headers: headers(token), signal })).data;
+
+export const loadSfifaDetails = async (stock, token, signal) => (await axios.get(stockPath(stock) + "/details", { headers: headers(token), signal })).data;

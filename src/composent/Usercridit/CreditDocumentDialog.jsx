@@ -8,9 +8,9 @@ import { useInvoiceSettings } from "../Facture/useInvoiceSettings.js";
 import CreditDocumentPaper from "./CreditDocumentPaper.jsx";
 import printStyles from "./creditPrint.css?inline";
 
-export default function CreditDocumentDialog({ user, selection, onClose }) {
+export default function CreditDocumentDialog({ user, selection, document: providedDocument, onClose }) {
   const { t, i18n } = useTranslation();
-  const [data] = useState(() => creditDocument(user, selection));
+  const [data] = useState(() => providedDocument || creditDocument(user, selection));
   const dialogRef = useRef(null), printRef = useRef(null);
   const { settings, loading, error, retry } = useInvoiceSettings();
   const [printing, setPrinting] = useState(false), [printError, setPrintError] = useState(false);

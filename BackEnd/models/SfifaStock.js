@@ -24,6 +24,7 @@ receiptSchema.pre("validate", function () {
   } catch { this.invalidate("styleMeters", "Invalid style meters"); }
 });
 const variantSchema = new mongoose.Schema({
+  styleMeters: { type: styleMetersSchema, default: undefined },
   code: { type: Number, required: true, validate: Number.isSafeInteger },
   quantity: { type: Number, required: true, min: 0, max: SFIFA_STOCK_LIMIT, validate: value => sfifaQuantityUnits(value) !== null },
 });
@@ -37,14 +38,22 @@ const schema = new mongoose.Schema({
   width: { type: String, enum: SFIFA_STOCK_WIDTHS, required: true },
   family: { type: String, enum: WORKER_SFIFA_FAMILIES.map(family => family.value), required: true },
   quantity: { type: Number, required: true, min: 0, max: SFIFA_STOCK_GROUP_LIMIT, validate: value => sfifaQuantityUnits(value, { max: SFIFA_STOCK_GROUP_LIMIT }) !== null },
+  unassignedStyleMeters: { type: styleMetersSchema, default: undefined },
   unassignedQuantity: { type: Number, default: undefined, min: 0, max: SFIFA_STOCK_LIMIT, validate: value => value === undefined || sfifaQuantityUnits(value) !== null },
   variants: { type: [variantSchema], default: undefined },
   receipts: { type: [receiptSchema], default: [] },
   production: { type: [productionSchema], default: undefined },
+  tailoringOrderIds: { type: [mongoose.Schema.Types.ObjectId], default: undefined },
+  tailoringStockOperations: { type: [new mongoose.Schema({ operationId: { type: String, required: true }, orderId: { type: mongoose.Schema.Types.ObjectId, required: true }, date: { type: Date, required: true }, returnedAt: Date }, { _id: false })], default: undefined },
   workerMaterialDebits: { type: [workerMaterialDebitSchema], default: undefined },
 }, { timestamps: true, optimisticConcurrency: true });
 schema.pre("validate", function () {
   if (this.family === SFIFA_CUSTOMER_FAMILY && (this.quantity !== 0 || (this.unassignedQuantity ?? 0) !== 0 || this.variants?.length || this.receipts.length || this.workerMaterialDebits?.length)) this.invalidate("family", "Customer-owned sfifa cannot enter shop stock");
+  const checkStyles = (styles, quantity, field) => {
+    if (styles !== undefined && SFIFA_METER_TYPES.reduce((sum, key) => sum + (sfifaQuantityUnits(styles[key]) ?? 0), 0) > (sfifaQuantityUnits(quantity) ?? 0)) this.invalidate(field, 'Color-type balances exceed the available quantity');
+  };
+  checkStyles(this.unassignedStyleMeters, this.unassignedQuantity ?? this.quantity, 'unassignedStyleMeters');
+  for (const row of this.variants || []) checkStyles(row.styleMeters, row.quantity, 'variants');
   const requests = new Set();
   const receipts = new Map(this.receipts.map(receipt => [receipt.requestId, receipt]));
   for (const work of this.production || []) {

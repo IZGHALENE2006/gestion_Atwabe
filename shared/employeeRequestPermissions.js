@@ -35,6 +35,7 @@ export function employeeCanRequest(user, method, rawPath, input) {
     return true;
   }
   if (path.startsWith("/tailoring-orders")) {
+    if (read && path.endsWith("/sfifa-options")) return any("tailoring", "add", "update");
     if (read) return path.endsWith("/cost-settings") ? any("tailoring", "settings", "add", "update") : path.endsWith("/work-status") ? can("tailoring", "tracking") : allowed("tailoring", "workers");
     if (path.endsWith("/cost-settings") && method === "PUT") return can("tailoring", "settings");
     if (path.endsWith("/payments") && method === "POST") return can("tailoring", "payment");
@@ -56,10 +57,20 @@ export function employeeCanRequest(user, method, rawPath, input) {
     return path === "/tailoring-workers" && method === "POST" ? can("workers", "add") : method === "PUT" && can("workers", "update");
   }
   if (path.startsWith("/sfifa-stock")) {
-    if (read) return path.endsWith("/history") ? can("sfifa", "history") : allowed("sfifa", "workers");
+    if (read) return path.endsWith("/details") ? can("sfifa", "details") : path.endsWith("/history") ? can("sfifa", "history") : allowed("sfifa", "workers");
     return method === "POST" ? can("sfifa", path.endsWith("/restock") ? "restock" : "add") : method === "PUT" ? can("sfifa", "update") : method === "DELETE" && can("sfifa", "delete");
   }
   if (path.startsWith("/fabrics")) {
+    if (path === '/fabrics/invoice-customers') return read && can('fabrics', 'addInvoice') && can('credit', 'addDebt');
+    if (path === '/fabrics/invoices' || path.startsWith('/fabrics/invoices/')) {
+      if (read) return can('fabrics', 'invoiceHistory');
+      if (method !== 'POST') return false;
+      if (path.endsWith('/payments')) return can('fabrics', 'invoicePayment') && can('credit', 'payment');
+      if (!can('fabrics', 'addInvoice') || !can('fabrics', 'sell')) return false;
+      if (body.paymentMode === 'credit' && (!can('fabrics', 'creditSale') || !can('credit', 'addDebt') || body.newCustomer && !can('credit', 'add') || Number(body.amountPaid) > 0 && !can('credit', 'payment'))) return false;
+      if (Array.isArray(body.lines) && body.lines.some(line => line.pricingMode === 'wholesale' && !can('fabrics', 'wholesale') || Number(line.discountValue) > 0 && !can('fabrics', 'discount'))) return false;
+      return true;
+    }
     if (read) return path.endsWith("/profits") ? can("fabrics", "profits") : path.endsWith("/sale-clients") ? can("fabrics", "sell") : path.endsWith("/movements") ? can("fabrics", "history") : allowed("fabrics", "tailoring");
     if (method === "DELETE") return can("fabrics", path.includes("/pieces/") ? "deletePiece" : path.includes("/colors/") ? "deleteColor" : "delete");
     return method === "POST" ? can("fabrics", path.endsWith("/sales") ? "sell" : path.endsWith("/reductions") ? "reduce" : "add") : method === "PUT" && any("fabrics", "update", "addColor", "addPiece");

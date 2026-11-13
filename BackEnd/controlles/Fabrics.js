@@ -15,10 +15,11 @@ import { protectWorkerMaterialDeletion } from '../utils/workerMaterials.js';
 import { validateFabric, validateFabricUpdate, calculateFabricReduction, isFabricBarcode } from "../../shared/fabrics.js";
 
 import { saveFabricPhoto, deleteFabricPhoto, fabricPhotoPath } from "../utils/fabricPhotos.js";
+import { protectPendingFabricInvoice } from '../utils/fabricInvoiceStock.js';
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
 const publicFabric = (fabric) => {
-  const { tailoringOrderIds: _tailoringOrderIds, tailoringStockOperations: _tailoringStockOperations, movements: _movements, workerMaterialDebits: _workerMaterialDebits, photo, ...value } = typeof fabric.toObject === "function" ? fabric.toObject() : fabric;
+  const { invoiceDebits: _invoiceDebits, tailoringOrderIds: _tailoringOrderIds, tailoringStockOperations: _tailoringStockOperations, movements: _movements, workerMaterialDebits: _workerMaterialDebits, photo, ...value } = typeof fabric.toObject === "function" ? fabric.toObject() : fabric;
   return { ...value, hasPhoto: Boolean(fabricPhotoPath(photo)) };
 };
 
@@ -49,6 +50,7 @@ async function accessFor(req, action) {
   if (action && !(Array.isArray(action) ? action.some(key => permissions[key]) : permissions[action])) throw fail("forbidden", 403);
   return { idAdmin, createdBy: actor._id, createdByName: String(actor.name || "").slice(0, 120), permissions };
 }
+export { accessFor as fabricAccessFor };
 
 function sendError(res, error, fallback) {
   if (error.message === "invalidFabric") return res.status(400).json({ message: "invalidFabric", fields: error.fields });
@@ -127,6 +129,7 @@ export async function updateFabric(req, res) {
     const barcodes = input.colors.flatMap((color) => color.pieces.map((piece) => piece.barcode));
     const exists = await Fabric.exists({ idAdmin, _id: { $ne: fabric._id }, "colors.pieces.barcode": { $in: barcodes } });
     if (exists) throw fail("duplicateBarcode", 409);
+    protectPendingFabricInvoice(fabric);
     const retainedPieces = new Set(input.colors.flatMap(color => color.pieces.map(piece => String(piece._id))));
     const removedPieces = new Set(fabric.colors.flatMap(color => color.pieces).filter(piece => !retainedPieces.has(String(piece._id))).map(piece => String(piece._id)));
     if (removedPieces.size) { await protectWorkerMaterialDeletion(fabric, removedPieces, 'fabric'); await protectTailoringFabricDeletion(fabric, removedPieces); }
@@ -153,6 +156,7 @@ async function removeFabricEntry(req, res, kind) {
     if (!fabric) throw fail("notFound", 404);
     if (!Number.isInteger(req.body?.version) || req.body.version !== fabric.__v) throw fail("conflict", 409);
 
+    protectPendingFabricInvoice(fabric);
     const removedIds = kind === 'fabric' ? null : new Set(kind === 'piece' ? [req.params.pieceId] : (fabric.colors.id(req.params.colorId)?.pieces || []).map(piece => String(piece._id)));
     await protectWorkerMaterialDeletion(fabric, removedIds, 'fabric');
     await protectTailoringFabricDeletion(fabric, removedIds);
