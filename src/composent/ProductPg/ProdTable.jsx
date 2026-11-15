@@ -1,3 +1,4 @@
+import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import { IoAddOutline, IoInformationCircleOutline } from "react-icons/io5";
@@ -139,7 +140,7 @@ export default function ProdTable({ products, viewMode = 'table' }) {
                 className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-all group"
               >
                 <td className="px-6 py-4 font-black text-slate-700 dark:text-slate-200 uppercase text-xs">
-                  <EmployeeOperation module="products" operation="labels"><button type="button" data-print-product-labels={item._id} onClick={() => handleOpenInfo(item)} aria-label={t("productTable.print")} className="rounded-lg p-2 text-blue-600"><FaPrint aria-hidden="true" /></button></EmployeeOperation><EmployeeOperation module="products" operation="details"><button type="button" onClick={() => handleOpenInfo(item)} className="flex items-center gap-3 text-start hover:text-primary-600">
+                  <EmployeeOperation module="products" operation="details"><button type="button" onClick={() => handleOpenInfo(item)} className="flex items-center gap-3 text-start hover:text-primary-600">
                     <ProductImage image={item.image} name={item.name} className="size-11 shrink-0 rounded-lg" contain />
                     {item.name}
                   </button></EmployeeOperation>
@@ -174,7 +175,7 @@ export default function ProdTable({ products, viewMode = 'table' }) {
                     <span className="text-[10px] opacity-50">{t("productTable.pcs")}</span>
                   </span>
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-6 py-4" data-row-actions-cell><RowActionsMenu menuKey="ProdTable"><EmployeeOperation module="products" operation="labels"><button type="button" data-print-product-labels={item._id} onClick={() => handleOpenInfo(item)} aria-label={t("productTable.print")} className="rounded-lg p-2 text-blue-600"><FaPrint aria-hidden="true" /></button></EmployeeOperation>
                   <div className="flex justify-center gap-2">
                     {Object.values(operations).some(Boolean) ? (
                       <>
@@ -205,7 +206,7 @@ export default function ProdTable({ products, viewMode = 'table' }) {
                       <FaLock className="text-slate-200 dark:text-slate-700" />
                     )}
                   </div>
-                </td>
+                </RowActionsMenu></td>
               </tr>
             ))}
           </tbody>

@@ -1,3 +1,4 @@
+import FabricBulkReductionForm from "./FabricBulkReductionForm.jsx";
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,18 +14,15 @@ export default function FabricReductionDialog({ fabrics, token, canReduce, onClo
   const [method, setMethod] = useState("barcode");
   const [search, setSearch] = useState("");
   const [fabricId, setFabricId] = useState("");
-  const [colorId, setColorId] = useState("");
   const [selected, setSelected] = useState(null);
   const [amount, setAmount] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(null);
   const chosenFabric = fabrics.find((fabric) => fabric._id === fabricId);
-  const chosenColor = chosenFabric?.colors.find((color) => color._id === colorId);
-  const matches = method === "barcode" ? findFabricPieces(fabrics, search)
-    : chosenColor?.pieces.map((piece, index) => ({ fabric: chosenFabric, color: chosenColor, piece, pieceNumber: index + 1 }));
+  const matches = method === "barcode" ? findFabricPieces(fabrics, search) : [];
   const complete = isFabricBarcode(search.trim());
-  const showPieces = method === "barcode" ? complete : Boolean(chosenColor);
+  const showPieces = method === "barcode" && complete;
   const format = (value) => Number(value).toLocaleString(i18n.language === "ar" ? "ar-MA" : "fr-MA", { maximumFractionDigits: 3 });
   let preview = null, validation = "";
   if (selected && amount.trim()) {
@@ -52,7 +50,6 @@ export default function FabricReductionDialog({ fabrics, token, canReduce, onClo
     setMethod(next);
     setSearch("");
     setFabricId("");
-    setColorId("");
     select(null);
   };
   const submit = async (event) => {
@@ -75,7 +72,6 @@ export default function FabricReductionDialog({ fabrics, token, canReduce, onClo
       const piece = color?.pieces.find((entry) => entry._id === selected.piece._id);
       if (method === "browse") {
         if (!result.fabric) setFabricId("");
-        if (!color) setColorId("");
       }
       setSelected(piece ? { fabric: result.fabric, color, piece, pieceNumber: selected.pieceNumber } : null);
       setSuccess(result.movement);
@@ -100,25 +96,20 @@ export default function FabricReductionDialog({ fabrics, token, canReduce, onClo
       onReloaded(data);
       let match;
       if (method === "barcode") match = findFabricPieces(data.fabrics, search)?.[0];
-      else {
-        const fabric = data.fabrics.find((entry) => entry._id === fabricId);
-        const color = fabric?.colors.find((entry) => entry._id === colorId);
-        const index = color?.pieces.findIndex((entry) => entry._id === selected?.piece._id);
-        if (index >= 0) match = { fabric, color, piece: color.pieces[index], pieceNumber: index + 1 };
-        if (!fabric) setFabricId("");
-        if (!color) setColorId("");
-      }
+      else if (!data.fabrics.some(entry => entry._id === fabricId)) setFabricId("");
       select(match || null);
-      if (!match && (method === "barcode" ? complete : selected)) setError("notFound");
+      if (!match && method === "barcode" && complete) setError("notFound");
+      return true;
     } catch {
       if (dialogRef.current?.open) setError("loadFailed");
+      return false;
     } finally {
       savingRef.current = false;
       if (dialogRef.current?.open) setSaving(false);
     }
   };
 
-  return <dialog ref={dialogRef} dir={i18n.dir()} aria-labelledby="fabric-reduction-title" onCancel={(event) => { event.preventDefault(); if (!savingRef.current) onClose(); }} className="fixed top-4 right-4 bottom-auto left-auto m-auto max-h-[90dvh] w-[calc(100dvw-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl backdrop:bg-slate-950/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:inset-0">
+  return <dialog ref={dialogRef} dir={i18n.dir()} aria-labelledby="fabric-reduction-title" onCancel={(event) => { event.preventDefault(); if (!savingRef.current) onClose(); }} className={"fabric-reduction-dialog " + (method === "browse" ? "fabric-reduction-dialog-browse " : "") + "fixed top-4 right-4 bottom-auto left-auto m-auto max-h-[90dvh] w-[calc(100dvw-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl backdrop:bg-slate-950/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:inset-0"}>
     <header className="mb-4 flex items-start justify-between gap-3"><div><h2 id="fabric-reduction-title" className="text-xl font-bold text-blue-700 dark:text-blue-400">{t("fabrics.reduceAction")}</h2><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t("fabrics.reductionHint")}</p></div><button type="button" disabled={saving} onClick={onClose} aria-label={t("dialog.close")} className="rounded-lg p-2 hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-slate-800"><IoCloseOutline size={23} /></button></header>
     <div role="group" aria-label={t("fabrics.selectionMethod")} className="mb-5 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
       {[["barcode", "byBarcode"], ["browse", "byTypeColor"]].map(([value, label]) => <button key={value} type="button" disabled={saving} aria-pressed={method === value} data-reduction-method={value} onClick={() => changeMethod(value)} className={`rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50 ${method === value ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700"}`}>{t(`fabrics.${label}`)}</button>)}
@@ -129,18 +120,9 @@ export default function FabricReductionDialog({ fabrics, token, canReduce, onClo
     {!complete && <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{t("fabrics.scanHint")}</p>}
     {complete && !matches?.length && <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{t("fabrics.pieceNotFound")}</p>}
     </> : <>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div><label htmlFor="fabric-reduction-type" className="mb-2 block text-sm font-semibold">{t("fabrics.type")}</label><select id="fabric-reduction-type" disabled={saving || !fabrics.length} value={chosenFabric?._id || ""} onChange={(event) => { setFabricId(event.target.value); setColorId(""); select(null); }} className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-blue-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800">
-          <option value="">{t("fabrics.chooseType")}</option>
-          {fabrics.map((fabric) => <option key={fabric._id} value={fabric._id}>{fabric.type}{fabric.reference ? ` · ${fabric.reference}` : ""}</option>)}
-        </select></div>
-        <div><label htmlFor="fabric-reduction-color" className="mb-2 block text-sm font-semibold">{t("fabrics.color")}</label><select id="fabric-reduction-color" disabled={saving || !chosenFabric} value={chosenColor?._id || ""} onChange={(event) => { setColorId(event.target.value); select(null); }} className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-blue-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800">
-          <option value="">{t("fabrics.chooseColor")}</option>
-          {chosenFabric?.colors.map((color) => <option key={color._id} value={color._id}>{color.name}{color.number ? ` · ${color.number}` : ""}</option>)}
-        </select></div>
-      </div>
+      <label htmlFor="fabric-reduction-type" className="mb-2 block text-sm font-semibold">{t("fabrics.type")}</label><select id="fabric-reduction-type" disabled={saving || !fabrics.length} value={chosenFabric?._id || ""} onChange={event => { setFabricId(event.target.value); select(null); }} className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-blue-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800"><option value="">{t("fabrics.chooseType")}</option>{fabrics.map(fabric => <option key={fabric._id} value={fabric._id}>{fabric.type}{fabric.reference ? ` · ${fabric.reference}` : ""}</option>)}</select>
       {!fabrics.length && <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{t("fabrics.empty")}</p>}
-      {chosenColor && <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{t("fabrics.choosePieceHint")}</p>}
+      {chosenFabric && <FabricBulkReductionForm key={chosenFabric._id} fabric={chosenFabric} token={token} canReduce={canReduce} disabled={saving} onBusyChange={busy => { savingRef.current = busy; setSaving(busy); }} onReduced={onReduced} onReload={reload} />}
     </>}
     {showPieces && <div role="region" aria-label={t("fabrics.pieces")} className={`mt-4 space-y-3 ${method === "browse" ? "max-h-72 overflow-y-auto rounded-xl pe-1" : ""}`}>{matches?.map((match) => <section key={match.piece._id} data-reduction-piece={match.piece.barcode} className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900 dark:bg-blue-950/20">
       <p dir="auto" className="break-words font-bold">{match.fabric.type}{match.fabric.reference ? ` · ${match.fabric.reference}` : ""}</p>
@@ -158,6 +140,6 @@ export default function FabricReductionDialog({ fabrics, token, canReduce, onClo
     </form>}
     {success && <p role="status" data-reduction-success className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">{t("fabrics.reductionSaved", { removed: format(success.meters), remaining: format(success.remainingMeters) })}</p>}
     {error && <div className="mt-4 text-sm text-rose-600 dark:text-rose-400"><p role="alert">{t(`fabrics.errors.${error}`)}</p>{["conflict", "notFound", "insufficientMeters", "loadFailed"].includes(error) && <button type="button" disabled={saving} onClick={reload} className="mt-2 font-bold underline">{t("fabrics.reloadStock")}</button>}</div>}
-    <footer className="mt-5 flex flex-wrap justify-end gap-3"><EmployeeOperation module="fabrics" operation="history"><button type="button" disabled={saving} onClick={() => onHistory(selected?.piece.barcode || (complete ? search.trim() : ""))} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold dark:border-slate-700"><IoTimeOutline size={19} />{t("fabrics.movementsTitle")}</button></EmployeeOperation><button type="button" disabled={saving} onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold dark:border-slate-700">{t("dialog.close")}</button></footer>
+    <footer className="mt-5 flex flex-wrap justify-end gap-3"><EmployeeOperation module="fabrics" operation="history"><button type="button" data-reduction-history disabled={saving} onClick={() => onHistory(selected?.piece.barcode || (complete ? search.trim() : ""))} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold dark:border-slate-700"><IoTimeOutline size={19} />{t("fabrics.movementsTitle")}</button></EmployeeOperation><button type="button" disabled={saving} onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold dark:border-slate-700">{t("dialog.close")}</button></footer>
   </dialog>;
 }

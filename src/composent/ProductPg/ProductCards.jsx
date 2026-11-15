@@ -1,3 +1,4 @@
+import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import { IoArrowForwardOutline, IoCreateOutline, IoTrashOutline } from 'react-icons/io5';
@@ -36,11 +37,11 @@ export default function ProductCards({ products, onDetails, onEdit, onDelete, on
             </div>
           </button>
           {canManage && (
-            <div className="flex gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800"><EmployeeOperation module="products" operation="labels"><button type="button" data-print-product-labels={product._id} onClick={() => onPrintLabels(product)} className="rounded-lg px-3 py-2 text-xs font-semibold text-blue-600">{t("productTable.print")}</button></EmployeeOperation>
+            <RowActionsMenu menuKey="ProductCards" className="mx-5 mb-4"><EmployeeOperation module="products" operation="labels"><button type="button" data-print-product-labels={product._id} onClick={() => onPrintLabels(product)} className="rounded-lg px-3 py-2 text-xs font-semibold text-blue-600">{t("productTable.print")}</button></EmployeeOperation>
               <EmployeeOperation module="products" operation="restock"><button type="button" data-restock-product={product._id} onClick={() => onRestock(product)} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"><IoAddOutline size={16} />{t('productBatches.restock')}</button></EmployeeOperation>
               <EmployeeOperation module="products" operation="update"><button type="button" onClick={() => onEdit(product._id)} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary-50 px-3 py-2 text-xs font-semibold text-primary-700 hover:bg-primary-100 dark:bg-primary-500/10 dark:text-primary-300"><IoCreateOutline size={16} />{t('productList.edit')}</button></EmployeeOperation>
               <EmployeeOperation module="products" operation="delete"><button type="button" onClick={() => onDelete(product._id)} aria-label={`${t('productTable.deleteProduct')} — ${product.name}`} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10"><IoTrashOutline size={17} /></button></EmployeeOperation>
-            </div>
+            </RowActionsMenu>
           )}
         </article>
       ))}

@@ -1,3 +1,5 @@
+import { isShopDjellabaBatch, validateShopDjellabaBatch } from './workerShopDjellaba.js';
+import { trouserMeterUnits, validateTrouserColorCompletion } from './workerShopTrousers.js';
 import { validateShopFlowSelection } from './workerShopFlow.js';
 import { validateWorkerSfifa } from './workerSfifa.js';
 import { TAILORING_GARMENT_TYPES, TAILORING_SFIFA_GARMENT_TYPES, tailoringGarmentType, tailoringMoneyCents } from "./tailoring.js";
@@ -9,6 +11,13 @@ export const WORK_TRACKING_CATEGORIES = [...WORKER_CATEGORIES];
 export const WORK_QUANTITY_LIMIT = 1000000;
 export const WORK_TYPES = ["shop", "client"];
 export const TROUSER_TYPES = ["regular", "qandrissi"];
+export const SHOP_TROUSER_LENGTHS = [80, 85, 90, 95];
+export const hasShopTrouserColors = work => work?.shopTrouser?.length !== undefined;
+function shopTrouserColorSelection(input, excluded = []) {
+  const colorIds = Array.isArray(input?.colorIds) ? input.colorIds.map(id => typeof id === 'string' ? id.toLowerCase() : '') : [];
+  if (!colorIds.length || colorIds.length > WORK_QUANTITY_LIMIT || colorIds.some(id => !/^[a-f\d]{24}$/.test(id) || excluded.includes(id)) || new Set(colorIds).size !== colorIds.length) throw Object.assign(new Error('invalidWork'), { fields: { 'shopTrouser.colorIds': 'chooseTrouserColors' } });
+  return colorIds.sort();
+}
 export const workerOrderGarmentTypes = category => category === "mesbanto" ? TAILORING_GARMENT_TYPES : category === "trousers" ? ["trousers"] : category === "shirts" ? ["shirts"] : TAILORING_SFIFA_GARMENT_TYPES;
 export const workerWorkGarmentType = work => work.tailoring ? tailoringGarmentType(work.tailoring) : work.garmentType || null;
 export const workerWorkType = work => work.workType || "shop";
@@ -40,13 +49,29 @@ export function remainingWorkQuantity(work) {
   return (workQuantityUnits(work.quantity, work.category) - workQuantityUnits(work.completedQuantity, work.category)) / (work.category === "sfifa" ? SFIFA_STOCK_SCALE : 1);
 }
 
+export function workerWorkCompleted(work) {
+  const quantity = workQuantityUnits(work.quantity, work.category), completed = workQuantityUnits(work.completedQuantity, work.category);
+  return quantity !== null && quantity > 0 && completed !== null && completed >= quantity;
+}
+
 export const nextWorkSequence = work => (work.completions?.length || 0) + (work.additions?.length || 0) + 1;
 
 export function validateWorkerIncrease(input, work, { checkLimits = true } = {}) {
   if (work.shopFlow) throw Object.assign(new Error('invalidWork'), { fields: { quantity: 'shopFlowFixedQuantity' } });
+  if (isShopDjellabaBatch(work)) {
+    const inputBatch = input?.shopDjellaba;
+    const previous = work.shopDjellaba.toObject ? work.shopDjellaba.toObject() : work.shopDjellaba;
+    const selection = validateShopDjellabaBatch({ ...previous, ...Object.fromEntries(['fabricId', 'sfifaId', 'variantId'].map(key => [key, String(previous[key])])), colorIds: inputBatch?.colorIds, unitWage: inputBatch?.unitWage }, { excluded: checkLimits ? work.shopDjellaba.colorIds : [] });
+    if (checkLimits && work.quantity + selection.quantity > 100) throw Object.assign(new Error('invalidWork'), { fields: { 'shopDjellaba.colorIds': 'chooseDjellabaColors' } });
+    if (checkLimits && workerPieceWageCents([...workerMaterialRows(work), ...selection.materials]) === null) throw Object.assign(new Error('invalidWork'), { fields: { 'shopDjellaba.unitWage': 'invalidWage' } });
+    return selection;
+  }
   if (work.materialOperations?.length && workerWorkType(work) === 'shop' && input?.materials === undefined) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'chooseMaterials' } });
-  let quantity, lineIds;
-  if (work.tailoring && work.category !== "sfifa") {
+  let quantity, lineIds, shopTrouser;
+  if (hasShopTrouserColors(work)) {
+    const colorIds = shopTrouserColorSelection(input?.shopTrouser, checkLimits ? work.shopTrouser.colors.map(color => String(color.colorId)) : []);
+    shopTrouser = { colorIds }; quantity = colorIds.length;
+  } else if (work.tailoring && work.category !== "sfifa") {
     const selection = orderSelection({ orderId: String(work.tailoring.orderId), lineIds: input?.lineIds });
     lineIds = selection.lineIds;
     if (checkLimits && work.tailoring.lineIds.length + lineIds.length > 50) throw Object.assign(new Error("invalidWork"), { fields: { lineIds: "tooManyGarments" } });
@@ -61,7 +86,7 @@ export function validateWorkerIncrease(input, work, { checkLimits = true } = {})
   if (materials && materials.some(row => row.unitWage !== undefined) !== workerHasPieceWages(work)) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'invalidWage' } });
   if (checkLimits && materials && workerHasPieceWages(work) && workerPieceWageCents([...workerMaterialRows(work), ...materials]) === null) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'invalidWage' } });
   if (checkLimits && materials && materials.some(row => (work.materials || work.materialOperations?.filter(operation => operation.state !== 'failed').flatMap(operation => operation.rows) || []).some(previous => previous.lineId === row.lineId))) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'chooseMaterials' } });
-  return { quantity, ...(lineIds ? { lineIds } : {}), ...(materials ? { materials } : {}) };
+  return { quantity, ...(lineIds ? { lineIds } : {}), ...(shopTrouser ? { shopTrouser } : {}), ...(materials ? { materials } : {}) };
 }
 
 export function applyWorkerIncrease(work, input, requestId, createdBy, date = new Date()) {
@@ -71,7 +96,7 @@ export function applyWorkerIncrease(work, input, requestId, createdBy, date = ne
   if (!work.additions) work.additions = [];
   const sequence = nextWorkSequence(work);
   work.quantity = (workQuantityUnits(work.quantity, work.category) + added) / scale;
-  work.additions.push({ requestId, quantity: input.quantity, before, after: (workQuantityUnits(before, work.category) + added) / scale, sequence, date, createdBy, ...(input.lineIds ? { lineIds: input.lineIds } : {}) });
+  work.additions.push({ requestId, quantity: input.quantity, before, after: (workQuantityUnits(before, work.category) + added) / scale, sequence, date, createdBy, ...(input.lineIds ? { lineIds: input.lineIds } : {}), ...(input.shopTrouser ? { shopTrouserColorIds: input.shopTrouser.colorIds } : {}) });
 }
 
 export function workerWorkTotals(works, category) {
@@ -99,6 +124,10 @@ function orderSelection(input) {
 }
 
 export function validateWorkerWork(input, { allowLegacyTrouserClient = false } = {}) {
+  if (input?.shopDjellaba !== undefined) {
+    if (!isShopDjellabaBatch(input)) throw Object.assign(new Error('invalidWork'), { fields: { shopDjellaba: 'invalidMaterialSection' } });
+    return { ...validateShopDjellabaBatch(input.shopDjellaba), productName: 'Djellaba', category: 'machine', workType: 'shop', garmentType: 'djellaba' };
+  }
   if (input?.shopTrouser !== undefined && (input.category !== 'trousers' || input.workType !== 'shop')) throw Object.assign(new Error('invalidWork'), { fields: { shopTrouser: 'invalidShopTrouser' } });
   if (input?.materials !== undefined && (input.category !== 'machine' || input.workType !== 'shop')) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'invalidMaterialSection' } });
   if (input?.workType !== undefined && !WORK_TYPES.includes(input.workType)) throw Object.assign(new Error("invalidWork"), { fields: { workType: "invalidWorkType" } });
@@ -142,13 +171,27 @@ export function validateWorkerWork(input, { allowLegacyTrouserClient = false } =
     if (!WORKER_GARMENT_SIZES.includes(size)) fields['shopTrouser.size'] = 'invalidSize';
     if (!TROUSER_TYPES.includes(input.trouserType)) fields.trouserType = 'invalidTrouserType';
     shopTrouser = { fabricId, size };
+    // Older assignments have neither field; keep their stored request fingerprints valid.
+    if (input.shopTrouser?.length !== undefined || input.shopTrouser?.colorIds !== undefined || input.shopTrouser?.metersPerPiece !== undefined) {
+      const rawLength = input.shopTrouser.length;
+      const length = typeof rawLength === 'number' || typeof rawLength === 'string' ? Number(rawLength) : NaN;
+      if (!SHOP_TROUSER_LENGTHS.includes(length)) fields['shopTrouser.length'] = 'invalidTrouserLength';
+      let colorIds;
+      try { colorIds = shopTrouserColorSelection(input.shopTrouser); } catch (error) { Object.assign(fields, error.fields); }
+      shopTrouser = { ...shopTrouser, length, colorIds: colorIds || [] };
+      if (input.shopTrouser.metersPerPiece !== undefined) {
+        const meters = trouserMeterUnits(input.shopTrouser.metersPerPiece);
+        if (meters === null || meters <= 0) fields['shopTrouser.metersPerPiece'] = 'invalidMeters';
+        else shopTrouser.metersPerPiece = meters / 1000;
+      }
+    }
   }
   if (isTrouserClient && !TROUSER_TYPES.includes(input.trouserType)) fields.trouserType = "invalidTrouserType";
   const suppliedName = typeof input?.productName === "string" ? input.productName.trim() : "";
   const productName = isShopTrouser ? 'Trousers' : suppliedName || (input?.category === "brim" ? "Brim" : "");
   if (!productName) fields.productName = "required";
   else if (productName.length > 160 || [...productName].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)) fields.productName = isTrouserClient ? "invalidClientName" : "invalidProductName";
-  const quantity = parseWorkQuantity(input?.quantity);
+  const quantity = shopTrouser?.colorIds ? shopTrouser.colorIds.length || null : parseWorkQuantity(input?.quantity);
   if (quantity === null) fields.quantity = "invalidQuantity";
   if (!WORK_TRACKING_CATEGORIES.includes(input?.category)) fields.category = "invalidWorkCategory";
   if (Object.keys(fields).length) throw Object.assign(new Error("invalidWork"), { fields });
@@ -164,5 +207,5 @@ export function validateWorkerCompletion(input, remaining, category, work) {
   if (quantity === null) fields.quantity = category === "sfifa" ? "invalidMeters" : "invalidQuantity";
   else if (remaining !== undefined && workQuantityUnits(quantity, category) > workQuantityUnits(remaining, category)) fields.quantity = category === "sfifa" ? "exceedsRemainingMeters" : "exceedsRemaining";
   if (Object.keys(fields).length) throw Object.assign(new Error("invalidWork"), { fields });
-  return { quantity, ...(work && workerHasPieceWages(work) ? { lineIds: validateWorkerPieceCompletion(work, quantity, input?.lineIds) } : {}) };
+  return { quantity, ...(work && hasShopTrouserColors(work) ? { colorIds: validateTrouserColorCompletion(work, quantity, input?.colorIds) } : {}), ...(work && workerHasPieceWages(work) ? { lineIds: validateWorkerPieceCompletion(work, quantity, input?.lineIds) } : {}) };
 }

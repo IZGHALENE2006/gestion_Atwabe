@@ -56,6 +56,7 @@ export function fabricProfitEntries(movements) {
       sellerId: String(row.createdBy), sellerName: sale.createdByName || '', sellerRole: sale.createdByRole || '', clientName: sale.clientName || '',
       pricingMode: sale.pricingMode, unitPrice: sale.unitPrice, subtotal: sale.subtotal, discountType: sale.discountType,
       discountValue: sale.discountValue, discountAmount: sale.discountAmount,
+      ...(sale.invoiceDiscountAmount !== undefined ? { lineDiscountAmount: sale.lineDiscountAmount ?? sale.discountAmount, invoiceDiscountAmount: sale.invoiceDiscountAmount } : {}),
       revenueAmount: revenueCents === null ? null : revenueCents / 100,
       purchaseUnitPrice: knownCost ? sale.purchaseUnitPrice : null, costAmount: costCents === null ? null : costCents / 100,
       profitAmount: revenueCents === null || costCents === null ? null : (revenueCents - costCents) / 100,
@@ -102,5 +103,5 @@ export function fabricProfitReceiptMovement(entry) {
   return { _id: entry.id, source: entry.source, sourceOrderBarcode: entry.sourceOrderBarcode, sourceLineNumber: entry.sourceLineNumber, type: entry.type, reference: entry.fabricReference, color: entry.color, colorNumber: entry.colorNumber,
     barcode: entry.barcode, meters: entry.meters, occurredAt: entry.occurredAt,
     sale: { pricingMode: entry.pricingMode, unitPrice: entry.unitPrice, subtotal: entry.subtotal, discountType: entry.discountType,
-      discountValue: entry.discountValue, discountAmount: entry.discountAmount, total: entry.revenueAmount, clientName: entry.clientName, createdByName: entry.sellerName } };
+      discountValue: entry.discountValue, discountAmount: entry.discountAmount, ...(entry.invoiceDiscountAmount !== undefined ? { lineDiscountAmount: entry.lineDiscountAmount ?? entry.discountAmount, invoiceDiscountAmount: entry.invoiceDiscountAmount } : {}), total: entry.revenueAmount, clientName: entry.clientName, createdByName: entry.sellerName } };
 }

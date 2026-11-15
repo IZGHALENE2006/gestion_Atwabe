@@ -1,3 +1,4 @@
+import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import { useEffect } from "react";
@@ -81,7 +82,7 @@ function CardCategories({ name, Datee, btn, id, update }) {
       </div>
 
       {Object.values(operations).some(Boolean) && (
-        <div className="flex items-center gap-3 border-t border-[#e2e8f0] dark:border-slate-800 pt-5">
+        <RowActionsMenu menuKey="category-card">
           <EmployeeOperation module="categories" operation="update"><button
             onClick={() => update(id)}
             className="
@@ -109,7 +110,7 @@ function CardCategories({ name, Datee, btn, id, update }) {
             <IoTrashOutline size={16} />
             {t("categories.delete")}
           </button></EmployeeOperation>
-        </div>
+        </RowActionsMenu>
       )}
     </div>
   );

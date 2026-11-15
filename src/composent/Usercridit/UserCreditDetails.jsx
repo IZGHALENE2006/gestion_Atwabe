@@ -1,3 +1,4 @@
+import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import CreditActivity from "./CreditActivity.jsx";
@@ -29,6 +30,7 @@ import { GetAllProduct } from "../../slices/SliceProduct";
 
 import CreditDocumentDialog from "./CreditDocumentDialog.jsx";
 import CreditShareDialog from "./CreditShareDialog.jsx";
+import { creditInvoiceReference } from '../../../shared/creditDocuments.js';
 import "./creditDocuments.css";
 
 const defaultLineForm = {
@@ -57,6 +59,7 @@ export default function UserCreditDetails() {
   const scannerRef = useRef(null), lineRequestRef = useRef(null), paymentRequestRef = useRef(null), savingRef = useRef(false);
   const [documentView, setDocumentView] = useState(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [lineFilter, setLineFilter] = useState({ customerId: id, value: 'all' });
 
   const formatMoney = (value) =>
     `${Number(value || 0).toLocaleString(locale)} DH`;
@@ -246,6 +249,18 @@ export default function UserCreditDetails() {
   }
 
   const { summary = {}, produit = [], paymentHistory = [] } = selectedUser;
+  const activeLineFilter = lineFilter.customerId === id ? lineFilter.value : 'all';
+  const invoices = new Map((selectedUser.creditInvoices || []).map(invoice => [String(invoice.id), invoice]));
+  const creditRows = produit.map(line => {
+    const invoice = invoices.get(String(line.invoiceId));
+    // Manual credit also has printable invoice snapshots. Distinguish the
+    // original sale source, including older sales stored with a lines array.
+    const isInvoice = Boolean(line.fabricInvoiceId || invoice && (['cashier', 'fabric'].includes(invoice.origin) || !invoice.origin && Array.isArray(invoice.lines)));
+    const reference = isInvoice ? invoice ? invoice.reference || creditInvoiceReference(invoice) : 'FI-' + String(line.fabricInvoiceId).toUpperCase() : '';
+    return { line, source: isInvoice ? 'invoices' : 'regular', reference };
+  });
+  const lineCounts = { all: creditRows.length, invoices: creditRows.filter(row => row.source === 'invoices').length, regular: creditRows.filter(row => row.source === 'regular').length };
+  const visibleRows = activeLineFilter === 'all' ? creditRows : creditRows.filter(row => row.source === activeLineFilter);
   const sortedPayments = [...paymentHistory].sort(
     (a, b) => new Date(b.Date) - new Date(a.Date)
   );
@@ -318,8 +333,13 @@ export default function UserCreditDetails() {
           </div>
         </div>
 
-        <EmployeeOperation module="credit" operation="details"><div className="overflow-x-auto">
-          <table className="w-full text-left">
+        <EmployeeOperation module="credit" operation="details">
+        <div className="credit-line-filters" data-credit-line-filters>
+          <div><p id="credit-line-filter-label">{t('creditDetails.lineSource')}</p><span role="status" aria-live="polite" data-credit-filter-count>{t('creditDetails.filteredLines', { shown: visibleRows.length, total: produit.length })}</span></div>
+          <div className="credit-line-filter-options" role="group" aria-labelledby="credit-line-filter-label">{['all', 'invoices', 'regular'].map(value => <button key={value} type="button" data-credit-filter={value} aria-pressed={activeLineFilter === value} onClick={() => setLineFilter({ customerId: id, value })}>{t('creditDetails.lineFilters.' + value)}<span>{lineCounts[value]}</span></button>)}</div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left" data-credit-lines-table>
             <thead className="bg-slate-50 dark:bg-slate-800/50">
               <tr>
                 <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">
@@ -350,10 +370,11 @@ export default function UserCreditDetails() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {produit.map((line) => (
-                <tr key={line.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+              {visibleRows.map(({ line, source, reference }) => (
+                <tr key={line.id} data-credit-line={line.id} data-credit-source={source} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                   <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">
                     {line.nom}
+                    <div className="credit-line-source"><span className={'credit-line-source-badge is-' + source}>{t('creditDetails.' + (source === 'invoices' ? 'invoiceSource' : 'regularSource'))}</span>{reference && <bdi dir="ltr">{reference}</bdi>}</div>
                   </td>
                   <td className="px-6 py-4 font-black text-slate-500">{line.Quantite}</td>
                   <td className="px-6 py-4 font-black text-slate-500">
@@ -372,29 +393,29 @@ export default function UserCreditDetails() {
                     {formatDate(line.Date)}
                   </td>
                   <td className="px-6 py-4" data-credit-line-actor><span dir="auto">{line.actor?.name || t("creditAudit.unrecorded")}</span>{line.actor && <small className="block text-xs text-slate-500 dark:text-slate-400">{t(line.actor.role === "admin" ? "creditAudit.admin" : "creditAudit.employee")}</small>}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4" data-row-actions-cell><RowActionsMenu menuKey="UserCreditDetails">
                     <div className="flex justify-center gap-2">
                       <EmployeeOperation module="credit" operation="print"><button type="button" data-credit-line-invoice={line.id} onClick={() => openDocument(selectedUser, { kind: "invoice", line })} className="credit-document-icon" title={t("creditDocuments.printInvoice")} aria-label={t("creditDocuments.printInvoice")}><IoDocumentTextOutline size={18} /></button></EmployeeOperation>
                       {canDelete && <button
                         disabled={actionLoading}
                         onClick={() => handleDeleteLine(line.id)}
                         className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-rose-500 hover:text-white transition-all disabled:opacity-50"
-                      >
+                       aria-label={t("categories.delete")}>
                         <IoTrashOutline size={16} />
                       </button>}
                     </div>
-                  </td>
+                  </RowActionsMenu></td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div></EmployeeOperation>
-
-        {produit.length === 0 && (
+        </div>
+        {visibleRows.length === 0 && (
           <div className="py-10 text-center text-slate-400 font-black uppercase tracking-widest text-xs">
-            {t("creditDetails.noCreditLinesYet")}
+            {t(produit.length === 0 ? 'creditDetails.noCreditLinesYet' : 'creditDetails.noFilteredLines')}
           </div>
         )}
+        </EmployeeOperation>
       </div>
 
       <EmployeeOperation module="credit" operation="history"><div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -435,7 +456,7 @@ export default function UserCreditDetails() {
                   </td>
                   <td className="px-6 py-4" data-credit-payment-actor><span dir="auto">{payment.actor?.name || t("creditAudit.unrecorded")}</span>{payment.actor && <small className="block text-xs text-slate-500 dark:text-slate-400">{t(payment.actor.role === "admin" ? "creditAudit.admin" : "creditAudit.employee")}</small>}</td>
                   <td className="px-6 py-4 text-sm font-bold">{payment.balanceSnapshot ? formatMoney(payment.balanceSnapshot.remainingAfter) : "—"}</td>
-                  <td className="px-6 py-4"><EmployeeOperation module="credit" operation="print"><button type="button" data-credit-payment-receipt={payment.reference} onClick={() => openDocument(selectedUser, { kind: "payment", reference: payment.reference })} className="credit-document-icon" title={t("creditDocuments.printReceipt")} aria-label={t("creditDocuments.printReceipt")}><IoDocumentTextOutline size={20} /></button></EmployeeOperation></td>
+                  <td className="px-6 py-4" data-row-actions-cell><RowActionsMenu menuKey="UserCreditDetails"><EmployeeOperation module="credit" operation="print"><button type="button" data-credit-payment-receipt={payment.reference} onClick={() => openDocument(selectedUser, { kind: "payment", reference: payment.reference })} className="credit-document-icon" title={t("creditDocuments.printReceipt")} aria-label={t("creditDocuments.printReceipt")}><IoDocumentTextOutline size={20} /></button></EmployeeOperation></RowActionsMenu></td>
                 </tr>
               ))}
             </tbody>

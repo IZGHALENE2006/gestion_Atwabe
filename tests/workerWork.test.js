@@ -432,3 +432,12 @@ test("shirt orders stay out of djellaba worker options and sfifa work", async t 
     const rejected=await request(f.worker,{body});assert.equal(rejected.status,404);assert.equal((await rejected.json()).message,"orderNotFound");
   }
 });
+
+for (const category of ['machine', 'finishing', 'brim', 'trousers', 'shirts', 'mesbanto']) test(category + ': deleting completed work cannot bypass the cancellation lock', async t => {
+  const f = setup(t); f.worker.categories = [category];
+  const work = await seedLegacyWork(f, f.worker, input({ category, quantity: 2, unitWage: 10 }));
+  const response = await complete(f.worker, work, completionBody(work, 2)); assert.equal(response.status, 201); const done = await response.json();
+  const before = JSON.stringify(f.records[0].toObject());
+  const removed = await remove(f.worker, done); assert.equal(removed.status, 409); assert.equal((await removed.json()).message, 'cannotCancelCompleted');
+  assert.equal(JSON.stringify(f.records[0].toObject()), before); assert.equal(f.records[0].completedQuantity, 2); assert.equal(f.records[0].completions[0].earningAmount, 20);
+});

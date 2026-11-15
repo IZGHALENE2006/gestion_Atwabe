@@ -1,3 +1,4 @@
+import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import SalesSummaryCards from "./SalesSummaryCards.jsx";
 import { salesWithRevenue, summarizeSales, saleRevenue, salesPeriodKey } from "../../../shared/salesRevenue.js";
@@ -197,7 +198,7 @@ function Ventes() {
                         {Number(entry.profite || 0).toLocaleString(locale)} DH
                       </span>
                     </td>
-                    <td className="px-8 py-5">
+                    <td className="px-8 py-5" data-row-actions-cell><RowActionsMenu menuKey="Ventes">
                       <div className="flex justify-center">
                         <EmployeeOperation module="profits" operation="details"><button
                           className="px-6 py-2.5 rounded-xl bg-white dark:bg-slate-800 text-[9px] font-black uppercase border border-slate-200 hover:border-primary-500 hover:text-primary-600 transition-all shadow-sm"
@@ -206,7 +207,7 @@ function Ventes() {
                           {t("salesPage.details")}
                         </button></EmployeeOperation>
                       </div>
-                    </td>
+                    </RowActionsMenu></td>
                   </tr>
                 ))}
               </tbody>

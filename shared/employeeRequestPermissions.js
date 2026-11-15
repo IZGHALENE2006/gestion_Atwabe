@@ -67,6 +67,7 @@ export function employeeCanRequest(user, method, rawPath, input) {
       if (method !== 'POST') return false;
       if (path.endsWith('/payments')) return can('fabrics', 'invoicePayment') && can('credit', 'payment');
       if (!can('fabrics', 'addInvoice') || !can('fabrics', 'sell')) return false;
+      if (Number(body.invoiceDiscount?.value) > 0 && !can('fabrics', 'discount')) return false;
       if (body.paymentMode === 'credit' && (!can('fabrics', 'creditSale') || !can('credit', 'addDebt') || body.newCustomer && !can('credit', 'add') || Number(body.amountPaid) > 0 && !can('credit', 'payment'))) return false;
       if (Array.isArray(body.lines) && body.lines.some(line => line.pricingMode === 'wholesale' && !can('fabrics', 'wholesale') || Number(line.discountValue) > 0 && !can('fabrics', 'discount'))) return false;
       return true;

@@ -87,10 +87,10 @@ test('previously saved client material history remains readable and permits norm
   assert.equal(f.records[0].materialOperations.length, 1);
 });
 
-test('deleting legacy client work safely returns only its already-recorded debits once and preserves wages', async t => {
+test('deleting fully completed legacy client work is rejected without returning stock or changing wages', async t => {
   const f = workerMaterialsFixture(t), legacy = await legacyClientWork(f), done = await finish(f, legacy.work);
   const path = `${pathFor(f)}/${legacy.work._id}`, body = { version: done.data.__v, requestId: randomUUID() };
-  const removed = await request(path, body, 'DELETE'); assert.equal(removed.status, 200, JSON.stringify(removed));
-  assert.deepEqual(balance(f), [20, 20]); assert.equal(f.records[0].completions[0].earningAmount, 25);
-  const repeated = await request(path, body, 'DELETE'); assert.equal(repeated.status, 200); assert.deepEqual(balance(f), [20, 20]);
+  const removed = await request(path, body, 'DELETE'); assert.equal(removed.status, 409, JSON.stringify(removed)); assert.equal(removed.data.message, 'cannotCancelCompleted');
+  assert.deepEqual(balance(f), [18, 17]); assert.equal(f.records[0].completions[0].earningAmount, 25); assert.equal(f.records[0].deletedAt, undefined);
+  const repeated = await request(path, body, 'DELETE'); assert.equal(repeated.status, 409); assert.deepEqual(balance(f), [18, 17]);
 });

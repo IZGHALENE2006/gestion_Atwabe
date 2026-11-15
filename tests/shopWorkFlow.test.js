@@ -74,7 +74,7 @@ test('assignments are retryable, reject duplicates and conflicting retries, and 
 test('later stages block source increases, deletion and material cancellation; downstream quantities are fixed and deleting an assignment releases its slot', async t => {
  const f = fixture(t), machine = await complete(f.worker, await origin(f)); let finishing = await checked(url(f.finisher), selection(machine));
  const mutation = { version: machine.__v, requestId: randomUUID(), quantity: 1 };
- for (const [suffix, method] of [['/cancel', 'POST'], ['', 'DELETE'], ['/increases', 'POST']]) { const result = await request(url(f.worker) + '/' + machine._id + suffix, mutation, admin, method); assert.equal(result.status, 409); assert.equal(result.data.message, 'shopHasLaterStage'); }
+ for (const [suffix, method] of [['/cancel', 'POST'], ['', 'DELETE'], ['/increases', 'POST']]) { const result = await request(url(f.worker) + '/' + machine._id + suffix, mutation, admin, method); assert.equal(result.status, 409); assert.equal(result.data.message, suffix === '/increases' ? 'shopHasLaterStage' : 'cannotCancelCompleted'); }
  assert.equal((await request(url(f.finisher) + '/' + finishing._id + '/increases', { quantity: 1, version: finishing.__v, requestId: randomUUID() })).data.message, 'shopFlowFixedQuantity');
  finishing = await complete(f.finisher, finishing); let laundry = await checked(url(f.laundry), selection(machine, 'mesbanto'));
  assert.equal((await request(url(f.finisher) + '/' + finishing._id, { version: finishing.__v }, admin, 'DELETE')).data.message, 'shopHasLaterStage');
@@ -105,7 +105,8 @@ test('invalid section, garment, identifiers and wages are rejected; client and o
 test('stale material reservations and cancelled origin jobs cannot be transferred', async t => {
  const f = fixture(t); let machine = await complete(f.worker, await origin(f)); const saved = f.records.find(row => String(row._id) === machine._id); saved.materialStatus = 'pending';
  assert.equal((await request(url(f.finisher), selection(machine))).data.message, 'shopMachinePending'); saved.materialStatus = 'ready';
- const result = await request(url(f.worker) + '/' + machine._id + '/cancel', { version: machine.__v, requestId: randomUUID() }); assert.equal(result.status, 200); assert.equal((await options(f.finisher, 'finishing')).data.works.length, 0); assert.equal((await request(url(f.finisher), selection(machine))).status, 404);
+ const result = await request(url(f.worker) + '/' + machine._id + '/cancel', { version: machine.__v, requestId: randomUUID() }); assert.equal(result.status, 409); assert.equal(result.data.message, 'cannotCancelCompleted');
+ const pending = await origin(f); const cancelled = await request(url(f.worker) + '/' + pending._id + '/cancel', { version: pending.__v, requestId: randomUUID() }); assert.equal(cancelled.status, 200); assert.ok((await options(f.finisher, 'finishing')).data.works.every(row => row._id !== pending._id)); assert.equal((await request(url(f.finisher), selection(pending))).status, 404);
 });
 
 test('model invariants preserve production links and a database unique slot protects against concurrent API processes', async t => {

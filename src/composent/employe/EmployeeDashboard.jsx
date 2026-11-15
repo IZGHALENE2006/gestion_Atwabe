@@ -1,3 +1,4 @@
+import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import useSearchTarget from "../../hooks/useSearchTarget.js";
 import { Link } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
@@ -176,16 +177,16 @@ export const EmployeeDashboard = () => {
                       </td>
                       <td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">{emp.cin || t("employees.unavailable")}</td>
                       <td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">{emp.email}</td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right" data-row-actions-cell><RowActionsMenu menuKey="EmployeeDashboard">
                         <button type="button" data-edit-employee={emp._id} onClick={() => setEditingId(emp._id)} className="employee-edit-button"><IoPencil size={17}/>{t("employees.edit")}</button>
                         <EmployeePermissionsButton employee={emp}/><Link data-employee-payroll-link={emp._id} className="ep-salary-link" to={`/Home/employees/${emp._id}/payroll`}>{t("employeePayroll.title")}</Link>
                         <button 
                           onClick={() => { setPendingDelete({ id: emp._id }); setConfirmOpen(true); }}
                           className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all"
-                        >
+                         aria-label={t("employees.delete")}>
                           <IoTrashOutline size={18} />
                         </button>
-                      </td>
+                      </RowActionsMenu></td>
                     </tr>
                   ))}
                 </tbody>

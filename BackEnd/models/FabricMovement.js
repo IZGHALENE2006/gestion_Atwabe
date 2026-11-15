@@ -9,6 +9,8 @@ const saleSchema = new mongoose.Schema({
   discountType: { type: String, required: true, enum: ['percent', 'amount'] },
   discountValue: { type: Number, required: true, min: 0, max: 1000000000000 },
   discountAmount: { type: Number, required: true, min: 0, max: 1000000000000 },
+  lineDiscountAmount: { type: Number, min: 0, max: 1000000000000, default: undefined },
+  invoiceDiscountAmount: { type: Number, min: 0, max: 1000000000000, default: undefined },
   total: { type: Number, required: true, min: 0, max: 1000000000000 },
   purchaseUnitPrice: { type: Number, min: 0, max: FABRIC_LIMITS.pricePerMeter },
   costAmount: { type: Number, min: 0, max: 1000000000000 },
@@ -27,6 +29,9 @@ export const fabricMovementSchema = new mongoose.Schema({
   colorId: { type: mongoose.Schema.Types.ObjectId, required: true },
   pieceId: { type: mongoose.Schema.Types.ObjectId, required: true },
   requestId: { type: String, required: true },
+  reductionBatch: { type: new mongoose.Schema({ requestId: { type: String, required: true }, fingerprint: { type: String, required: true }, size: { type: Number, required: true, min: 1, max: FABRIC_LIMITS.pieces, validate: Number.isSafeInteger } }, { _id: false }), default: undefined },
+  createdByName: { type: String, maxlength: 120, default: undefined },
+  createdByRole: { type: String, enum: ['admin', 'Employe'], default: undefined },
   type: { type: String, required: true, maxlength: FABRIC_LIMITS.text },
   reference: { type: String, default: "", maxlength: FABRIC_LIMITS.text },
   color: { type: String, required: true, maxlength: FABRIC_LIMITS.text },
@@ -42,5 +47,6 @@ export const fabricMovementSchema = new mongoose.Schema({
 const archiveSchema = fabricMovementSchema.clone();
 archiveSchema.index({ idAdmin: 1, occurredAt: -1, _id: -1 });
 archiveSchema.index({ idAdmin: 1, barcode: 1, occurredAt: -1 });
+archiveSchema.index({ idAdmin: 1, fabricId: 1, "reductionBatch.requestId": 1 });
 archiveSchema.index({ idAdmin: 1, fabricId: 1, requestId: 1 }, { unique: true });
 export default mongoose.model("FabricMovement", archiveSchema);

@@ -1,7 +1,7 @@
 import { createFabricInvoice, listFabricInvoices, resumeFabricInvoice, payFabricInvoice, fabricInvoiceCustomers } from '../controlles/FabricInvoices.js';
 import express from "express";
 import { auth } from "../middleware/auth.js";
-import { listFabrics, addFabric, updateFabric, deleteFabric, deleteFabricColor, deleteFabricPiece, reduceFabricPiece, listFabricMovements, fabricWriteAccess, getFabricPhoto, sellFabricPiece, listFabricSaleClients, listFabricProfits } from "../controlles/Fabrics.js";
+import { listFabrics, addFabric, updateFabric, deleteFabric, deleteFabricColor, deleteFabricPiece, reduceFabricPiece, reduceFabricPieces, listFabricMovements, fabricWriteAccess, getFabricPhoto, sellFabricPiece, listFabricSaleClients, listFabricProfits } from "../controlles/Fabrics.js";
 
 import { uploadFabricPhoto } from "../middleware/fabricUpload.js";
 
@@ -22,6 +22,7 @@ router.put("/:id", fabricWriteAccess(["update", "addColor", "addPiece"]), upload
 router.delete("/:id", deleteFabric);
 router.delete("/:id/colors/:colorId", deleteFabricColor);
 router.delete("/:id/colors/:colorId/pieces/:pieceId", deleteFabricPiece);
+router.post("/:id/reductions", reduceFabricPieces);
 router.post("/:id/colors/:colorId/pieces/:pieceId/reductions", reduceFabricPiece);
 router.post("/:id/colors/:colorId/pieces/:pieceId/sales", sellFabricPiece);
 export default router;

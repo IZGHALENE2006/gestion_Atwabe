@@ -1,5 +1,7 @@
 import { ensureSfifaStyleBalances, changeSfifaTypeBalance } from './sfifaStyleBalances.js';
 import Fabric from '../models/Fabric.js';
+import { resumeTrouserStock } from './workerTrouserStock.js';
+import { trouserStockRows } from '../../shared/workerShopTrousers.js';
 import SfifaStock from '../models/SfifaStock.js';
 import WorkerWork from '../models/WorkerWork.js';
 import { FABRIC_LIMITS } from '../../shared/fabrics.js';
@@ -25,6 +27,7 @@ export function archiveWorkerAssignment(work, actor) {
 function groupsFor(rows) {
   const groups = new Map();
   for (const row of rows) for (const kind of ['fabric', 'sfifa']) {
+    if (kind === 'fabric' && row.fabricStockDeducted === false) continue;
     const id = row[kind === 'fabric' ? 'fabricId' : 'sfifaId'], key = `${kind}:${id}`;
     if (!groups.has(key)) groups.set(key, { kind, id, rows: [] });
     groups.get(key).rows.push(row);
@@ -40,10 +43,12 @@ export async function resolveWorkerMaterials(input, details, idAdmin) {
   const result = input.map((row, index) => {
     const fabric = fabrics.get(row.fabricId), color = fabric?.colors.find(color => same(color._id, row.colorId)), piece = color?.pieces.find(piece => same(piece._id, row.pieceId));
     const sfifa = sfifas.get(row.sfifaId), variant = sfifa?.variants?.find(variant => same(variant._id, row.variantId));
-    if (!piece || (!variant && !same(sfifa?._id, row.variantId))) throw fail('materialStockUnavailable');
+    const fabricOnlyReference = row.fabricStockDeducted === false && details.shopDjellaba && details.category === 'machine' && details.workType === 'shop' && details.garmentType === 'djellaba';
+    if (row.fabricStockDeducted === false && !fabricOnlyReference) throw fail('invalidMaterialSection', 400);
+    if (!color || (!fabricOnlyReference && !piece) || (!variant && !same(sfifa?._id, row.variantId))) throw fail('materialStockUnavailable');
     const styles = sfifaStockStyles(sfifa, variant?.code);
-    if (styles.length ? !styles.includes(row.sfifaStyle) : row.sfifaStyle !== undefined) throw Object.assign(fail('invalidWork', 400), { fields: { [`materials.${index}.sfifaStyle`]: 'chooseSfifaStyle' } });
-    return { ...row, sfifaMeters: WORKER_SFIFA_METERS, fabricType: fabric.type, fabricColor: color.name, fabricReference: fabric.reference || '', pieceBarcode: piece.barcode, sfifaWidth: sfifa.width, sfifaFamily: sfifa.family, ...(variant ? { sfifaCode: variant.code } : {}) };
+    if (styles.length ? !styles.includes(row.sfifaStyle) : row.sfifaStyle !== undefined) throw Object.assign(fail('invalidWork', 400), { fields: { [details.shopDjellaba ? 'shopDjellaba.sfifaStyle' : `materials.${index}.sfifaStyle`]: 'chooseSfifaStyle' } });
+    return { ...row, sfifaMeters: WORKER_SFIFA_METERS, fabricType: fabric.type, fabricColor: color.name, fabricReference: fabric.reference || '', ...(piece ? { pieceBarcode: piece.barcode } : {}), sfifaWidth: sfifa.width, sfifaFamily: sfifa.family, ...(variant ? { sfifaCode: variant.code } : {}) };
   });
   for (const group of groupsFor(result)) {
     const document = group.kind === 'fabric' ? fabrics.get(String(group.id)) : sfifas.get(String(group.id));
@@ -106,12 +111,14 @@ function undoMaterialAddition(work, operation) {
   if (!event) throw new Error('Missing material addition');
   work.quantity -= event.quantity;
   work.additions = work.additions.filter(event => event.requestId !== operation.requestId);
+  if (work.shopDjellaba) work.shopDjellaba.colorIds = work.shopDjellaba.colorIds.filter(id => !lineIds.has(id));
   if (work.tailoring) {
     work.tailoring.lineIds = work.tailoring.lineIds.filter(id => !lineIds.has(id));
     work.tailoring.items = work.tailoring.items.filter(item => !lineIds.has(item.lineId));
   }
 }
 export async function resumeWorkerMaterials(work) {
+  if (work.trouserStockOperations?.length) return resumeTrouserStock(work, archiveWorkerAssignment);
   try {
     if (work.materialStatus === 'returning') {
       for (const operation of work.materialOperations || []) if (operation.state !== 'failed') {
@@ -148,6 +155,6 @@ export async function protectWorkerMaterialDeletion(document, removedIds, kind) 
   const debits = (document.workerMaterialDebits || []).filter(entry => !entry.returnedAt);
   if (!debits.length) return;
   const works = await WorkerWork.find({ idAdmin: document.idAdmin, _id: { $in: debits.map(entry => entry.workId) } }).lean();
-  const protectedWork = works.some(work => !work.deletedAt && workerMaterialRows(work).some(row => same(row[kind === 'fabric' ? 'fabricId' : 'sfifaId'], document._id) && (!removedIds || removedIds.has(String(row[kind === 'fabric' ? 'pieceId' : 'variantId'])))));
+  const protectedWork = works.some(work => !work.deletedAt && [...workerMaterialRows(work), ...(kind === 'fabric' ? trouserStockRows(work).map(row => ({ ...row, fabricId: work.shopTrouser.fabricId })) : [])].some(row => same(row[kind === 'fabric' ? 'fabricId' : 'sfifaId'], document._id) && (!removedIds || removedIds.has(String(row[kind === 'fabric' ? 'pieceId' : 'variantId'])))));
   if (protectedWork) throw fail('workerMaterialsInUse');
 }

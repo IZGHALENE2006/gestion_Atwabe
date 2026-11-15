@@ -1,3 +1,4 @@
+import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import { productBatches, batchRowKey, stockPriceRange } from '../../../shared/productBatches.js';
 import { apiErrorMessage } from "../../i18n/apiErrors.js";
@@ -220,7 +221,7 @@ export default function AddInvoice({ documentType = "invoice", onCancel, onSaved
                         </td>
                         <td className="p-4 whitespace-nowrap font-semibold">{lineTotals ? money(lineTotals.totalHT) : "—"}</td>
                         <td className="p-4 whitespace-nowrap font-black text-primary-600">{lineTotals ? money(lineTotals.totalTTC) : "—"}</td>
-                        <td className="p-4"><button type="button" aria-label={`${t("invoiceCreate.removeProduct")} — ${line.name}`} onClick={() => setLines((current) => current.filter((item) => batchRowKey(item) !== batchRowKey(line)))} className="p-3 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"><IoTrashOutline size={20} /></button></td>
+                        <td className="p-4" data-row-actions-cell><RowActionsMenu menuKey="AddInvoice"><button type="button" aria-label={`${t("invoiceCreate.removeProduct")} — ${line.name}`} onClick={() => setLines((current) => current.filter((item) => batchRowKey(item) !== batchRowKey(line)))} className="p-3 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"><IoTrashOutline size={20} /></button></RowActionsMenu></td>
                       </tr>
                     );
                   })}

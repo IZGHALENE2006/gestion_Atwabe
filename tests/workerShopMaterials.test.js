@@ -103,11 +103,18 @@ test('shop pieces can choose different fabric stocks, coupons and sfifa widths',
   assert.equal(f.fabrics[1].colors[0].pieces[1].meters, 9); assert.equal(f.stocks[1].quantity, 15);
 });
 
-for (const completed of [1, 2]) test(`cancelling shop work after ${completed} completed pieces returns all materials and preserves earned wages`, async t => {
+for (const completed of [1, 2]) test(`shop cancellation after ${completed} completed pieces respects the full-completion lock and preserves wages`, async t => {
   const f = workerMaterialsFixture(t), assigned = await assign(f, assignment(f));
   const done = await complete(f, assigned.data, completed); assert.equal(done.status, 201);
   const body = { version: done.data.__v, requestId: randomUUID() };
   const results = await Promise.all([request(`${pathFor(f)}/${done.data._id}/cancel`, body), request(`${pathFor(f)}/${done.data._id}/cancel`, body)]);
+  if (completed === 2) {
+    assert.deepEqual(results.map(result => result.status), [409, 409]);
+    assert.ok(results.every(result => result.data.message === 'cannotCancelCompleted'));
+    assert.deepEqual(balance(f), [14.5, 14]); assert.equal(f.records[0].cancelledAt, undefined); assert.equal(f.records[0].deletedAt, undefined);
+    assert.equal(f.records[0].completions[0].earningAmount, 50);
+    const payroll = await request(`/tailoring-workers/${f.worker._id}/payroll`); assert.equal(payroll.data.totals.earned, 50); return;
+  }
   assert.deepEqual(results.map(result => result.status), [200, 200]); assert.deepEqual(balance(f), [20, 20]);
   assert.equal(f.records[0].completedQuantity, completed); assert.equal(f.records[0].completions[0].earningAmount, completed * 25);
   const account = await request(`/tailoring-workers/${f.worker._id}/payroll`); assert.equal(account.status, 200);
@@ -116,7 +123,7 @@ for (const completed of [1, 2]) test(`cancelling shop work after ${completed} co
   assert.equal((await complete(f, done.data)).status, 409);
 });
 
-test('shop increases consume the added pieces only, keep their wage and return every material on cancellation', async t => {
+test('shop increases consume added pieces only and cannot be cancelled after full completion', async t => {
   const f = workerMaterialsFixture(t), first = await assign(f, assignment(f));
   const body = { quantity: 1, materials: [f.selection(lineId(), 1.125)], unitWage: 999, requestId: randomUUID(), version: first.data.__v };
   const path = `${pathFor(f)}/${first.data._id}/increases`, added = await request(path, body);
@@ -125,7 +132,7 @@ test('shop increases consume the added pieces only, keep their wage and return e
   assert.equal((await request(path, body)).status, 200); assert.deepEqual(balance(f), [13.375, 11]);
   assert.equal((await request(path, { ...body, materials: [{ ...body.materials[0], meters: 2 }] })).status, 409);
   const done = await complete(f, added.data, 3); assert.equal(done.status, 201);
-  assert.equal((await cancel(f, done.data)).status, 200); assert.deepEqual(balance(f), [20, 20]);
+  const rejected = await cancel(f, done.data); assert.equal(rejected.status, 409); assert.equal(rejected.data.message, "cannotCancelCompleted"); assert.deepEqual(balance(f), [13.375, 11]);
   assert.equal(f.records[0].completions[0].earningAmount, 75);
 });
 
@@ -201,12 +208,12 @@ test('shop stock selectors and cancellations respect live worker permissions and
   assert.equal(String(f.records[0].materialCancellation.createdBy), employee); assert.deepEqual(balance(f), [20, 20]);
 });
 
-test('completed shop work keeps its original stock entries available for a later full return', async t => {
+test('completed shop work retains consumed stock and rejects cancellation', async t => {
   const f = workerMaterialsFixture(t), assigned = await assign(f, assignment(f)), done = await complete(f, assigned.data, 2);
   const fabric = f.fabrics[0], stock = f.stocks[0];
   assert.equal((await request(`/fabrics/${fabric._id}/colors/${fabric.colors[0]._id}/pieces/${fabric.colors[0].pieces[0]._id}`, { version: fabric.__v }, 'DELETE')).data.message, 'workerMaterialsInUse');
   assert.equal((await request(`/sfifa-stock/${stock._id}/variants/${stock.variants[0]._id}`, { version: stock.__v }, 'DELETE')).data.message, 'workerMaterialsInUse');
-  assert.equal((await cancel(f, done.data)).status, 200); assert.deepEqual(balance(f), [20, 20]);
+  assert.equal((await cancel(f, done.data)).status, 409); assert.deepEqual(balance(f), [14.5, 14]);
 });
 
 test('piece-count changes preserve existing selections and bound newly generated lines', () => {

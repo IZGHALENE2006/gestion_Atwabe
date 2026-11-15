@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { IoAddOutline, IoCloseOutline, IoTrashOutline } from 'react-icons/io5';
 import { calculateFabricSale, normalizeFabricNumber } from '../../../shared/fabricSales.js';
 import { calculateFabricReduction } from '../../../shared/fabrics.js';
-import { validateFabricInvoice } from '../../../shared/fabricInvoices.js';
+import { applyFabricInvoiceDiscount, validateFabricInvoice, validateFabricInvoiceDiscount } from '../../../shared/fabricInvoices.js';
 import { createFabricInvoice, loadInvoiceCreditCustomers, fabricInvoiceError } from './fabricInvoicesApi.js';
 import { loadFabricSaleClients } from './fabricsApi.js';
 import useEmployeeOperations from '../../hooks/useEmployeeOperations.js';
@@ -13,6 +13,7 @@ export default function FabricInvoiceForm({ fabrics, permissions, token, onClose
   const { t, i18n } = useTranslation(), credit = useEmployeeOperations('credit');
   const dialog = useRef(null), busyRef = useRef(false), request = useRef(null);
   const [lines, setLines] = useState([newLine()]), [mode, setMode] = useState('paid'), [paid, setPaid] = useState('0');
+  const [invoiceDiscount, setInvoiceDiscount] = useState({ type: 'percent', value: '' });
   const [customerId, setCustomerId] = useState(''), [isNew, setIsNew] = useState(false), [customer, setCustomer] = useState({ name: '', phone: '', email: '' });
   const [clients, setClients] = useState([]), [accounts, setAccounts] = useState({ loading: true, rows: [] }), [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [pending, setPending] = useState(false);
@@ -32,14 +33,19 @@ export default function FabricInvoiceForm({ fabrics, permissions, token, onClose
     try { if (piece) { calculateFabricReduction(line.meters, piece.meters); sale = calculateFabricSale({ ...line, discountValue: line.discountValue === '' ? 0 : line.discountValue }, fabric); } } catch (failure) { invalid = failure.message; }
     return { ...line, fabric, color, piece, sale, invalid, expectedUnitPrice: fabric?.[line.pricingMode === 'wholesale' ? 'wholesalePricePerMeter' : 'salePricePerMeter'] };
   });
-  const valid = priced.every(line => line.sale), total = valid ? priced.reduce((sum, line) => sum + Math.round(line.sale.total * 100), 0) / 100 : null;
+  let totals = null, discountError = '';
+  try {
+    const discount = permissions.discount ? validateFabricInvoiceDiscount(invoiceDiscount) : undefined;
+    if (priced.every(line => line.sale)) totals = applyFabricInvoiceDiscount(priced.map(line => line.sale), discount);
+  } catch (failure) { discountError = failure.message; }
+  const valid = Boolean(totals), total = totals?.total ?? null;
   const paidValue = mode === 'paid' ? total : Number(normalizeFabricNumber(paid)), remaining = total === null || !Number.isFinite(paidValue) ? null : (Math.round(total * 100) - Math.round(paidValue * 100)) / 100;
   const close = () => { if (!busyRef.current) { dialog.current.close(); onClose(); } };
   const submit = async event => {
     event.preventDefault(); if (busyRef.current) return; let input;
     try {
-      if (!valid) throw new Error(priced.find(line => line.invalid)?.invalid || 'invalidInvoice');
-      input = validateFabricInvoice({ requestId: request.current?.id || crypto.randomUUID(), lines: priced, paymentMode: mode, amountPaid: paid, ...(mode === 'credit' ? isNew ? { newCustomer: customer } : { customerId } : { clientName: customer.name, phone: customer.phone }) });
+      if (!valid) throw new Error(discountError || priced.find(line => line.invalid)?.invalid || 'invalidInvoice');
+      input = validateFabricInvoice({ requestId: request.current?.id || crypto.randomUUID(), lines: priced, ...(permissions.discount ? { invoiceDiscount } : {}), paymentMode: mode, amountPaid: paid, ...(mode === 'credit' ? isNew ? { newCustomer: customer } : { customerId } : { clientName: customer.name, phone: customer.phone }) });
       if (remaining < 0) throw new Error('invalidInvoicePayment');
     } catch (failure) { setError(fabricInvoiceError(failure, t)); return; }
     const hash = JSON.stringify({ ...input, requestId: undefined });
@@ -68,11 +74,20 @@ export default function FabricInvoiceForm({ fabrics, permissions, token, onClose
           <div className="fi-line-amount"><small>{t('fabricInvoices.price')}: {Number.isFinite(line.expectedUnitPrice) ? money(line.expectedUnitPrice) : '—'}</small><strong>{t('fabricInvoices.amount')}: {line.sale ? money(line.sale.total) : '—'} {t('fesla.currency')}</strong></div>
         </div>{line.invalid && line.meters && <p className="fi-error">{fabricInvoiceError(new Error(line.invalid), t)}</p>}
       </article>)}<button type="button" className="fi-secondary" data-add-invoice-line disabled={lines.length >= 100} onClick={() => setLines(current => [...current, newLine()])}><IoAddOutline />{t('fabricInvoices.addLine')}</button></section>
+      {permissions.discount && <section className="fi-section fi-invoice-discount" aria-labelledby="fi-invoice-discount-title">
+        <div><h3 id="fi-invoice-discount-title">{t('fabricInvoices.invoiceDiscount')}</h3><p id="fi-invoice-discount-hint">{t('fabricInvoices.invoiceDiscountHint')}</p></div>
+        <div className="fi-grid">
+          {field(t('fabricInvoices.discountType'), 'fi-invoice-discount-type', <select id="fi-invoice-discount-type" value={invoiceDiscount.type} onChange={event => { setInvoiceDiscount({ type: event.target.value, value: '' }); setError(''); }}><option value="percent">{t('fabricInvoices.percentDiscount')}</option><option value="amount">{t('fabricInvoices.amountDiscount')}</option></select>)}
+          {field(t('fabricInvoices.discountValue'), 'fi-invoice-discount-value', <input id="fi-invoice-discount-value" inputMode="decimal" dir="ltr" placeholder="0" maxLength={16} value={invoiceDiscount.value} aria-describedby="fi-invoice-discount-hint" aria-invalid={Boolean(discountError)} onChange={event => { setInvoiceDiscount(current => ({ ...current, value: event.target.value })); setError(''); }} />)}
+        </div>
+        {discountError && <p role="alert" className="fi-error">{fabricInvoiceError(new Error(discountError), t)}</p>}
+      </section>}
       <section className="fi-section"><h3>{t('fabricInvoices.payment')}</h3><div className="fi-mode-grid">{['paid', ...(permissions.creditSale && credit.addDebt ? ['credit'] : [])].map(value => <label key={value} className={mode === value ? 'is-selected' : ''}><input type="radio" name="fi-payment-mode" value={value} checked={mode === value} onChange={() => { setMode(value); setError(''); }} /><span><strong>{t('fabricInvoices.' + value + 'Mode')}</strong><small>{t('fabricInvoices.' + value + 'Hint')}</small></span></label>)}</div>
         {mode === 'paid' ? <div className="fi-grid">{clients.length > 0 && field(t('fabricInvoices.savedClient'), 'fi-saved-client', <select id="fi-saved-client" defaultValue="" onChange={event => { const row = clients.find(row => row._id === event.target.value); setCustomer(current => ({ ...current, name: row?.name || '' })); }}><option value="">{t('fabricInvoices.optional')}</option>{clients.map(row => <option key={row._id} value={row._id}>{row.name}</option>)}</select>)}{field(t('fabricInvoices.name') + ' · ' + t('fabricInvoices.optional'), 'fi-client-name', <input id="fi-client-name" value={customer.name} maxLength={160} onChange={event => setCustomer(current => ({ ...current, name: event.target.value }))} />)}{field(t('fabricInvoices.phone') + ' · ' + t('fabricInvoices.optional'), 'fi-client-phone', <input id="fi-client-phone" value={customer.phone} maxLength={40} dir="ltr" onChange={event => setCustomer(current => ({ ...current, phone: event.target.value }))} />)}</div>
           : <div className="fi-credit-fields">{credit.add && <button type="button" className="fi-secondary" onClick={() => setIsNew(value => !value)}>{t('fabricInvoices.' + (isNew ? 'existingCustomer' : 'newCustomer'))}</button>}{!isNew ? field(t('fabricInvoices.creditCustomer'), 'fi-credit-customer', <select id="fi-credit-customer" value={customerId} disabled={accounts.loading || accounts.error} onChange={event => setCustomerId(event.target.value)}><option value="">{t('fabricInvoices.chooseCustomer')}</option>{accounts.rows.map(row => <option key={row._id} value={row._id}>{row.name}{row.phone ? ' · ' + row.phone : ''}</option>)}</select>) : <div className="fi-grid">{['name', 'phone', 'email'].map(key => field(t('fabricInvoices.' + key) + (key === 'name' ? ' *' : ''), 'fi-new-' + key, <input key={key} id={'fi-new-' + key} value={customer[key]} maxLength={key === 'email' ? 254 : key === 'name' ? 160 : 40} onChange={event => setCustomer(current => ({ ...current, [key]: event.target.value }))} />))}</div>}{accounts.error && <p className="fi-error">{t('fabricInvoices.errors.customersFailed')} <button type="button" onClick={() => { setAccounts(current => ({ ...current, loading: true, error: false })); setAttempt(value => value + 1); }}>{t('fabrics.retry')}</button></p>}{field(t('fabricInvoices.initialPaid'), 'fi-paid', <input id="fi-paid" value={paid} disabled={!credit.payment} inputMode="decimal" maxLength={12} dir="ltr" onChange={event => setPaid(event.target.value)} />)}</div>}
       </section>
-      <div className="fi-totals">{[['total', total], ['paid', paidValue], ['remaining', remaining]].map(([key, value]) => <div key={key}><span>{t('fabricInvoices.' + key)}</span><strong data-invoice-total={key} data-value={value ?? ''}>{value === null || !Number.isFinite(value) ? '—' : money(value)} {t('fesla.currency')}</strong></div>)}</div>
+      {totals && totals.discountAmount > 0 && <dl className="fi-discount-summary" aria-live="polite">{[['subtotal', totals.subtotal], ['lineDiscountAmount', totals.lineDiscountAmount], ['invoiceDiscountAmount', totals.invoiceDiscountAmount]].map(([key, value]) => <div key={key}><dt>{t('fabricInvoices.' + key)}</dt><dd data-invoice-discount-summary={key} data-value={value}><bdi>{key === 'subtotal' ? '' : '−'}{money(value)} {t('fesla.currency')}</bdi></dd></div>)}</dl>}
+      <div className="fi-totals" aria-live="polite">{[['total', total], ['paid', paidValue], ['remaining', remaining]].map(([key, value]) => <div key={key}><span>{t('fabricInvoices.' + key)}</span><strong data-invoice-total={key} data-value={value ?? ''}>{value === null || !Number.isFinite(value) ? '—' : money(value)} {t('fesla.currency')}</strong></div>)}</div>
       {error && <p role="alert" className="fi-error">{error}</p>}
       <footer><button type="button" className="fi-secondary" onClick={onReload}>{t('fabrics.reloadStock')}</button><button type="button" className="fi-secondary" onClick={close}>{t('dialog.close')}</button><button type="submit" data-confirm-fabric-invoice className="fi-primary" disabled={!valid}>{t(busy ? 'common.loading' : 'fabricInvoices.confirm')}</button></footer>
     </fieldset></form>{pending && <div className="fi-pending-retry"><p role="alert" className="fi-error">{error}</p><button type="button" className="fi-primary" data-retry-fabric-invoice disabled={busy} onClick={() => persist(request.current.input)}>{t(busy ? 'common.loading' : 'fabricInvoices.resume')}</button></div>}

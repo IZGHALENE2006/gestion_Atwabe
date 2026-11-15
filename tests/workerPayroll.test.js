@@ -77,7 +77,7 @@ test("linked client sfifa earns wages, releases its order on completion and can 
   ledger = await account(f); assert.equal(ledger.totals.earned, 30); assert.equal(ledger.entries.length, 2);
   assert.equal((await request(f.worker, "/payments", payment({ amount: 10 }))).status, 201);
   const deleted = await request(f.worker, `/work/${work._id}`, { version: last.data.__v, requestId: randomUUID() }, actor, "DELETE");
-  assert.equal(deleted.status, 200);
+  assert.equal(deleted.status, 409); assert.equal(deleted.data.message, "cannotCancelCompleted");
   ledger = await account(f); assert.deepEqual([ledger.totals.earned, ledger.totals.paid, ledger.totals.due], [30, 10, 20]);
   assert.equal(f.stocks[0].receipts.length, 0); assert.equal(f.stocks[0].quantity, 0);
 });

@@ -55,7 +55,7 @@ const oid = value => new mongoose.Types.ObjectId(value);
 function workQuery(query) {
   const match = /^SW-([a-f\d]{24})(?:-(\d+))?$/i.exec(query);
   return match ? { $or: [{ _id: oid(match[1]) }, { 'shopFlow.originId': oid(match[1]) }] } : searchConditions(query,
-    ['productName', 'tailoring.clientName', 'tailoring.phone', 'tailoring.barcode', 'tailoring.items.fabricType', 'tailoring.items.fabricColor', 'shopTrouser.fabricType', 'shopFlow.originWorkerName', 'shopFlow.sourceWorkerName', 'materialOperations.rows.fabricType', 'materialOperations.rows.fabricColor'],
+    ['productName', 'tailoring.clientName', 'tailoring.phone', 'tailoring.barcode', 'tailoring.items.fabricType', 'tailoring.items.fabricColor', 'shopTrouser.fabricType', 'shopTrouser.colors.name', 'shopTrouser.colors.number', 'shopFlow.originWorkerName', 'shopFlow.sourceWorkerName', 'materialOperations.rows.fabricType', 'materialOperations.rows.fabricColor'],
     { garmentType: 'garmentType', 'tailoring.garmentType': 'garmentType', category: 'category', 'sfifa.width': 'width' });
 }
 export async function searchApplication({ owner, actorId, role, user, query, group = '', limit = 6 }) {

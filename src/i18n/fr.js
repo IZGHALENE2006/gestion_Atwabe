@@ -540,6 +540,11 @@ export default {
     "deleteFailed": "Échec de la suppression"
   },
   "creditDetails": {
+    "lineSource": "Source du crédit",
+    "lineFilters": { "all": "Tout", "invoices": "Factures", "regular": "Crédit ordinaire" },
+    "invoiceSource": "Facture", "regularSource": "Crédit ordinaire",
+    "filteredLines": "Affichage de {{shown}} sur {{total}} lignes",
+    "noFilteredLines": "Aucune ligne ne correspond à ce filtre.",
     "loadingCreditDetails": "Chargement des détails du crédit…",
     "clientNotFound": "Client introuvable",
     "backToList": "Retour à la liste",

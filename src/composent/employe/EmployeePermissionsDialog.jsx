@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
@@ -24,10 +25,10 @@ function EmployeePermissionsDialog({ employee, onClose }) {
     } catch { setError("saveFailed"); }
     finally { savingRef.current = false; setSaving(false); }
   };
-  return <dialog ref={dialogRef} dir={i18n.dir()} className="employee-permissions-dialog" aria-labelledby="employee-permissions-title" onCancel={event => { event.preventDefault(); close(); }}>
+  return createPortal(<dialog ref={dialogRef} dir={i18n.dir()} className="employee-permissions-dialog" aria-labelledby="employee-permissions-title" onCancel={event => { event.preventDefault(); close(); }}>
     <header><div><h2 id="employee-permissions-title"><IoShieldCheckmarkOutline/>{t("employeePermissions.title")}</h2><p dir="auto">{employee.name}</p></div><button type="button" data-close-employee-permissions disabled={saving} onClick={close} aria-label={t("common.cancel")}><IoCloseOutline size={24}/></button></header>
     <form onSubmit={save}><div className="employee-permissions-body"><EmployeePermissionsFields value={value} onChange={setValue} disabled={saving}/><p className="employee-permissions-note">{t("employeePermissions.appliesHint")}</p>{error && <p role="alert">{t(`employeePermissions.${error}`)}</p>}</div><footer><button type="button" disabled={saving} onClick={close}>{t("common.cancel")}</button><button type="submit" data-save-employee-permissions disabled={saving}>{t(saving ? "common.loading" : "employeePermissions.save")}</button></footer></form>
-  </dialog>;
+  </dialog>, document.body);
 }
 
 export default function EmployeePermissionsButton({ employee }) {

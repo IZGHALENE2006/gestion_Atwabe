@@ -493,6 +493,11 @@ const resources = {
         deleteFailed: "فشل الحذف",
       },
       creditDetails: {
+        lineSource: 'مصدر الدين',
+        lineFilters: { all: 'الكل', invoices: 'الفواتير', regular: 'الكريدي العادي' },
+        invoiceSource: 'فاتورة', regularSource: 'كريدي عادي',
+        filteredLines: 'عرض {{shown}} من {{total}} سطر',
+        noFilteredLines: 'لا توجد أسطر مطابقة لهذا المرشح.',
         loadingCreditDetails: "جاري تحميل تفاصيل الدين...",
         clientNotFound: "الزبون غير موجود",
         backToList: "الرجوع إلى اللائحة",

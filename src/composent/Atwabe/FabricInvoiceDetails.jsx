@@ -1,9 +1,10 @@
+import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
 import { IoCloseOutline, IoDownloadOutline, IoPrintOutline } from 'react-icons/io5';
-import { fabricInvoiceLineName } from '../../../shared/fabricInvoices.js';
+import { fabricInvoiceDocument, fabricInvoicePDFData } from '../../../shared/fabricInvoiceDocuments.js';
 import { documentPrintFonts } from '../../utils/documentFonts.js';
 import { useInvoiceSettings } from '../Facture/useInvoiceSettings.js';
 import { createFacturePDF } from '../Facture/invoicePDF.js';
@@ -13,10 +14,6 @@ import useEmployeeOperations from '../../hooks/useEmployeeOperations.js';
 import printStyle from '../Usercridit/creditPrint.css?inline';
 import { payFabricInvoice, fabricInvoiceError } from './fabricInvoicesApi.js';
 
-function fabricInvoiceDocument(invoice) {
-  return { kind: 'invoice', titleKey: 'fabricInvoices.title', currentBalance: true, reference: invoice.reference, date: invoice.date, actor: invoice.actor, customer: invoice.customer, total: invoice.total, paid: invoice.paidAmount, remaining: invoice.remaining,
-    lines: invoice.lines.map((line, index) => ({ id: String(index), nom: fabricInvoiceLineName(line), unit: 'meter', Quantite: line.meters, prix: line.unitPrice, discountAmount: line.discountAmount, lineTotal: line.total, Date: invoice.date })) };
-}
 export default function FabricInvoiceDetails({ invoice, permissions, token, onClose, onChanged }) {
   const { t, i18n } = useTranslation(), credit = useEmployeeOperations('credit');
   const dialog = useRef(null), paper = useRef(null), busyRef = useRef(false), request = useRef(null);
@@ -31,9 +28,7 @@ export default function FabricInvoiceDetails({ invoice, permissions, token, onCl
   const pdf = async () => {
     setExporting(true); setError('');
     try {
-      const data = { _id: invoice.reference, invoiceOrigin: 'fabric', DateFacture: invoice.date, nameEmp: invoice.actor.name, clientName: invoice.customer.name, clientPhone: invoice.customer.phone,
-        Product: invoice.lines.map(line => ({ name: fabricInvoiceLineName(line), code: line.barcode, quantite: line.meters, unit: 'meter', price: line.unitPrice, TotalPrix: line.total, subtotal: line.subtotal, discountType: line.discountType, discountValue: line.discountValue, discountAmount: line.discountAmount })),
-        TotalQauntite: invoice.lines.reduce((sum, line) => sum + line.meters, 0), TotalPrix: invoice.total, totalOrder: invoice.total, subtotal: invoice.subtotal, discountAmount: invoice.discountAmount, lineDiscountAmount: invoice.discountAmount, orderDiscountAmount: 0, amountPaid: invoice.paidAmount, remainingAmount: invoice.remaining, PrixReture: 0 };
+      const data = fabricInvoicePDFData(invoice);
       const document = await createFacturePDF(data, settings); document.save(invoice.reference + '.pdf');
     } catch { setError(t('invoiceSettings.printFailed')); } finally { setExporting(false); }
   };
@@ -53,7 +48,7 @@ export default function FabricInvoiceDetails({ invoice, permissions, token, onCl
       <div className="fi-document-actions">{permissions.invoicePrint && <><button type="button" className="fi-secondary" disabled={loading || settingsError || exporting} onClick={pdf}><IoDownloadOutline />{t('fabricInvoices.download')}</button><button type="button" className="fi-primary" data-print-fabric-invoice disabled={loading || settingsError} onClick={print}><IoPrintOutline />{t('fabricInvoices.print')}</button></>}{invoice.creditUserId && credit.details && <Link className="fi-secondary" to={'/Home/cridit/UserCreditDetails/' + invoice.creditUserId}>{t('fabricInvoices.creditLink')}</Link>}</div>
       {loading && <p role="status">{t('common.loading')}</p>}{settingsError && <p role="alert">{t('invoiceSettings.loadFailed')} <button type="button" onClick={retry}>{t('fabrics.retry')}</button></p>}
       {!loading && !settingsError && <div className="fi-preview"><CreditDocumentPaper document={fabricInvoiceDocument(invoice)} settings={settings} paperRef={paper} /></div>}
-      <section className="fi-payment-history"><h3>{t('fabricInvoices.payments')}</h3>{!invoice.payments.length ? <p>{t('fabricInvoices.noPayments')}</p> : <div className="fi-table-scroll"><table><thead><tr>{['date', 'paid', 'seller', 'actions'].map(key => <th key={key}>{t('fabricInvoices.' + key)}</th>)}</tr></thead><tbody>{invoice.payments.map(payment => <tr key={payment.id}><td>{date(payment.Date)}</td><td><bdi>{money(payment.amount)}</bdi></td><td>{payment.actor?.name || '—'}</td><td>{permissions.invoicePrint && <button type="button" className="fi-secondary" onClick={() => setReceipt(payment.document)}>{t('fabricInvoices.print')}</button>}</td></tr>)}</tbody></table></div>}</section>
+      <section className="fi-payment-history"><h3>{t('fabricInvoices.payments')}</h3>{!invoice.payments.length ? <p>{t('fabricInvoices.noPayments')}</p> : <div className="fi-table-scroll"><table><thead><tr>{['date', 'paid', 'seller', 'actions'].map(key => <th key={key}>{t('fabricInvoices.' + key)}</th>)}</tr></thead><tbody>{invoice.payments.map(payment => <tr key={payment.id}><td>{date(payment.Date)}</td><td><bdi>{money(payment.amount)}</bdi></td><td>{payment.actor?.name || '—'}</td><td data-row-actions-cell><RowActionsMenu menuKey="FabricInvoiceDetails">{permissions.invoicePrint && <button type="button" className="fi-secondary" onClick={() => setReceipt(payment.document)}>{t('fabricInvoices.print')}</button>}</RowActionsMenu></td></tr>)}</tbody></table></div>}</section>
     </div><footer><button type="button" className="fi-secondary" disabled={busy || exporting} onClick={close}>{t('dialog.close')}</button></footer>
   </dialog>{receipt && <CreditDocumentDialog document={receipt} onClose={() => setReceipt(null)} />}</>;
 }

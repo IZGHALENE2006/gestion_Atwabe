@@ -9,6 +9,8 @@ import { creditInvoiceBalances } from '../shared/creditInvoiceBalances.js';
 import { employeeCanRequest } from '../shared/employeeRequestPermissions.js';
 import { validateFabricInvoice } from '../shared/fabricInvoices.js';
 import { creditInvoiceReference } from '../shared/creditDocuments.js';
+import { fabricProfitReceiptMovement } from '../shared/fabricProfits.js';
+import { publicFabricSaleReceipt } from '../shared/fabricSales.js';
 process.env.JWT_SECRET = 'isolated-fabric-invoice-tests';
 const { default: app } = await import('../BackEnd/app.js');
 let server, base;
@@ -112,4 +114,71 @@ test('colleagues can see invoices but cannot replay another employee’s unfinis
   assert.equal((await request('/fabrics/invoices', body, staff)).status, 503); const invoice = f.invoices()[0];
   assert.equal((await request('/fabrics/invoices/' + invoice._id + '/resume', {}, { id: colleagueId, role: 'Employe' })).status, 403);
   assert.equal((await request('/fabrics/invoices/' + invoice._id + '/resume', {})).status, 200); assert.equal(f.account().creditInvoices[0].actor.name, f.rows(Employee)[0].name);
+});
+
+test('whole invoice discount reduces each fabric revenue, its profit, credit and receipts after line discounts', async t => {
+  const f = fabricInvoiceFixture(t), body = creditInput(f, { invoiceDiscount: { type: 'percent', value: '١٠' }, lines: [{ ...line(f.first, 2), discountType: 'percent', discountValue: 10 }, { ...line(f.second, 1.25), discountType: 'amount', discountValue: 6.25 }] });
+  const result = await create(body); assert.equal(result.status, 201, JSON.stringify(result.data)); const invoice = result.data.invoice;
+  assert.equal(invoice.subtotal, 116.25); assert.equal(invoice.lineDiscountAmount, 12.25); assert.equal(invoice.afterLineDiscounts, 104); assert.deepEqual(invoice.invoiceDiscount, { type: 'percent', value: 10 }); assert.equal(invoice.invoiceDiscountAmount, 10.4); assert.equal(invoice.discountAmount, 22.65); assert.equal(invoice.total, 93.6); assert.equal(invoice.remaining, 73.6);
+  assert.deepEqual(invoice.lines.map(row => row.total), [48.6, 45]); assert.equal(f.account().Total, 393.6); assert.equal(f.account().Paye, 120);
+  assert.deepEqual(f.account().produit.slice(1).map(row => row.lineTotal), [48.6, 45]); assert.equal(invoice.payments[0].document.total, 93.6); assert.equal(invoice.payments[0].document.remaining, 73.6);
+  const movements = f.fabrics().flatMap(row => row.movements);
+  assert.deepEqual(movements.map(row => row.sale.invoiceDiscountAmount), [5.4, 5]); assert.equal(movements.reduce((sum, row) => sum + Math.round(row.sale.profitAmount * 100), 0), 3860);
+  const profits = await request('/fabrics/profits'); assert.equal(profits.data.summary.revenueAmount ?? profits.data.summary.revenue, 93.6);
+  const cotton = profits.data.sales.find(row => row.type === f.first.type);
+  assert.equal(cotton.lineDiscountAmount, 6); assert.equal(cotton.invoiceDiscountAmount, 5.4);
+  const reprint = publicFabricSaleReceipt(fabricProfitReceiptMovement(cotton));
+  assert.equal(reprint.lineDiscountAmount, 6); assert.equal(reprint.invoiceDiscountAmount, 5.4); assert.equal(reprint.total, 48.6);
+  assert.doesNotMatch(JSON.stringify(invoice), /purchaseUnitPrice|costAmount|profitAmount|fingerprint|invoiceDebits/);
+  assert.equal((await create(body)).data.invoice.total, 93.6); assert.equal(f.account().creditInvoices.length, 1);
+  assert.equal((await create({ ...body, invoiceDiscount: { type: 'amount', value: 10 } })).status, 409);
+});
+
+test('fixed whole invoice discount and subsequent payments keep one exact credit balance', async t => {
+  const f = fabricInvoiceFixture(t); const result = await create(creditInput(f, { invoiceDiscount: { type: 'amount', value: '17,01' } }));
+  assert.equal(result.status, 201, JSON.stringify(result.data)); const invoice = result.data.invoice;
+  assert.equal(invoice.total, 99.24); assert.equal(invoice.remaining, 79.24); assert.deepEqual(invoice.lines.map(row => row.invoiceDiscountAmount), [8.78, 8.23]);
+  assert.equal((await request('/fabrics/invoices/' + invoice._id + '/payments', { requestId: randomUUID(), amount: 79.25 })).status, 400);
+  const paid = await request('/fabrics/invoices/' + invoice._id + '/payments', { requestId: randomUUID(), amount: 79.24 }, staff);
+  assert.equal(paid.status, 200, JSON.stringify(paid.data)); assert.equal(paid.data.invoice.remaining, 0); assert.equal(paid.data.invoice.paidAmount, 99.24); assert.equal(paid.data.payment.document.remainingBefore, 79.24); assert.equal(paid.data.payment.document.remaining, 0); assert.equal(paid.data.payment.actor.id, employeeId);
+  assert.equal(creditInvoiceBalances(f.account()).get(invoice._id).remaining, 0);
+});
+
+test('whole invoice discount validates before any stock or credit change including overpayment after discount', async t => {
+  const f = fabricInvoiceFixture(t);
+  for (const invoiceDiscount of [null, [], {}, { type: 'percent', value: 101 }, { type: 'amount', value: -1 }, { type: 'amount', value: 116.26 }, { type: 'amount', value: '0.001' }]) {
+    const result = await create(creditInput(f, { invoiceDiscount })); assert.equal(result.status, 400, JSON.stringify(result)); assert.equal(result.data.message, 'invalidInvoiceDiscount');
+  }
+  assert.equal((await create(creditInput(f, { invoiceDiscount: { type: 'percent', value: 90 } }))).data.message, 'invalidInvoicePayment');
+  assert.deepEqual(f.fabrics().map(row => row.colors[0].pieces[0].meters), [30, 30]); assert.equal(f.account().Total, 300); assert.equal(f.invoices().length, 0);
+});
+
+test('full invoice discount records zero net revenue and no additional credit debt', async t => {
+  const f = fabricInvoiceFixture(t), result = await create(creditInput(f, { amountPaid: 0, invoiceDiscount: { type: 'percent', value: 100 } }));
+  assert.equal(result.status, 201, JSON.stringify(result.data)); assert.equal(result.data.invoice.total, 0); assert.equal(result.data.invoice.remaining, 0); assert.equal(f.account().Total, 300); assert.equal(f.account().paymentHistory.length, 0);
+  assert.deepEqual(f.fabrics().flatMap(row => row.movements).map(row => row.sale.total), [0, 0]); assert.deepEqual(f.fabrics().map(row => row.colors[0].pieces[0].meters), [28, 28.75]);
+});
+
+test('whole invoice discounts require the existing discount operation on create and resume', async t => {
+  const f = fabricInvoiceFixture(t), actor = f.rows(Employee)[0]; actor.operationPermissions = { fabrics: ['addInvoice', 'sell'], credit: ['addDebt'] };
+  const body = input(f, { invoiceDiscount: { type: 'amount', value: 10 } });
+  assert.equal(employeeCanRequest(actor, 'POST', '/fabrics/invoices', body), false); assert.equal((await request('/fabrics/invoices', body, staff)).status, 403); assert.equal(f.invoices().length, 0);
+  actor.operationPermissions.fabrics.push('discount'); assert.equal(employeeCanRequest(actor, 'POST', '/fabrics/invoices', body), true); f.controls.fabricReserveAfterSave = true;
+  assert.equal((await request('/fabrics/invoices', body, staff)).status, 503); actor.operationPermissions.fabrics = ['addInvoice', 'sell'];
+  assert.equal((await request('/fabrics/invoices/' + f.invoices()[0]._id + '/resume', {}, staff)).status, 403);
+  const resumed = await request('/fabrics/invoices/' + f.invoices()[0]._id + '/resume', {}); assert.equal(resumed.status, 200, JSON.stringify(resumed.data)); assert.equal(resumed.data.invoice.total, 106.25); assert.equal(resumed.data.invoice.actor.id, employeeId);
+});
+
+test('lost discounted-invoice acknowledgements replay the frozen discount without duplicate stock or credit', async t => {
+  const f = fabricInvoiceFixture(t), body = creditInput(f, { invoiceDiscount: { type: 'amount', value: 17.01 } }); f.controls.fabricRecordAfterSave = true;
+  assert.equal((await create(body)).status, 503); f.fabrics()[0].salePricePerMeter = 90;
+  const result = await create(body); assert.equal(result.status, 201, JSON.stringify(result.data)); assert.equal(result.data.invoice.total, 99.24); assert.equal(f.account().Total, 399.24); assert.equal(f.account().Paye, 120); assert.equal(f.account().creditInvoices.length, 1); assert.equal(f.account().paymentHistory.length, 1);
+  assert.deepEqual(f.fabrics().map(row => row.colors[0].pieces[0].meters), [28, 28.75]); assert.equal(f.fabrics().flatMap(row => row.movements).length, 2);
+});
+
+test('legacy requests and pending plans retain their original fingerprint and totals', async t => {
+  const f = fabricInvoiceFixture(t), body = input(f); assert.equal(Object.hasOwn(validateFabricInvoice(body), 'invoiceDiscount'), false); f.controls.fabricReserveAfterSave = true;
+  assert.equal((await create(body)).status, 503); const plan = f.invoices()[0].plan;
+  for (const key of ['invoiceDiscount', 'lineDiscountAmount', 'invoiceDiscountAmount', 'afterLineDiscounts']) delete plan[key];
+  const result = await create(body); assert.equal(result.status, 201, JSON.stringify(result.data)); assert.equal(result.data.invoice.total, 116.25); assert.equal(result.data.invoice.invoiceDiscountAmount, 0); assert.deepEqual(result.data.invoice.lines.map(row => row.invoiceDiscountAmount), [0, 0]);
 });

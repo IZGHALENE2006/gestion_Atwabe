@@ -1,3 +1,4 @@
+import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import useSearchTarget from "../../hooks/useSearchTarget.js";
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
@@ -224,7 +225,7 @@ function Categories() {
                         </div>
                       </td>
                       {Object.values(operations).some(Boolean) && (
-                        <td className="px-8 py-5">
+                        <td className="px-8 py-5" data-row-actions-cell><RowActionsMenu menuKey="Categories">
                           <div className="flex justify-end gap-2">
                             <EmployeeOperation module="categories" operation="update"><button
                               onClick={() => handleUpdate(item._id)}
@@ -241,7 +242,7 @@ function Categories() {
                               <IoTrashOutline size={18} />
                             </button></EmployeeOperation>
                           </div>
-                        </td>
+                        </RowActionsMenu></td>
                       )}
                     </tr>
                   );

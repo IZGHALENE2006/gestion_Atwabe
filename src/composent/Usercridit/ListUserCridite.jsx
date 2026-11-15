@@ -1,3 +1,4 @@
+import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import useSearchTarget from "../../hooks/useSearchTarget.js";
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
@@ -183,7 +184,7 @@ const ListUsercridite = () => {
                     {user.phone || "-"}
                   </td>
                   <td className="px-8 py-5" data-credit-customer-creator><span dir="auto">{user.createdBy?.name || t("creditAudit.unrecorded")}</span>{user.createdBy && <small className="block text-xs text-slate-500 dark:text-slate-400">{t(user.createdBy.role === "admin" ? "creditAudit.admin" : "creditAudit.employee")}</small>}</td>
-                  <td className="px-8 py-5">
+                  <td className="px-8 py-5" data-row-actions-cell><RowActionsMenu menuKey="ListUserCridite">
                     <div className="flex items-center justify-center gap-2">
                       <EmployeeOperation module="credit" operation="share"><button type="button" className="credit-document-icon" data-share-credit={user._id} onClick={() => setShareUserId(user._id)} title={t("creditDocuments.share.title")} aria-label={t("creditDocuments.share.named", { name: user.name })}><IoShareSocialOutline size={18} /></button></EmployeeOperation>
                       <button
@@ -191,18 +192,18 @@ const ListUsercridite = () => {
                           navigate(`/Home/cridit/UserCreditDetails/${user._id}`)
                         }
                         className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-primary-500 hover:text-white transition-all shadow-sm"
-                      >
+                       aria-label={t("productList.details")}>
                         <IoEyeOutline size={18} />
                       </button>
                       {canDelete && <button
                         disabled={actionLoading}
                         onClick={() => handleDelete(user._id)}
                         className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-rose-500 hover:text-white transition-all shadow-sm disabled:opacity-50"
-                      >
+                       aria-label={t("categories.delete")}>
                         <IoTrashOutline size={18} />
                       </button>}
                     </div>
-                  </td>
+                  </RowActionsMenu></td>
                 </tr>
               ))}
             </tbody>

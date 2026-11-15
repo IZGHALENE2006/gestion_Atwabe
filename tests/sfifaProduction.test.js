@@ -322,3 +322,11 @@ test("previous worker receipts gain a name from their worker, and remain identif
   f.workers.length = 0; entries = (await (await stockHistory(stock)).json()).entries;
   assert.equal(entries[0].source, "worker"); assert.equal(entries[0].workerName, "");
 });
+
+test('fully completed fractional sfifa work cannot be deleted or change its credited stock and wages', async t => {
+  const f = setup(t), work = await assign(f.worker, input({ quantity: .3, unitWage: 10 }));
+  const completed = await complete(f.worker, work, completionBody(work, .3)); assert.equal(completed.status, 201); const done = await completed.json();
+  const before = JSON.stringify(f.stocks[0].toObject());
+  const rejected = await request(workPath(f.worker) + '/' + work._id, { method: 'DELETE', body: { version: done.__v, requestId: randomUUID() } });
+  assert.equal(rejected.status, 409); assert.equal((await rejected.json()).message, 'cannotCancelCompleted'); assert.equal(JSON.stringify(f.stocks[0].toObject()), before); assert.equal(f.stocks[0].quantity, .3);
+});

@@ -1,3 +1,4 @@
+import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import useSearchTarget from "../../hooks/useSearchTarget.js";
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import { FaFileInvoice, FaSearch, FaUserTie, FaThLarge, FaListUl, FaRegUserCircle } from "react-icons/fa";
@@ -285,12 +286,12 @@ function Invoices() {
                       {Number(item.TotalPrix || 0).toLocaleString(locale)} <span className="text-sm font-bold opacity-60">DH</span>
                     </span>
                   </div>
-                  <EmployeeOperation module="invoices" anyOf={["details", "print", "download"]}><button
+                  <RowActionsMenu menuKey="sales-invoice"><EmployeeOperation module="invoices" anyOf={["details", "print", "download"]}><button
                     onClick={() => handleOpenInfo(item)}
                     className="px-6 py-4 rounded-2xl bg-slate-900 dark:bg-primary-600 text-white font-black text-[10px] uppercase tracking-[0.2em] hover:bg-primary-600 dark:hover:bg-primary-500 shadow-xl shadow-slate-200 dark:shadow-none transition-all active:scale-95"
                   >
                     {t("invoicePage.details")}
-                  </button></EmployeeOperation>
+                  </button></EmployeeOperation></RowActionsMenu>
                 </div>
               </div>
             ))}
@@ -322,12 +323,12 @@ function Invoices() {
                         {Number(item.TotalPrix || 0).toLocaleString(locale)} <span className="text-xs opacity-50">DH</span>
                       </p>
                     </div>
-                    <EmployeeOperation module="invoices" operation="details"><button
+                    <RowActionsMenu menuKey="sales-invoice"><EmployeeOperation module="invoices" operation="details"><button
                       onClick={() => handleOpenInfo(item)}
                       className="px-8 py-4 rounded-2xl bg-slate-900 dark:bg-slate-800 text-white dark:text-slate-300 font-black text-[10px] uppercase tracking-widest hover:bg-primary-600 transition-all active:scale-95"
                     >
                       {t("invoicePage.open")}
-                    </button></EmployeeOperation>
+                    </button></EmployeeOperation></RowActionsMenu>
                   </div>
                 </div>
               ))}

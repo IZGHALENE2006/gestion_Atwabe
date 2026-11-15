@@ -27,7 +27,7 @@ async function creditPermission(req, action) {
   if (req.user.role !== 'admin' && !canEmployeeOperation('Employe', await Employee.findById(req.user.id), 'credit', action)) throw fail('forbidden', 403);
 }
 async function salePermissions(req, access, input) {
-  if (!access.permissions.sell || input.lines.some(line => line.pricingMode === 'wholesale') && !access.permissions.wholesale || input.lines.some(line => line.discountValue > 0) && !access.permissions.discount) throw fail('forbidden', 403);
+  if (!access.permissions.sell || input.lines.some(line => line.pricingMode === 'wholesale') && !access.permissions.wholesale || (input.invoiceDiscount?.value > 0 || input.lines.some(line => line.discountValue > 0)) && !access.permissions.discount) throw fail('forbidden', 403);
   if (input.paymentMode === 'credit') {
     if (!access.permissions.creditSale) throw fail('forbidden', 403);
     await creditPermission(req, 'addDebt'); if (input.newCustomer) await creditPermission(req, 'add'); if (input.amountPaid > 0) await creditPermission(req, 'payment');
@@ -44,7 +44,7 @@ async function prepare(input, access, actor) {
   }
   const fabrics = [];
   for (const fabricId of new Set(input.lines.map(line => line.fabricId))) { const fabric = await Fabric.findOne({ _id: fabricId, idAdmin: access.idAdmin }); if (!fabric) throw fail('notFound', 404); fabrics.push(fabric); }
-  const totals = fabricInvoiceTotals(input.lines, fabrics);
+  const totals = fabricInvoiceTotals(input.lines, fabrics, input.invoiceDiscount);
   const paidAmount = input.paymentMode === 'paid' ? totals.total : input.amountPaid;
   if (paidAmount > totals.total) throw fail('invalidInvoicePayment');
   const lines = input.lines.map((line, index) => {
@@ -54,7 +54,7 @@ async function prepare(input, access, actor) {
     return { fabricId: line.fabricId, colorId: line.colorId, pieceId: line.pieceId, movementId: id(), type: fabric.type, reference: fabric.reference, color: color.name, colorNumber: color.number, barcode: piece.barcode, meters: line.meters,
       sale: { ...sale, ...createFabricSaleFinancials(line.meters, fabric.purchasePricePerMeter, sale.total) } };
   });
-  return Invoice.create({ idAdmin: access.idAdmin, requestId: input.requestId, fingerprint: fingerprint(input), plan: { actor, customer, customerId, ...(input.newCustomer ? { newCustomer: input.newCustomer } : {}), date: new Date().toISOString(), lines, subtotal: totals.subtotal, discountAmount: totals.discountAmount, total: totals.total, paidAmount, paymentMode: input.paymentMode } });
+  return Invoice.create({ idAdmin: access.idAdmin, requestId: input.requestId, fingerprint: fingerprint(input), plan: { actor, customer, customerId, ...(input.newCustomer ? { newCustomer: input.newCustomer } : {}), date: new Date().toISOString(), lines, subtotal: totals.subtotal, lineDiscountAmount: totals.lineDiscountAmount, afterLineDiscounts: totals.afterLineDiscounts, invoiceDiscount: totals.invoiceDiscount, invoiceDiscountAmount: totals.invoiceDiscountAmount, discountAmount: totals.discountAmount, total: totals.total, paidAmount, paymentMode: input.paymentMode } });
 }
 async function recordCredit(operation) {
   const p = operation.plan; if (!p.customerId) return;
@@ -103,7 +103,7 @@ async function finish(operation) {
   return operation;
 }
 async function publicInvoice(operation) {
-  const p = operation.plan, lines = p.lines.map(line => ({ ...Object.fromEntries(['fabricId', 'colorId', 'pieceId', 'type', 'reference', 'color', 'colorNumber', 'barcode', 'meters'].map(key => [key, line[key]])), ...Object.fromEntries(['pricingMode', 'unitPrice', 'subtotal', 'discountAmount', 'discountType', 'discountValue', 'total'].map(key => [key, line.sale[key]])) }));
+  const p = operation.plan, lines = p.lines.map(line => ({ ...Object.fromEntries(['fabricId', 'colorId', 'pieceId', 'type', 'reference', 'color', 'colorNumber', 'barcode', 'meters'].map(key => [key, line[key]])), ...Object.fromEntries(['pricingMode', 'unitPrice', 'subtotal', 'discountAmount', 'discountType', 'discountValue', 'total'].map(key => [key, line.sale[key]])), lineDiscountAmount: line.sale.lineDiscountAmount ?? line.sale.discountAmount, invoiceDiscountAmount: line.sale.invoiceDiscountAmount ?? 0 }));
   const account = p.customerId ? await UserCredit.findOne({ _id: p.customerId, idUser: operation.idAdmin }) : null;
   const balance = account ? creditInvoiceBalances(account).get(String(operation._id)) : null;
   const payments = p.paidAmount > 0 ? [{ id: 'initial', amount: p.paidAmount, Date: p.date, actor: p.actor }] : [];
@@ -114,7 +114,7 @@ async function publicInvoice(operation) {
     return { ...payment, document: { kind: 'payment', historical: true, reference: fabricInvoiceReference(operation._id) + '-P' + payment.id, date: payment.Date, customer: p.customer, actor: payment.actor, total: p.total, amount: payment.amount, paidBefore: before, paid, remainingBefore: (Math.round(p.total * 100) - Math.round(before * 100)) / 100, remaining: (Math.round(p.total * 100) - Math.round(paid * 100)) / 100 } };
   });
   const remaining = balance?.remaining ?? (Math.round(p.total * 100) - Math.round(p.paidAmount * 100)) / 100;
-  return { _id: String(operation._id), reference: fabricInvoiceReference(operation._id), status: operation.status, date: p.date, actor: p.actor, customer: p.customer, creditUserId: p.customerId, paymentMode: p.paymentMode, lines, subtotal: p.subtotal, discountAmount: p.discountAmount, total: p.total, paidAmount: (Math.round(p.total * 100) - Math.round(remaining * 100)) / 100, remaining, payments: receipts, accountUnavailable: Boolean(p.customerId && !account) };
+  return { _id: String(operation._id), reference: fabricInvoiceReference(operation._id), status: operation.status, date: p.date, actor: p.actor, customer: p.customer, creditUserId: p.customerId, paymentMode: p.paymentMode, lines, subtotal: p.subtotal, lineDiscountAmount: p.lineDiscountAmount ?? p.discountAmount, afterLineDiscounts: p.afterLineDiscounts ?? p.total, invoiceDiscount: p.invoiceDiscount ?? { type: 'percent', value: 0 }, invoiceDiscountAmount: p.invoiceDiscountAmount ?? 0, discountAmount: p.discountAmount, total: p.total, paidAmount: (Math.round(p.total * 100) - Math.round(remaining * 100)) / 100, remaining, payments: receipts, accountUnavailable: Boolean(p.customerId && !account) };
 }
 export async function createFabricInvoice(req, res) {
   let operation;

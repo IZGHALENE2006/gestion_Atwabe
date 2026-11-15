@@ -1,3 +1,4 @@
+import { completedTrouserColorIds } from "../../../shared/workerShopTrousers.js";
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import { shopPieceBarcode } from '../../../shared/workerShopFlow.js';
 import WorkerShopFlowInfo from './WorkerShopFlowInfo.jsx';
@@ -28,6 +29,7 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
   const unpriced = completions.filter(event => event.earningAmount === undefined).length;
   const totalWageCents = pieceWages ? workerPieceWageCents(materials) : work.unitWage === undefined ? null : workerWageCents(work.unitWage, work.quantity, category);
   const progress = work.quantity ? Math.min(100, Math.max(0, work.completedQuantity / work.quantity * 100)) : 0;
+  const completedColors = new Set(completedTrouserColorIds(work));
   const pending = workerMaterialPending(work), done = work.remainingQuantity === 0;
   const garmentType = workerWorkGarmentType(work), id = `work-detail-${work._id}`;
   const identity = isSfifa ? `${t(`sfifaStock.widths.${work.sfifa.width}`)} · ${workerSfifaNumberLabel(work.sfifa, t)}` : work.productName;
@@ -84,7 +86,7 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
             {field(t("workers.work.assignedDate"), <time dateTime={work.createdAt}>{date(work.createdAt)}</time>)}
             {garmentType && field(t("workers.work.detailDialog.garmentType"), t(`fesla.garmentTypes.${garmentType}`))}
             {work.trouserType && field(t("workers.work.trousers.typeLabel"), t(`workers.work.trousers.styles.${work.trouserType}`))}
-            {work.shopTrouser && <>{field(t("workers.work.materials.fabric"), <span dir="auto" data-detail-trouser-fabric>{work.shopTrouser.fabricType}{work.shopTrouser.fabricReference ? ` · ${work.shopTrouser.fabricReference}` : ""}</span>)}{field(t("workers.work.pieceCards.size"), <bdi dir="ltr" data-detail-trouser-size>{work.shopTrouser.size}</bdi>)}</>}
+            {work.shopTrouser && <>{field(t("workers.work.materials.fabric"), <span dir="auto" data-detail-trouser-fabric>{work.shopTrouser.fabricType}{work.shopTrouser.fabricReference ? ` · ${work.shopTrouser.fabricReference}` : ""}</span>)}{field(t("workers.work.pieceCards.size"), <bdi dir="ltr" data-detail-trouser-size>{work.shopTrouser.size}</bdi>)}{work.shopTrouser.length !== undefined && <>{field(t("workers.work.shopTrousers.length"), <bdi data-detail-trouser-length>{work.shopTrouser.length}</bdi>)}{work.shopTrouser.metersPerPiece !== undefined && <>{field(t("workers.work.shopTrousers.metersPerPiece"), <bdi data-detail-trouser-meters>{number(work.shopTrouser.metersPerPiece)} {t("sfifaStock.unit")}</bdi>)}{field(t("workers.work.shopTrousers.totalMeters"), <bdi>{number(Math.round(work.shopTrouser.metersPerPiece * 1000) * work.quantity / 1000)} {t("sfifaStock.unit")}</bdi>)}</>}{field(t("workers.work.shopTrousers.colors"), <span className="worker-trouser-color-tags">{work.shopTrouser.colors.map(color => <span key={color.colorId} data-detail-trouser-color dir="auto" data-color-completed={completedColors.has(color.colorId)}><strong>{color.name}{color.number ? ` · ${color.number}` : ""}</strong><small>{t("workers.work.shopTrousers.oneTrouser")} · {t(completedColors.has(color.colorId) ? "workers.work.done" : work.completions.some(event => !event.shopTrouserColorIds) ? "workers.work.shopTrousers.untrackedColor" : "workers.work.inProgress")}</small></span>)}</span>)}</>}</>}
             {canSeeFinancials && field(t("workers.payroll.wage"), pieceWages ? t("workers.work.pieceCards.variableWages") : work.unitWage === undefined ? t("workers.payroll.unpriced") : <><bdi>{money(work.unitWage)}</bdi><small>{t(isSfifa ? "workers.payroll.perMeter" : "workers.payroll.perPiece")}</small></>)}
             {canSeeFinancials && totalWageCents !== null && field(t("workers.work.pieceCards.totalWages"), <bdi>{money(totalWageCents / 100)}</bdi>)}
           </dl>
@@ -114,7 +116,7 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
             <p className="work-detail-fabric-name" dir="auto">{row.fabricType} · {row.fabricColor}</p>
             <dl className="work-detail-piece-fields">
               {row.size && field(t("workers.work.pieceCards.size"), <bdi dir="ltr" data-work-piece-size-value>{row.size}</bdi>)}
-              {field(t("workers.work.materials.meters"), <><bdi>{number(row.meters)}</bdi> {t("sfifaStock.unit")}</>)}
+              {field(t(row.fabricStockDeducted === false ? "workers.work.shopDjellaba.meters" : "workers.work.materials.meters"), <><bdi>{number(row.meters)}</bdi> {t("sfifaStock.unit")}</>)}{row.fabricStockDeducted === false && field(t("workers.work.materials.fabric"), t("workers.work.shopDjellaba.fabricNote"), "fabric-reference-note")}
               {work.shopBarcode && field(t('workers.shopFlow.pieceBarcode'), <bdi dir="ltr" className="work-detail-barcode" data-detail-piece-barcode>{shopPieceBarcode(work, index + 1)}</bdi>)}
               {row.pieceBarcode && field(t("workers.work.detailDialog.fabricBarcode"), <bdi dir="ltr" className="work-detail-barcode">{row.pieceBarcode}</bdi>)}
               {field(t("workers.work.materials.sfifa"), <><span>{t(`sfifaStock.widths.${row.sfifaWidth}`)}</span><bdi dir="ltr">{row.sfifaCode === undefined ? t("workers.work.materials.unassigned") : formatSfifaCode(row.sfifaCode, row.sfifaFamily)}</bdi><span><bdi>{number(row.sfifaMeters)}</bdi> {t("sfifaStock.unit")}</span></>)}
@@ -133,6 +135,8 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
               <p className="work-detail-event-balance">{t(tab === "additions" ? "workers.work.increaseEntry" : isSfifa ? "workers.work.sfifa.balanceEntry" : "workers.work.balanceEntry", { before: number(event.before), after: number(event.after) })}</p>
               {canSeeFinancials && tab === "completions" && <div className="work-detail-event-earning"><IoWalletOutline aria-hidden="true" /><span>{t("workers.payroll.earnedShort")}</span><strong>{event.earningAmount === undefined ? t("workers.payroll.unpriced") : <bdi>{money(event.earningAmount)}</bdi>}</strong></div>}
               {tab === "completions" && pieceNumbers.length > 0 && <p className="work-detail-event-pieces">{t("workers.work.pieceCards.completedNumbers", { numbers: pieceNumbers.join(i18n.language === "ar" ? "، " : ", ") })}</p>}
+              {work.shopDjellaba && event.lineIds?.length > 0 && <p className="worker-trouser-color-tags">{event.lineIds.map(id => { const row = materials.find(row => row.lineId === id); return <span key={id} dir="auto" data-djellaba-history-color>{row?.fabricColor}</span>; })}</p>}
+              {event.shopTrouserColorIds && <p className="worker-trouser-color-tags">{event.shopTrouserColorIds.map(id => { const color = work.shopTrouser.colors.find(color => color.colorId === id); return <span key={id} dir="auto">{color?.name}{color?.number ? ` · ${color.number}` : ""}</span>; })}</p>}
             </article>
           </li>;
         })}</ol> : <div className="work-detail-empty"><IoTimeOutline aria-hidden="true" /><h4>{t(`workers.work.detailDialog.${tab === "completions" ? "emptyCompletions" : "emptyAdditions"}`)}</h4><p>{t(tab === "completions" ? "workers.work.noCompletions" : "workers.work.detailDialog.noAdditions")}</p></div>}

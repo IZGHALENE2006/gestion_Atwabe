@@ -1,3 +1,4 @@
+import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import useSearchTarget from "../../hooks/useSearchTarget.js";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
@@ -83,14 +84,14 @@ export default function Clients() {
                 <td className="max-w-64 whitespace-pre-line break-words px-5 py-4"><bdi>{client.address}</bdi></td>
                 <td className="max-w-40 break-words px-5 py-4"><bdi dir="ltr">{client.cin || "—"}</bdi></td>
                 <td className="max-w-48 px-5 py-4"><Website value={client.website} /></td>
-                <td className="px-5 py-4">{editButton(client)}</td>
+                <td className="px-5 py-4" data-row-actions-cell><RowActionsMenu menuKey="Clients">{editButton(client)}</RowActionsMenu></td>
               </tr>)}</tbody>
             </table>
           </div>
           <div className="grid gap-4 md:hidden">{visible.map((client) => <article key={client._id} data-client-id={client._id} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
             <h2 dir="auto" className="mb-2 break-words text-lg font-bold">{client.name}</h2><ClientType type={client.type} />
             <dl className="my-4 space-y-3 text-sm">{["address", "phone", "fax", "cin", "website"].map((key) => <div key={key}><dt className="mb-1 text-xs text-slate-500 dark:text-slate-400">{t(`clients.fields.${key}`)}</dt><dd className="whitespace-pre-line break-words">{key === "website" ? <Website value={client.website} /> : <bdi dir={key === "address" ? "auto" : "ltr"}>{client[key] || "—"}</bdi>}</dd></div>)}</dl>
-            {editButton(client)}
+            <RowActionsMenu menuKey="ClientCard">{editButton(client)}</RowActionsMenu>
           </article>)}</div>
         </> : <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700"><IoPeopleOutline size={36} className="mx-auto mb-3 text-slate-400" /><p className="font-semibold">{t(state.clients.length ? "clients.noResults" : "clients.empty")}</p><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t(state.clients.length ? "clients.searchHint" : "clients.emptyHint")}</p></div>}
       </>}

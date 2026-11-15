@@ -1,5 +1,7 @@
 import { moduleOperationPermissions } from "../../shared/employeePermissions.js";
 import mongoose from "mongoose";
+import { createHash } from "node:crypto";
+import { validateFabricReductionLines } from "../../shared/fabricReductions.js";
 import AdminModel from "../models/AdminModel.js";
 import EmployeModel from "../models/EmployeModele.js";
 import Fabric from "../models/Fabric.js";
@@ -262,6 +264,61 @@ function replyReduction(res, fabric, movement, params, input, created) {
   if (Boolean(movement.sale) !== input.selling || (input.selling && movement.sale.requestFingerprint !== fabricSaleFingerprint(input))) throw fail("requestConflict", 409);
   if (String(movement.colorId) !== params.colorId.toLowerCase() || String(movement.pieceId) !== params.pieceId.toLowerCase() || movement.barcode !== input.barcode || movement.meters !== input.meters) throw fail("requestConflict", 409);
   return res.status(created ? 201 : 200).json({ fabricId: String(movement.fabricId), fabric: fabric ? publicFabric(fabric) : null, movement: publicMovement(movement) });
+}
+
+async function previousReductionBatch(fabric, scope, requestId) {
+  const pending = (fabric?.movements || []).filter(row => row.reductionBatch?.requestId === requestId);
+  const archived = await FabricMovement.find({ idAdmin: scope.idAdmin, fabricId: scope._id, 'reductionBatch.requestId': requestId }).lean();
+  return [...new Map([...archived, ...pending].map(row => [String(row._id), row])).values()];
+}
+function replyReductionBatch(res, fabric, movements, fingerprint, created) {
+  if (!movements.length || movements.some(row => row.sale || row.reductionBatch?.fingerprint !== fingerprint || row.reductionBatch.size !== movements.length)) throw fail('requestConflict', 409);
+  const meters = movements.reduce((sum, row) => sum + Math.round(row.meters * 1000), 0) / 1000;
+  return res.status(created ? 201 : 200).json({ fabricId: String(movements[0].fabricId), fabric: fabric ? publicFabric(fabric) : null, movements: movements.map(publicMovement), summary: { pieceCount: movements.length, meters } });
+}
+function reductionLineRequestId(requestId, pieceId) {
+  const hash = createHash('sha256').update('fabric-reduction:' + requestId + ':' + pieceId).digest('hex');
+  return hash.slice(0, 8) + '-' + hash.slice(8, 12) + '-4' + hash.slice(13, 16) + '-a' + hash.slice(17, 20) + '-' + hash.slice(20, 32);
+}
+export async function reduceFabricPieces(req, res) {
+  let scope, requestId, fingerprint;
+  try {
+    const actor = await accessFor(req, 'reduce');
+    if (!mongoose.isObjectIdOrHexString(req.params.id)) throw fail('notFound', 404);
+    if (!Number.isInteger(req.body?.version) || req.body.version < 0) throw fail('conflict', 409);
+    if (typeof req.body.requestId !== 'string' || !/^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i.test(req.body.requestId)) throw fail('invalidReduction', 400);
+    const lines = validateFabricReductionLines(req.body.lines);
+    requestId = req.body.requestId.toLowerCase(); fingerprint = createHash('sha256').update(JSON.stringify(lines)).digest('hex');
+    scope = { _id: req.params.id, idAdmin: actor.idAdmin };
+    const fabric = await Fabric.findOne(scope), previous = await previousReductionBatch(fabric, scope, requestId);
+    if (previous.length) return replyReductionBatch(res, fabric, previous, fingerprint, false);
+    if (!fabric) throw fail('notFound', 404);
+    if (fabric.__v !== req.body.version) throw fail('conflict', 409);
+    // Validate every row before changing the document; all stock and history share one save.
+    const prepared = lines.map(line => {
+      const color = fabric.colors.id(line.colorId), piece = color?.pieces.id(line.pieceId);
+      if (!piece || piece.barcode !== line.barcode) throw fail('notFound', 404);
+      return { color, piece, reduction: calculateFabricReduction(line.meters, piece.meters) };
+    });
+    const date = new Date(), ids = [];
+    for (const { color, piece, reduction } of prepared) {
+      fabric.movements.push({ idAdmin: actor.idAdmin, createdBy: actor.createdBy, createdByName: actor.createdByName, createdByRole: req.user.role,
+        fabricId: fabric._id, colorId: color._id, pieceId: piece._id, requestId: reductionLineRequestId(requestId, String(piece._id)),
+        reductionBatch: { requestId, fingerprint, size: lines.length }, type: fabric.type, reference: fabric.reference, color: color.name, colorNumber: color.number,
+        barcode: piece.barcode, beforeMeters: piece.meters, meters: reduction.meters, remainingMeters: reduction.remaining, occurredAt: date });
+      ids.push(String(fabric.movements.at(-1)._id)); piece.meters = reduction.remaining;
+    }
+    const movements = fabric.movements.filter(row => ids.includes(String(row._id)));
+    await fabric.save();
+    try { await archiveMovements(fabric); } catch { /* The complete batch remains durable in its fabric document. */ }
+    return replyReductionBatch(res, fabric, movements, fingerprint, true);
+  } catch (error) {
+    if (error.name === 'VersionError' && scope && requestId) {
+      try { const fabric = await Fabric.findOne(scope), previous = await previousReductionBatch(fabric, scope, requestId); if (previous.length) return replyReductionBatch(res, fabric, previous, fingerprint, false); }
+      catch (retryError) { return sendError(res, retryError, 'reductionFailed'); }
+    }
+    return sendError(res, error, 'reductionFailed');
+  }
 }
 
 export async function listFabricProfits(req, res) {

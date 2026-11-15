@@ -12,7 +12,10 @@ import { SFIFA_STOCK_SCALE, SFIFA_STOCK_WIDTHS } from "../../../shared/sfifaStoc
 import { assignWorkerWork, completeWorkerWork } from "./workersApi.js";
 import WorkerOrderPicker from "./WorkerOrderPicker.jsx";
 import WorkerBlockingNotice from "./WorkerBlockingNotice.jsx";
+import WorkerShopDjellabaFields from './WorkerShopDjellabaFields.jsx';
 import WorkerMaterialPicker from './WorkerMaterialPicker.jsx';
+import WorkerTrouserCompletionPicker from "./WorkerTrouserCompletionPicker.jsx";
+import { hasShopTrouserColors } from "../../../shared/workerWork.js";
 import WorkerShopTrouserFields from "./WorkerShopTrouserFields.jsx";
 import WorkerPieceCompletionPicker from './WorkerPieceCompletionPicker.jsx';
 import { usesWorkerMaterials, workerHasPieceWages, WORKER_MATERIAL_PIECE_LIMIT } from '../../../shared/workerMaterials.js';
@@ -27,19 +30,21 @@ export default function WorkerWorkForm({ token, worker, category, workType = "sh
   const isTrouserShop = category === "trousers" && (work?.workType || workType) === "shop";
   const isTrouserClient = category === "trousers" && (work?.workType || workType) === "client";
   const isClient = !isSfifa && !isBrim && (work?.workType || workType) === "client";
+  const isDjellabaBatch = !work && category === 'machine' && workType === 'shop' && garmentType === 'djellaba';
   const withMaterials = !work && usesWorkerMaterials(category, workType, garmentType);
+  const isTrouserCompletion = Boolean(work && hasShopTrouserColors(work));
   const isPieceCompletion = Boolean(work && workerHasPieceWages(work));
   const pendingPieceFocus = useRef(null);
-  const [data, setData] = useState(() => ({ materials: {}, shopOriginId: "", unitWage: "", productName: "", quantity: withMaterials && !isClient ? "1" : "", trouserType: isTrouserClient || isTrouserShop ? "regular" : "", ...(isTrouserShop ? { shopTrouser: { fabricId: "", size: "" } } : {}), ...((category === "machine" || isShopTransfer) && workType === "shop" && garmentType ? { garmentType } : {}), orderId: "", lineIds: withMaterials && !isClient ? [crypto.randomUUID().replaceAll('-', '').slice(0, 24)] : [], linkOrder: false, width: "thin", family: WORKER_SFIFA_FAMILIES[0].value, code: "" }));
+  const [data, setData] = useState(() => ({ materials: {}, ...(isDjellabaBatch ? { shopDjellaba: { fabricId: "", colorIds: [], sfifaId: "", variantId: "", size: "", meters: "", unitWage: "" } } : {}), colorIds: [], shopOriginId: "", unitWage: "", productName: "", quantity: withMaterials && !isClient ? "1" : "", trouserType: isTrouserClient || isTrouserShop ? "regular" : "", ...(isTrouserShop ? { shopTrouser: { fabricId: "", size: "", length: "", metersPerPiece: "", colorIds: [] } } : {}), ...((category === "machine" || isShopTransfer) && workType === "shop" && garmentType ? { garmentType } : {}), orderId: "", lineIds: withMaterials && !isClient ? [crypto.randomUUID().replaceAll('-', '').slice(0, 24)] : [], linkOrder: false, width: "thin", family: WORKER_SFIFA_FAMILIES[0].value, code: "" }));
   const isClientSfifa = isSfifa && !workerSfifaCreditsStock(work || { workType, sfifa: { family: data.family } });
   const range = WORKER_SFIFA_FAMILIES.find(family => family.value === data.family);
   const [blockers, setBlockers] = useState([]);
   const [fields, setFields] = useState({}), [error, setError] = useState(""), [saving, setSaving] = useState(false);
   useEffect(() => {
     const dialog = dialogRef.current;
-    dialog.showModal(); dialog.querySelector(isPieceCompletion ? '#worker-work-lineIds' : work ? "#worker-work-quantity" : withMaterials ? '#worker-work-materials' : isSfifa ? '[name="worker-work-width"]:checked' : isClient ? "#worker-work-orderId" : isShopTransfer ? "#worker-work-shopOriginId" : isBrim ? "#worker-work-quantity" : isTrouserShop ? "#worker-work-trouserType" : "#worker-work-productName")?.focus();
+    dialog.showModal(); dialog.querySelector(isTrouserCompletion ? '#worker-work-colorIds' : isPieceCompletion ? '#worker-work-lineIds' : work ? "#worker-work-quantity" : withMaterials ? '#worker-work-materials' : isSfifa ? '[name="worker-work-width"]:checked' : isClient ? "#worker-work-orderId" : isShopTransfer ? "#worker-work-shopOriginId" : isBrim ? "#worker-work-quantity" : isTrouserShop ? "#worker-work-trouserType" : "#worker-work-productName")?.focus();
     return () => dialog.close();
-  }, [work, isSfifa, isClient, withMaterials, isPieceCompletion, isBrim, isTrouserShop, isShopTransfer]);
+  }, [work, isSfifa, isClient, withMaterials, isPieceCompletion, isTrouserCompletion, isBrim, isTrouserShop, isShopTransfer]);
   useEffect(() => {
     if (!pendingPieceFocus.current) return;
     dialogRef.current?.querySelector(`[data-material-line="${pendingPieceFocus.current}"] select`)?.focus();
@@ -54,15 +59,15 @@ export default function WorkerWorkForm({ token, worker, category, workType = "sh
     let input;
     try {
       if (!work && !withMaterials && tailoringMoneyCents(data.unitWage) === null) throw Object.assign(new Error("invalidWork"), { fields: { unitWage: "invalidWage" } });
-      if (withMaterials) { const invalid = Object.fromEntries(data.lineIds.flatMap((id, index) => tailoringMoneyCents(data.materials[id]?.unitWage) === null ? [[`materials.${index}.unitWage`, 'invalidWage']] : [])); if (Object.keys(invalid).length) throw Object.assign(new Error('invalidWork'), { fields: invalid }); }
+      if (withMaterials && !isDjellabaBatch) { const invalid = Object.fromEntries(data.lineIds.flatMap((id, index) => tailoringMoneyCents(data.materials[id]?.unitWage) === null ? [[`materials.${index}.unitWage`, 'invalidWage']] : [])); if (Object.keys(invalid).length) throw Object.assign(new Error('invalidWork'), { fields: invalid }); }
       const { materials, shopOriginId, ...values } = data;
-      input = work ? validateWorkerCompletion(data, work.remainingQuantity, category, work) : validateWorkerWork({ ...values, category, workType, ...(isShopTransfer ? { shopOriginId } : {}), ...(isBrim ? { productName: t("workers.categories.brim") } : {}), ...(withMaterials ? { productName: t('fesla.garmentTypes.' + garmentType), quantity: data.lineIds.length, unitWage: undefined, materials: data.lineIds.map(lineId => ({ lineId, ...materials[lineId] })) } : {}), ...(isSfifa ? { sfifa: { width: data.width, family: data.family, code: data.code } } : {}) }); }
+      input = work ? validateWorkerCompletion(data, work.remainingQuantity, category, work) : isDjellabaBatch ? validateWorkerWork({ category, workType, garmentType, shopDjellaba: data.shopDjellaba }) : validateWorkerWork({ ...values, category, workType, ...(isShopTransfer ? { shopOriginId } : {}), ...(isBrim ? { productName: t("workers.categories.brim") } : {}), ...(withMaterials ? { productName: t('fesla.garmentTypes.' + garmentType), quantity: data.lineIds.length, unitWage: undefined, materials: data.lineIds.map(lineId => ({ lineId, ...materials[lineId] })) } : {}), ...(isSfifa ? { sfifa: { width: data.width, family: data.family, code: data.code } } : {}) }); }
     catch (failure) { setFields(failure.fields || {}); setError("invalidWork"); document.getElementById(isPieceCompletion ? 'worker-work-lineIds' : `worker-work-${Object.keys(failure.fields || {})[0] || "quantity"}`)?.focus(); return; }
     const fingerprint = JSON.stringify(input);
     if (submissionRef.current?.fingerprint !== fingerprint) submissionRef.current = { fingerprint, requestId: crypto.randomUUID() };
     savingRef.current = true; setSaving(true); setError(""); setFields({}); setBlockers([]);
     try {
-      const saved = work ? await completeWorkerWork(token, worker._id, work, input.quantity, submissionRef.current.requestId, input.lineIds) : await assignWorkerWork(token, worker._id, input, submissionRef.current.requestId);
+      const saved = work ? await completeWorkerWork(token, worker._id, work, input.quantity, submissionRef.current.requestId, input.lineIds, input.colorIds) : await assignWorkerWork(token, worker._id, input, submissionRef.current.requestId);
       if (dialogRef.current?.open) onSaved(saved);
     } catch (failure) {
       if (dialogRef.current?.open) {
@@ -115,13 +120,15 @@ export default function WorkerWorkForm({ token, worker, category, workType = "sh
               </label>)}</div>{errorFor("family")}
             </fieldset>
           </>}
+          {isTrouserCompletion && <WorkerTrouserCompletionPicker work={work} selected={data.colorIds} onChange={colorIds => patch({ colorIds, quantity: String(colorIds.length) })} disabled={saving} error={fields.colorIds || (fields.quantity ? "chooseCompletedTrouserColors" : undefined)} />}
           {isPieceCompletion && <WorkerPieceCompletionPicker work={work} selected={data.lineIds} onChange={lineIds => patch({ lineIds, quantity: String(lineIds.length) })} disabled={saving} error={fields.lineIds || (fields.quantity ? 'chooseCompletedPieces' : undefined)} />}
-          {!withMaterials && !isPieceCompletion && !isShopTransfer && <div className={!work && isSfifa ? "work-numeric-grid" : ""}>
+          {!withMaterials && !isPieceCompletion && !isTrouserCompletion && !isShopTransfer && <div className={!work && isSfifa ? "work-numeric-grid" : ""}>
             {!work && isSfifa && data.family !== SFIFA_CUSTOMER_FAMILY && <div className="work-field"><label htmlFor="worker-work-code">{t("sfifaStock.code")}</label><input {...fieldProps("code")} className="work-input work-number-input" type="text" inputMode="numeric" dir="ltr" value={data.code} onChange={event => patch({ code: event.target.value })} maxLength={4} placeholder={String(range.min).padStart(range.min === 1 ? 2 : 1, "0")} required aria-describedby={`worker-work-code-hint${fields.code ? " worker-work-code-error" : ""}`} /><p id="worker-work-code-hint" className="work-field-hint">{t("sfifaStock.codeHint", { min: range.min, max: range.max })}</p>{errorFor("code")}</div>}
-            <div className="work-field"><label htmlFor="worker-work-quantity">{t(`workers.work.${isSfifa ? "sfifa." : ""}${work ? "completedInput" : "quantity"}`)}</label><div className="work-input-with-unit"><input {...fieldProps("quantity")} className="work-input work-number-input" type="text" inputMode={isSfifa ? "decimal" : "numeric"} dir="ltr" value={!work && isClient ? String(data.lineIds.length) : data.quantity} readOnly={!work && isClient} onChange={event => patch({ quantity: event.target.value })} maxLength={isSfifa ? 11 : 7} placeholder="0" required />{isSfifa && <span aria-hidden="true">{t("sfifaStock.unit")}</span>}</div>{errorFor("quantity")}{!work && isClient && <p className="work-field-hint">{t("workers.work.selectedGarmentsHint", { count: data.lineIds.length })}</p>}</div>
+            <div className="work-field"><label htmlFor="worker-work-quantity">{t(`workers.work.${isSfifa ? "sfifa." : ""}${work ? "completedInput" : "quantity"}`)}</label><div className="work-input-with-unit"><input {...fieldProps("quantity")} className="work-input work-number-input" type="text" inputMode={isSfifa ? "decimal" : "numeric"} dir="ltr" value={!work && isClient ? String(data.lineIds.length) : !work && isTrouserShop ? String(data.shopTrouser.colorIds.length) : data.quantity} readOnly={!work && (isClient || isTrouserShop)} onChange={event => patch({ quantity: event.target.value })} maxLength={isSfifa ? 11 : 7} placeholder="0" required />{isSfifa && <span aria-hidden="true">{t("sfifaStock.unit")}</span>}</div>{errorFor("quantity")}{!work && isTrouserShop && <p className="work-field-hint">{t("workers.work.shopTrousers.colorHint")}</p>}{!work && isClient && <p className="work-field-hint">{t("workers.work.selectedGarmentsHint", { count: data.lineIds.length })}</p>}</div>
           </div>}
           {!work && !withMaterials && <div className="work-field"><label htmlFor="worker-work-unitWage">{t(`workers.payroll.${isSfifa ? "wagePerMeter" : "wagePerPiece"}`)}</label><input {...fieldProps("unitWage")} inputMode="decimal" dir="ltr" value={data.unitWage} onChange={event => patch({ unitWage: event.target.value })} maxLength={13} placeholder="0.00" required /><p className="work-field-hint">{t("workers.payroll.wageHint")}</p>{errorFor("unitWage")}</div>}
-          {withMaterials && <WorkerMaterialPicker token={token} workerId={worker._id} workType={workType} garmentType={garmentType} lineIds={data.lineIds} value={data.materials} onChange={materials => patch({ materials })} onAddPiece={addPiece} onRemovePiece={removePiece} wages disabled={saving || error === 'materialsPending'} fields={fields} />}
+          {isDjellabaBatch && <WorkerShopDjellabaFields token={token} workerId={worker._id} value={data} onChange={patch} disabled={saving || error === "materialsPending"} fields={fields} />}
+          {withMaterials && !isDjellabaBatch && <WorkerMaterialPicker token={token} workerId={worker._id} workType={workType} garmentType={garmentType} lineIds={data.lineIds} value={data.materials} onChange={materials => patch({ materials })} onAddPiece={addPiece} onRemovePiece={removePiece} wages disabled={saving || error === 'materialsPending'} fields={fields} />}
         </fieldset>
         {canSeeFinancials && work && validCompletion && <p className="payroll-month-due">{t("workers.payroll.earningPreview")} <strong data-completion-earning>{work.unitWage === undefined && !isPieceCompletion ? t("workers.payroll.unpriced") : money(workerCompletionEarning(work, entered, new Date(), data.lineIds).earningAmount)}</strong></p>}
         {isSfifa && <div className="work-transfer-note"><IoCubeOutline aria-hidden="true" /><p>{t(isClientSfifa ? "workers.work.sfifa.clientCompletionHint" : work ? "workers.work.design.stockTransfer" : "workers.work.sfifa.assignmentHint")}{work && validCompletion && !isClientSfifa && <strong data-work-preview-credit>+ {amount(entered)}</strong>}</p></div>}

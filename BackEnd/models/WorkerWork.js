@@ -1,3 +1,6 @@
+import { isShopDjellabaBatch } from '../../shared/workerShopDjellaba.js';
+import { trouserStockOperationSchema } from './workerTrouserStockSchema.js';
+import { trouserMeterUnits, trouserConsumesStock } from '../../shared/workerShopTrousers.js';
 import { SHOP_FLOW_GARMENTS, shopFlowSlot } from '../../shared/workerShopFlow.js';
 import { WORKER_SFIFA_FAMILIES, SFIFA_CUSTOMER_FAMILY, workerSfifaCreditsStock } from '../../shared/workerSfifa.js';
 import { tailoringMoneyCents } from "../../shared/tailoring.js";
@@ -5,7 +8,7 @@ import { workerCompletionEarning, workerPayrollMonthValid } from "../../shared/w
 import mongoose from "mongoose";
 import { workerMaterialOperationSchema, workerMaterialCancellationSchema, workerMaterialRowSchema } from './workerMaterialSchema.js';
 import { supportsWorkerMaterialHistory, workerMaterialRows, workerHasPieceWages, workerPieceWageCents, WORKER_GARMENT_SIZES } from '../../shared/workerMaterials.js';
-import { WORK_QUANTITY_LIMIT, WORK_TRACKING_CATEGORIES, WORK_TYPES, TROUSER_TYPES, workerWageCents, workerOrderGarmentTypes, workQuantityUnits } from "../../shared/workerWork.js";
+import { WORK_QUANTITY_LIMIT, WORK_TRACKING_CATEGORIES, WORK_TYPES, TROUSER_TYPES, SHOP_TROUSER_LENGTHS, workerWageCents, workerOrderGarmentTypes, workQuantityUnits } from "../../shared/workerWork.js";
 import { SFIFA_STOCK_WIDTHS, sfifaCodeNumber } from "../../shared/sfifaStock.js";
 
 import { TAILORING_SFIFA_GARMENT_TYPES, TAILORING_GARMENT_TYPES, tailoringGarmentType } from "../../shared/tailoring.js";
@@ -19,6 +22,7 @@ const sfifaSchema = new mongoose.Schema({
   code: { type: Number, required: function () { return this.family !== SFIFA_CUSTOMER_FAMILY; }, validate: function (value) { return this.family === SFIFA_CUSTOMER_FAMILY ? value === undefined : sfifaCodeNumber(value, this.family) !== null; } },
 }, { _id: false });
 const completionSchema = new mongoose.Schema({
+  shopTrouserColorIds: { type: [String], default: undefined },
   lineIds: { type: [String], default: undefined },
   stockCredited: { type: Boolean, default: undefined },
   earningAmount: { type: Number, default: undefined, validate: value => value === undefined || tailoringMoneyCents(value) !== null },
@@ -32,6 +36,7 @@ const completionSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, required: true },
 });
 const additionSchema = new mongoose.Schema({
+  shopTrouserColorIds: { type: [String], default: undefined },
   requestId: { type: String, required: true, match: requestPattern },
   sequence: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
   quantity: quantityField(0.001), before: quantityField(0), after: quantityField(0.001),
@@ -67,6 +72,14 @@ const shopFlowSchema = new mongoose.Schema({
   materials: { type: [workerMaterialRowSchema], default: [] },
 }, { _id: false });
 const schema = new mongoose.Schema({
+  trouserStockOperations: { type: [trouserStockOperationSchema], default: undefined },
+  shopDjellaba: { type: new mongoose.Schema({
+    fabricId: { type: mongoose.Schema.Types.ObjectId, required: true }, colorIds: { type: [String], required: true },
+    sfifaId: { type: mongoose.Schema.Types.ObjectId, required: true }, variantId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    size: { type: String, enum: WORKER_GARMENT_SIZES, default: undefined }, meters: { type: Number, required: true, min: 0 },
+    unitWage: { type: Number, required: true, validate: value => tailoringMoneyCents(value) !== null },
+    sfifaStyle: { type: String, default: undefined },
+  }, { _id: false }), default: undefined },
   shopFlow: { type: shopFlowSchema, default: undefined },
   shopFlowSlot: { type: String, default: undefined },
   shopTrouser: { type: new mongoose.Schema({
@@ -74,6 +87,9 @@ const schema = new mongoose.Schema({
     fabricType: { type: String, required: true, maxlength: 120 },
     fabricReference: { type: String, default: '', maxlength: 120 },
     size: { type: String, required: true, enum: WORKER_GARMENT_SIZES },
+    length: { type: Number, enum: SHOP_TROUSER_LENGTHS, default: undefined },
+    metersPerPiece: { type: Number, default: undefined, validate: value => value === undefined || trouserMeterUnits(value) !== null && value > 0 },
+    colors: { type: [new mongoose.Schema({ colorId: { type: mongoose.Schema.Types.ObjectId, required: true }, name: { type: String, required: true, maxlength: 120 }, number: { type: String, default: '', maxlength: 120 } }, { _id: false })], default: undefined },
   }, { _id: false }), default: undefined },
   idAdmin: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Admin" },
   createdBy: { type: mongoose.Schema.Types.ObjectId, required: true },
@@ -102,6 +118,10 @@ const schema = new mongoose.Schema({
   requestFingerprint: { type: String, required: true },
 }, { timestamps: true, optimisticConcurrency: true });
 schema.pre("validate", function () {
+  if (this.shopDjellaba) {
+    const rows = workerMaterialRows(this), ids = this.shopDjellaba.colorIds;
+    if (!isShopDjellabaBatch(this) || !ids.length || ids.length > 100 || ids.length !== this.quantity || new Set(ids).size !== ids.length || rows.length !== this.quantity && !this.deletedAt || rows.some(row => row.fabricStockDeducted !== false || String(row.fabricId) !== String(this.shopDjellaba.fabricId) || !ids.includes(String(row.colorId)) || row.lineId !== String(row.colorId) || row.pieceId !== undefined || row.pieceBarcode !== undefined)) this.invalidate('shopDjellaba', 'Invalid color-based shop djellaba batch');
+  } else if (workerMaterialRows(this).some(row => row.fabricStockDeducted === false)) this.invalidate('materialOperations', 'Fabric reference requires a shop djellaba batch');
   if (this.shopFlow) {
     if (this.workType !== 'shop' || !['finishing', 'mesbanto'].includes(this.category) || !SHOP_FLOW_GARMENTS.includes(this.garmentType) || this.shopFlow.sourceCategory !== (this.category === 'finishing' ? 'machine' : 'finishing') || this.materialOperations?.length || this.additions.length || this.shopFlow.materials.length && this.shopFlow.materials.length !== this.quantity) this.invalidate('shopFlow', 'Invalid shop production stage');
     if (workerWageCents(this.unitWage, this.quantity, this.category) === null) this.invalidate('unitWage', 'Invalid shop stage wage');
@@ -138,6 +158,35 @@ schema.pre("validate", function () {
   const linked = Boolean(this.tailoring);
   const trouserClient = this.category === "trousers" && this.workType === "client";
   const shopTrouser = Boolean(this.shopTrouser);
+  const coloredTrousers = this.shopTrouser?.length !== undefined || this.shopTrouser?.colors !== undefined;
+  if (coloredTrousers) {
+    const ids = (this.shopTrouser.colors || []).map(color => String(color.colorId));
+    const additions = this.additions.flatMap(event => event.shopTrouserColorIds || []);
+    const completed = this.completions.flatMap(event => event.shopTrouserColorIds || []);
+    if (new Set(completed).size !== completed.length || completed.some(id => !ids.includes(id)) || this.completions.some(event => event.shopTrouserColorIds !== undefined && event.shopTrouserColorIds.length !== event.quantity || trouserConsumesStock(this) && event.shopTrouserColorIds === undefined)) this.invalidate('completions', 'Completed trouser colors must be unique assigned pieces');
+    if (!SHOP_TROUSER_LENGTHS.includes(this.shopTrouser.length) || !ids.length || ids.length !== this.quantity || new Set(ids).size !== ids.length || new Set(additions).size !== additions.length || additions.some(id => !ids.includes(id)) || this.additions.some(event => event.shopTrouserColorIds?.length !== event.quantity)) this.invalidate('shopTrouser', 'Selected colors must match the trouser quantity and length');
+  } else if ([...this.completions, ...this.additions].some(event => event.shopTrouserColorIds !== undefined)) this.invalidate('completions', 'Unexpected trouser colors');
+  if (trouserConsumesStock(this)) {
+    const operations = this.trouserStockOperations || [], seenColors = new Set(), seenRequests = new Set();
+    const selected = new Set((this.shopTrouser.colors || []).map(color => String(color.colorId)));
+    if (!coloredTrousers || !operations.length || this.materialOperations?.length) this.invalidate('trouserStockOperations', 'Missing trouser stock journal');
+    for (const operation of operations) {
+      const amounts = new Map(), rolls = new Set();
+      if (seenRequests.has(operation.requestId) || !operation.rows.length) this.invalidate('trouserStockOperations', 'Invalid trouser operation');
+      seenRequests.add(operation.requestId);
+      for (const row of operation.rows) {
+        const colorId = String(row.colorId), key = colorId + ':' + row.pieceId;
+        if (rolls.has(key)) this.invalidate('trouserStockOperations', 'Repeated trouser roll');
+        rolls.add(key); amounts.set(colorId, (amounts.get(colorId) || 0) + trouserMeterUnits(row.meters));
+      }
+      if ([...amounts.values()].some(units => units !== trouserMeterUnits(this.shopTrouser.metersPerPiece))) this.invalidate('trouserStockOperations', 'Inconsistent trouser metre allocation');
+      if (operation.state === 'failed') continue;
+      for (const colorId of amounts.keys()) { if (seenColors.has(colorId) || !selected.has(colorId)) this.invalidate('trouserStockOperations', 'Unassigned or repeated trouser color'); seenColors.add(colorId); }
+      const event = this.additions.find(event => event.requestId === operation.requestId);
+      if (operation.kind === 'assign' ? operation.requestId !== this.requestId || amounts.size !== (this.initialQuantity ?? this.quantity) : !event || JSON.stringify([...amounts.keys()].sort()) !== JSON.stringify([...event.shopTrouserColorIds].sort())) this.invalidate('trouserStockOperations', 'Inconsistent trouser assignment journal');
+    }
+    if (!this.deletedAt && selected.size !== seenColors.size) this.invalidate('trouserStockOperations', 'Missing trouser color allocations');
+  } else if (this.trouserStockOperations?.length) this.invalidate('trouserStockOperations', 'Unexpected trouser stock journal');
   if (shopTrouser && (this.category !== 'trousers' || this.workType !== 'shop')) this.invalidate('shopTrouser', 'Shop trouser details require shop trouser work');
   if (((trouserClient || shopTrouser) && !TROUSER_TYPES.includes(this.trouserType)) || (!trouserClient && !shopTrouser && this.trouserType !== undefined)) this.invalidate("trouserType", "Trouser type must match trouser work");
   if ((this.workType === "client" && !["sfifa", "trousers", "brim"].includes(this.category) && !linked && !this.deletedAt) || (linked && this.workType !== "client")) this.invalidate("tailoring", "Client work must reference a matching tailoring order");

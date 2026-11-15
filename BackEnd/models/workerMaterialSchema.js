@@ -11,11 +11,12 @@ export const workerMaterialDebitSchema = new mongoose.Schema({
 export const workerMaterialRowSchema = new mongoose.Schema({
   size: { type: String, enum: WORKER_GARMENT_SIZES, default: undefined },
   unitWage: { type: Number, default: undefined, validate: value => value === undefined || tailoringMoneyCents(value) !== null },
-  lineId: { type: String, required: true }, fabricId: id(), colorId: id(), pieceId: id(), sfifaId: id(), variantId: id(),
-  meters: { type: Number, required: true, validate: value => sfifaQuantityUnits(value) !== null && value > 0 },
+  fabricStockDeducted: { type: Boolean, enum: [false], default: undefined },
+  lineId: { type: String, required: true }, fabricId: id(), colorId: id(), pieceId: { type: mongoose.Schema.Types.ObjectId, required: function () { return this.fabricStockDeducted !== false; } }, sfifaId: id(), variantId: id(),
+  meters: { type: Number, required: true, validate: function (value) { return sfifaQuantityUnits(value) !== null && (this.fabricStockDeducted === false ? value >= 0 : value > 0); } },
   sfifaMeters: { type: Number, required: true, enum: [WORKER_SFIFA_METERS] },
   fabricType: { type: String, required: true }, fabricColor: { type: String, required: true }, fabricReference: String,
-  pieceBarcode: { type: String, required: true }, sfifaWidth: { type: String, required: true },
+  pieceBarcode: { type: String, required: function () { return this.fabricStockDeducted !== false; } }, sfifaWidth: { type: String, required: true },
   sfifaFamily: { type: String, required: true }, sfifaCode: { type: Number, default: undefined },
   sfifaStyle: { type: String, enum: SFIFA_METER_TYPES, default: undefined },
 }, { _id: false });

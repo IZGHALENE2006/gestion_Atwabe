@@ -1,3 +1,4 @@
+import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import {
   IoMailOutline,
   IoLocationOutline,
@@ -43,21 +44,21 @@ const FrnCard = ({ supplier, onEdit, onDelete, onOpen, viewType }) => {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2"><RowActionsMenu menuKey="suppliers">
           <button type="button" onClick={onOpen} className="inline-flex items-center gap-2 rounded-xl bg-primary-50 px-3 py-2 text-sm font-bold text-primary-700 dark:bg-primary-900/20 dark:text-primary-300"><IoDocumentTextOutline size={18} />{t("supplierInvoices.title")}</button>
           <button
             onClick={onEdit}
             className="p-2 text-slate-400 hover:text-primary-500 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-xl transition-all"
-          >
+           aria-label={t("categories.edit")}>
             <IoCreateOutline size={18} />
           </button>
           <button
             onClick={onDelete}
             className="p-2 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-all"
-          >
+           aria-label={t("categories.delete")}>
             <IoTrashOutline size={18} />
           </button>
-        </div>
+        </RowActionsMenu></div>
       </div>
     );
   }
@@ -109,21 +110,21 @@ const FrnCard = ({ supplier, onEdit, onDelete, onOpen, viewType }) => {
         </a>
       </div>
 
-      <button type="button" onClick={onOpen} className="relative z-10 mb-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-bold text-white hover:bg-primary-700"><IoDocumentTextOutline size={20} />{t("supplierInvoices.title")}</button>
-      <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-800 relative z-10">
+      
+      <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-800 relative z-10"><RowActionsMenu menuKey="suppliers"><button type="button" onClick={onOpen} className="relative z-10 mb-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-bold text-white hover:bg-primary-700"><IoDocumentTextOutline size={20} />{t("supplierInvoices.title")}</button>
         <button
           onClick={onEdit}
           className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-slate-900 dark:bg-slate-800 text-white dark:text-primary-400 hover:bg-primary-600 dark:hover:bg-primary-600 hover:text-white dark:hover:text-white font-black text-[9px] tracking-[0.2em] transition-all shadow-lg active:scale-95"
-        >
+         aria-label={t("categories.edit")}>
           <IoCreateOutline size={16} /> {t("categories.edit")}
         </button>
         <button
           onClick={onDelete}
           className="px-4 py-3.5 rounded-2xl bg-rose-50 dark:bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all active:scale-95"
-        >
+         aria-label={t("categories.delete")}>
           <IoTrashOutline size={18} />
         </button>
-      </div>
+      </RowActionsMenu></div>
     </div>
   );
 };

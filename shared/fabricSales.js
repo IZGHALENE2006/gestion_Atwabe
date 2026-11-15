@@ -50,5 +50,6 @@ export function publicFabricSaleReceipt(movement) {
     barcode: movement.barcode, meters: movement.meters, pricingMode: sale.pricingMode, unitPrice: sale.unitPrice,
     subtotal: sale.subtotal, discountType: sale.discountType, discountValue: sale.discountValue,
     discountAmount: sale.discountAmount, total: sale.total, clientName: sale.clientName || '', createdByName: sale.createdByName || '',
+    ...(sale.invoiceDiscountAmount !== undefined ? { lineDiscountAmount: sale.lineDiscountAmount ?? sale.discountAmount, invoiceDiscountAmount: sale.invoiceDiscountAmount } : {}),
   };
 }
