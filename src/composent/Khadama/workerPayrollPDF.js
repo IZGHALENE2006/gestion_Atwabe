@@ -41,7 +41,7 @@ export async function createWorkerPayrollPDF({ worker, account, filter = { mode:
   text(t("workers.payroll.pdf.overall"), { size: 14, bold: true, color: [23, 52, 84], gap: 3 });
   if (y + 30 > height - 23) { doc.addPage(); y = 31; }
   const cardWidth = (contentWidth - 8) / 3;
-  ["earned", "paid", "due"].forEach((key, index) => {
+  ["earned", "paid", "balance"].forEach((key, index) => {
     const physical = rtl ? 2 - index : index, left = margin + physical * (cardWidth + 4);
     const color = key === "earned" ? [18, 119, 81] : key === "paid" ? [32, 92, 166] : [139, 93, 20];
     doc.setFillColor(...(key === "earned" ? [234, 249, 241] : key === "paid" ? [236, 244, 255] : [255, 247, 227])).roundedRect(left, y, cardWidth, 25, 2, 2, "F");
@@ -49,18 +49,20 @@ export async function createWorkerPayrollPDF({ worker, account, filter = { mode:
     doc.setFont("Amiri", "bold").setFontSize(14).text(money(report.accountTotals[key]), rtl ? left + cardWidth - 4 : left + 4, y + 19, align);
   });
   y += 32;
+  if (report.accountTotals.balance < 0) text(t('workers.payroll.negativeBalanceHint'), { size: 10 });
+  if (report.accountTotals.due > 0) text(t('workers.payroll.total.due') + ': ' + money(report.accountTotals.due), { size: 10 });
   if (report.accountTotals.advance > 0) text(t("workers.payroll.advanceBalance", { amount: money(report.accountTotals.advance) }), { size: 10 });
   text(t("workers.payroll.pdf.accountHint"), { size: 10 });
   if (report.accountTotals.unpriced > 0) text(t("workers.payroll.unpricedHint", { count: report.accountTotals.unpriced }), { size: 10, color: [139, 93, 20] });
   text(t("workers.payroll.pdf.periodSummary") + " - " + periodLabel, { size: 14, bold: true, color: [32, 92, 166] });
   text(t(report.period.mode === "week" ? "workers.payroll.pdf.weekHint" : "workers.payroll.pdf.monthHint"), { size: 10 });
-  const amounts = report.period.mode === "week" ? ["earned", "paid", "balance"] : ["earned", "paid", "due", "advance"];
+  const amounts = report.period.mode === "week" ? ["earned", "paid", "balance"] : ["earned", "paid", "balance", "due", "advance"];
   table(null, amounts.map(key => [t("workers.payroll.selected." + key), money(report.totals[key])]), [125, contentWidth - 125], { theme: "grid", columnStyles: { ...columnStyles([125, contentWidth - 125]), [rtl ? 0 : 1]: { cellWidth: contentWidth - 125, fontStyle: "bold", textColor: [18, 119, 81] } } });
   if (report.totals.unpriced > 0) text(t("workers.payroll.unpricedHint", { count: report.totals.unpriced }), { size: 10, color: [139, 93, 20] });
   if (report.months.length > 1) {
     ensureSpace(55);
     text(t("workers.payroll.monthSummary"), { size: 13, bold: true });
-    const fields = report.period.mode === "week" ? ["earned", "paid", "balance"] : ["earned", "paid", "due", "advance"];
+    const fields = report.period.mode === "week" ? ["earned", "paid", "balance"] : ["earned", "paid", "balance", "due", "advance"];
     const firstWidth = 38, amountWidth = (contentWidth - firstWidth) / fields.length;
     table([t("workers.payroll.columns.month"), ...fields.map(key => t("workers.payroll.columns." + key))], report.months.map(row => [pdfLtr(row.month), ...fields.map(key => money(row[key]))]), [firstWidth, ...fields.map(() => amountWidth)]);
   }

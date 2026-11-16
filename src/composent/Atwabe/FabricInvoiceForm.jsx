@@ -4,6 +4,7 @@ import { IoAddOutline, IoCloseOutline, IoTrashOutline } from 'react-icons/io5';
 import { calculateFabricSale, normalizeFabricNumber } from '../../../shared/fabricSales.js';
 import { calculateFabricReduction } from '../../../shared/fabrics.js';
 import { applyFabricInvoiceDiscount, validateFabricInvoice, validateFabricInvoiceDiscount } from '../../../shared/fabricInvoices.js';
+import { createFabricSaleFinancials } from '../../../shared/fabricProfits.js';
 import { createFabricInvoice, loadInvoiceCreditCustomers, fabricInvoiceError } from './fabricInvoicesApi.js';
 import { loadFabricSaleClients } from './fabricsApi.js';
 import useEmployeeOperations from '../../hooks/useEmployeeOperations.js';
@@ -33,11 +34,18 @@ export default function FabricInvoiceForm({ fabrics, permissions, token, onClose
     try { if (piece) { calculateFabricReduction(line.meters, piece.meters); sale = calculateFabricSale({ ...line, discountValue: line.discountValue === '' ? 0 : line.discountValue }, fabric); } } catch (failure) { invalid = failure.message; }
     return { ...line, fabric, color, piece, sale, invalid, expectedUnitPrice: fabric?.[line.pricingMode === 'wholesale' ? 'wholesalePricePerMeter' : 'salePricePerMeter'] };
   });
-  let totals = null, discountError = '';
+  let totals = null, discountError = '', hasInvoiceDiscount = false;
   try {
     const discount = permissions.discount ? validateFabricInvoiceDiscount(invoiceDiscount) : undefined;
+    hasInvoiceDiscount = Boolean(discount?.value);
     if (priced.every(line => line.sale)) totals = applyFabricInvoiceDiscount(priced.map(line => line.sale), discount);
-  } catch (failure) { discountError = failure.message; }
+  } catch (failure) { discountError = failure.message; hasInvoiceDiscount = true; }
+  const displayedLines = priced.map((line, index) => {
+    const displaySale = totals?.sales[index] ?? line.sale;
+    const financials = permissions.profits && displaySale && (!hasInvoiceDiscount || totals) ? createFabricSaleFinancials(Number(normalizeFabricNumber(line.meters)), line.fabric?.purchasePricePerMeter, displaySale.total) : {};
+    return { ...line, displaySale, profitAmount: financials.profitAmount };
+  });
+  const invoiceProfit = totals && displayedLines.every(line => Number.isFinite(line.profitAmount)) ? displayedLines.reduce((sum, line) => sum + Math.round(line.profitAmount * 100), 0) / 100 : null;
   const valid = Boolean(totals), total = totals?.total ?? null;
   const paidValue = mode === 'paid' ? total : Number(normalizeFabricNumber(paid)), remaining = total === null || !Number.isFinite(paidValue) ? null : (Math.round(total * 100) - Math.round(paidValue * 100)) / 100;
   const close = () => { if (!busyRef.current) { dialog.current.close(); onClose(); } };
@@ -62,7 +70,7 @@ export default function FabricInvoiceForm({ fabrics, permissions, token, onClose
   return <dialog ref={dialog} className="fi-dialog fi-form" dir={i18n.dir()} aria-labelledby="fi-form-title" onCancel={event => { event.preventDefault(); close(); }}>
     <header><div><h2 id="fi-form-title">{t('fabricInvoices.add')}</h2><p>{t('fabricInvoices.subtitle')}</p></div><button type="button" onClick={close} disabled={busy} aria-label={t('dialog.close')}><IoCloseOutline size={24} /></button></header>
     <form noValidate onSubmit={submit}><fieldset disabled={busy || pending}>
-      <section className="fi-lines"><h3>{t('fabricInvoices.lines')}</h3>{priced.map((line, index) => <article className="fi-line" key={line.key} data-invoice-line={index}>
+      <section className="fi-lines"><h3>{t('fabricInvoices.lines')}</h3>{displayedLines.map((line, index) => <article className="fi-line" key={line.key} data-invoice-line={index}>
         <div className="fi-line-header"><h4>{t('fabricInvoices.line', { number: index + 1 })}</h4>{lines.length > 1 && <button type="button" onClick={() => setLines(current => current.filter(row => row.key !== line.key))}><IoTrashOutline />{t('fabricInvoices.remove')}</button>}</div>
         <div className="fi-grid fi-four">
           {field(t('fabrics.type'), 'fi-type-' + index, <select id={'fi-type-' + index} value={line.fabricId} onChange={event => patch(line.key, { fabricId: event.target.value, colorId: '', pieceId: '' })}><option value="">{t('fabrics.chooseType')}</option>{fabrics.map(row => <option key={row._id} value={row._id}>{row.type}{row.reference ? ' · ' + row.reference : ''}</option>)}</select>)}
@@ -71,7 +79,7 @@ export default function FabricInvoiceForm({ fabrics, permissions, token, onClose
           {field(t('fabricInvoices.meters'), 'fi-meters-' + index, <input id={'fi-meters-' + index} inputMode="decimal" dir="ltr" maxLength={16} value={line.meters} onChange={event => patch(line.key, { meters: event.target.value })} />)}
           {field(t('fabrics.sales.pricing'), 'fi-pricing-' + index, <select id={'fi-pricing-' + index} value={line.pricingMode} onChange={event => patch(line.key, { pricingMode: event.target.value })}><option value="retail">{t('fabrics.sales.retail')}</option>{permissions.wholesale && <option value="wholesale">{t('fabrics.sales.wholesale')}</option>}</select>)}
           {permissions.discount && <>{field(t('fabrics.sales.discount'), 'fi-discount-type-' + index, <select id={'fi-discount-type-' + index} value={line.discountType} onChange={event => patch(line.key, { discountType: event.target.value, discountValue: '' })}><option value="percent">%</option><option value="amount">{t('fesla.currency')}</option></select>)}{field(t('fabrics.sales.discount'), 'fi-discount-' + index, <input id={'fi-discount-' + index} value={line.discountValue} inputMode="decimal" dir="ltr" placeholder="0" maxLength={16} onChange={event => patch(line.key, { discountValue: event.target.value })} />)}</>}
-          <div className="fi-line-amount"><small>{t('fabricInvoices.price')}: {Number.isFinite(line.expectedUnitPrice) ? money(line.expectedUnitPrice) : '—'}</small><strong>{t('fabricInvoices.amount')}: {line.sale ? money(line.sale.total) : '—'} {t('fesla.currency')}</strong></div>
+          <div className="fi-line-quote"><div className="fi-line-amount"><small>{t('fabricInvoices.price')}: {Number.isFinite(line.expectedUnitPrice) ? money(line.expectedUnitPrice) : '—'}</small><strong>{t('fabricInvoices.amount')}: <bdi data-invoice-line-total={index} data-value={line.displaySale?.total ?? ''}>{line.displaySale ? money(line.displaySale.total) : '—'} {t('fesla.currency')}</bdi></strong></div>{permissions.profits && <div className={'fi-line-profit' + (line.profitAmount < 0 ? ' is-loss' : '')}><small>{t('fabricInvoices.profit')}</small><strong data-invoice-line-profit={index} data-value={line.profitAmount ?? ''}><bdi>{Number.isFinite(line.profitAmount) ? money(line.profitAmount) + ' ' + t('fesla.currency') : '—'}</bdi></strong></div>}</div>
         </div>{line.invalid && line.meters && <p className="fi-error">{fabricInvoiceError(new Error(line.invalid), t)}</p>}
       </article>)}<button type="button" className="fi-secondary" data-add-invoice-line disabled={lines.length >= 100} onClick={() => setLines(current => [...current, newLine()])}><IoAddOutline />{t('fabricInvoices.addLine')}</button></section>
       {permissions.discount && <section className="fi-section fi-invoice-discount" aria-labelledby="fi-invoice-discount-title">
@@ -87,6 +95,7 @@ export default function FabricInvoiceForm({ fabrics, permissions, token, onClose
           : <div className="fi-credit-fields">{credit.add && <button type="button" className="fi-secondary" onClick={() => setIsNew(value => !value)}>{t('fabricInvoices.' + (isNew ? 'existingCustomer' : 'newCustomer'))}</button>}{!isNew ? field(t('fabricInvoices.creditCustomer'), 'fi-credit-customer', <select id="fi-credit-customer" value={customerId} disabled={accounts.loading || accounts.error} onChange={event => setCustomerId(event.target.value)}><option value="">{t('fabricInvoices.chooseCustomer')}</option>{accounts.rows.map(row => <option key={row._id} value={row._id}>{row.name}{row.phone ? ' · ' + row.phone : ''}</option>)}</select>) : <div className="fi-grid">{['name', 'phone', 'email'].map(key => field(t('fabricInvoices.' + key) + (key === 'name' ? ' *' : ''), 'fi-new-' + key, <input key={key} id={'fi-new-' + key} value={customer[key]} maxLength={key === 'email' ? 254 : key === 'name' ? 160 : 40} onChange={event => setCustomer(current => ({ ...current, [key]: event.target.value }))} />))}</div>}{accounts.error && <p className="fi-error">{t('fabricInvoices.errors.customersFailed')} <button type="button" onClick={() => { setAccounts(current => ({ ...current, loading: true, error: false })); setAttempt(value => value + 1); }}>{t('fabrics.retry')}</button></p>}{field(t('fabricInvoices.initialPaid'), 'fi-paid', <input id="fi-paid" value={paid} disabled={!credit.payment} inputMode="decimal" maxLength={12} dir="ltr" onChange={event => setPaid(event.target.value)} />)}</div>}
       </section>
       {totals && totals.discountAmount > 0 && <dl className="fi-discount-summary" aria-live="polite">{[['subtotal', totals.subtotal], ['lineDiscountAmount', totals.lineDiscountAmount], ['invoiceDiscountAmount', totals.invoiceDiscountAmount]].map(([key, value]) => <div key={key}><dt>{t('fabricInvoices.' + key)}</dt><dd data-invoice-discount-summary={key} data-value={value}><bdi>{key === 'subtotal' ? '' : '−'}{money(value)} {t('fesla.currency')}</bdi></dd></div>)}</dl>}
+      {permissions.profits && <div className={'fi-profit-total' + (invoiceProfit < 0 ? ' is-loss' : '')} aria-live="polite"><div><strong>{t('fabricInvoices.invoiceProfit')}</strong><p>{t('fabricInvoices.profitHint')}</p></div><strong data-invoice-profit-total data-value={invoiceProfit ?? ''}><bdi>{invoiceProfit === null ? '—' : money(invoiceProfit) + ' ' + t('fesla.currency')}</bdi></strong></div>}
       <div className="fi-totals" aria-live="polite">{[['total', total], ['paid', paidValue], ['remaining', remaining]].map(([key, value]) => <div key={key}><span>{t('fabricInvoices.' + key)}</span><strong data-invoice-total={key} data-value={value ?? ''}>{value === null || !Number.isFinite(value) ? '—' : money(value)} {t('fesla.currency')}</strong></div>)}</div>
       {error && <p role="alert" className="fi-error">{error}</p>}
       <footer><button type="button" className="fi-secondary" onClick={onReload}>{t('fabrics.reloadStock')}</button><button type="button" className="fi-secondary" onClick={close}>{t('dialog.close')}</button><button type="submit" data-confirm-fabric-invoice className="fi-primary" disabled={!valid}>{t(busy ? 'common.loading' : 'fabricInvoices.confirm')}</button></footer>

@@ -142,6 +142,20 @@ test("advances for a different month cannot hide an old unpaid debt", async t =>
   const ledger = await account(f); assert.equal(ledger.totals.balance, -100); assert.equal(ledger.totals.due, 500); assert.equal(ledger.totals.advance, 600);
 });
 
+test('a 200 DH advance and 150 DH earned leave a signed -50 DH balance, then move through zero to a positive due', async t => {
+  const f = fixture(t);
+  const advance = payment({ type: 'advance', amount: 200 });
+  assert.equal((await request(f.worker, '/payments', advance)).status, 201);
+  let work = await assign(f); const first = await finish(f, work, 3); assert.equal(first.status, 201); work = first.data;
+  let ledger = await account(f);
+  assert.deepEqual([ledger.totals.earned, ledger.totals.paid, ledger.totals.balance, ledger.totals.due, ledger.totals.advance], [150, 200, -50, 0, 50]);
+  assert.equal(ledger.months.find(row => row.month === '2026-11').balance, -50);
+  assert.equal((await request(f.worker, '/payments', payment({ amount: 1 }))).status, 409);
+  const second = await finish(f, work, 1); assert.equal(second.status, 201); work = second.data; ledger = await account(f); assert.equal(ledger.totals.balance, 0);
+  const third = await finish(f, work, 1); assert.equal(third.status, 201); ledger = await account(f); assert.equal(ledger.totals.balance, 50); assert.equal(ledger.totals.due, 50);
+  assert.equal((await request(f.worker, '/payments', advance)).status, 200); assert.equal((await account(f)).totals.paid, 200);
+});
+
 test("payment retries are idempotent, altered retries conflict, concurrent settlements do not overpay", async t => {
   const f = fixture(t), work = await assign(f); await finish(f, work, 4);
   const first = payment({ amount: 50 });

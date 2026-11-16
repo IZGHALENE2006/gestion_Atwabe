@@ -182,3 +182,23 @@ test('legacy requests and pending plans retain their original fingerprint and to
   for (const key of ['invoiceDiscount', 'lineDiscountAmount', 'invoiceDiscountAmount', 'afterLineDiscounts']) delete plan[key];
   const result = await create(body); assert.equal(result.status, 201, JSON.stringify(result.data)); assert.equal(result.data.invoice.total, 116.25); assert.equal(result.data.invoice.invoiceDiscountAmount, 0); assert.deepEqual(result.data.invoice.lines.map(row => row.invoiceDiscountAmount), [0, 0]);
 });
+
+for (const paymentMode of ['paid', 'credit', 'partial']) test(paymentMode + ': invoice profit enters fabric profits at sale, with its invoice number, independently of collection', async t => {
+  const f = fabricInvoiceFixture(t), initial = paymentMode === 'partial' ? 20 : 0;
+  const body = input(f, { invoiceDiscount: { type: 'amount', value: 11.25 }, ...(paymentMode === 'paid' ? {} : { paymentMode: 'credit', amountPaid: initial, customerId: String(f.customer._id) }) });
+  body.lines = body.lines.map(line => ({ ...line, profitAmount: 999999, costAmount: 0, total: 0 }));
+  const saved = await create(body); assert.equal(saved.status, 201, JSON.stringify(saved.data)); const invoice = saved.data.invoice;
+  const getProfits = async () => { const result = await request('/fabrics/profits'); assert.equal(result.status, 200); return result.data; };
+  const first = await getProfits();
+  assert.equal(first.summary.revenueAmount, 105); assert.equal(first.summary.costAmount, 55); assert.equal(first.summary.profitAmount, 50); assert.equal(first.summary.saleCount, 2);
+  assert.ok(first.sales.every(row => row.invoiceId === invoice._id && row.reference === invoice.reference));
+  const searched = await request('/fabrics/profits?search=' + invoice.reference); assert.equal(searched.data.sales.length, 2);
+  if (paymentMode !== 'paid') {
+    assert.equal(invoice.remaining, 105 - initial);
+    f.fabrics()[0].purchasePricePerMeter = 27;
+    const payment = await request('/fabrics/invoices/' + invoice._id + '/payments', { requestId: randomUUID(), amount: invoice.remaining });
+    assert.equal(payment.status, 200, JSON.stringify(payment.data)); assert.equal(payment.data.invoice.remaining, 0);
+    const collected = await getProfits(); assert.deepEqual(collected.summary, first.summary); assert.deepEqual(collected.sales, first.sales);
+  }
+  assert.equal((await create(body)).status, 201); assert.equal((await getProfits()).summary.profitAmount, 50);
+});

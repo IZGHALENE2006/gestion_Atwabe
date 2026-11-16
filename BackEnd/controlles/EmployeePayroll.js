@@ -3,6 +3,7 @@ import Employee from '../models/EmployeModele.js';
 import Admin from '../models/AdminModel.js';
 import Payroll from '../models/EmployeePayroll.js';
 import { buildEmployeePayroll, validateCompensation, validateEmployeePayment, payrollMonth, payrollCents } from '../../shared/employeePayroll.js';
+import { buildAdminSalesProfit } from '../../shared/adminSalesProfit.js';
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
 async function employeeFor(req) {
@@ -26,6 +27,17 @@ const publicPayment = payment => {
   return data;
 };
 const errorResponse = (res, error) => res.status(error.name === 'VersionError' || error.code === 11000 ? 409 : error.status || 500).json({ message: error.name === 'VersionError' || error.code === 11000 ? 'employeePayrollConflict' : error.status ? error.message : 'employeePayrollFailed', ...(error.fields ? { fields: error.fields } : {}) });
+export async function getAdminSalesProfit(req, res) {
+  try {
+    const [admin, employees, accounts] = await Promise.all([
+      Admin.findById(req.user.id).select('name ventes Facture').lean(),
+      Employee.find({ idAdmin: req.user.id }).select('name isActive compensation ventes Facture').lean(),
+      Payroll.find({ idAdmin: req.user.id }).select('employeeId plans').lean(),
+    ]);
+    if (!admin) return res.status(404).json({ message: 'employeePayrollNotFound' });
+    res.set('Cache-Control', 'no-store').json(buildAdminSalesProfit(admin, employees, accounts));
+  } catch (error) { errorResponse(res, error); }
+}
 export async function getEmployeePayroll(req, res) {
   try {
     const employee = await employeeFor(req), account = await accountFor(req, employee);

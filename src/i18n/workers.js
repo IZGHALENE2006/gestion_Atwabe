@@ -2,7 +2,7 @@ export const workersFrench = {
   shopFlow: {"progress":"Étapes du travail","completed":"Terminé","inProgress":"En cours","notAssigned":"Pas encore confié","chooseWork":"Choisir un travail de la machine","refresh":"Actualiser la liste","selectionHint":"Le travail complet passe à l’étape suivante après réalisation de l’étape précédente. Le tarif saisi concerne cette étape, par pièce.","search":"Rechercher par artisan, code-barres de pièce ou du travail","machineWork":"Travail d’origine du magasin","pieceCount":"Nombre de pièces : {{count}}","loadFailed":"Impossible de charger les travaux. Actualisez la liste.","empty":"Aucun travail correspondant dans cette section.","unavailable":"Travaux indisponibles","barcodeTitle":"Étiquettes des pièces","barcodeHint":"Chaque pièce possède un code-barres distinct conservé pendant toutes les étapes du travail.","printBarcode":"Imprimer toutes les étiquettes","barcode":"Code-barres","allDone":"Toutes les étapes sont terminées","pieceBarcode":"Code-barres de la pièce","printSelection":"Pièces à imprimer","allPieces":"Toutes les pièces ({{count}})","onePiece":"Une seule pièce","pieceNumber":"Numéro de la pièce","invalidPiece":"Saisissez un numéro de pièce entre 1 et {{count}}.","printOne":"Imprimer cette pièce","matchedPiece":"Pièce correspondant au code-barres : n° {{number}}"},
   removal: {"title":"Supprimer l’artisan","named":"Supprimer l’artisan {{name}}","badge":"Artisan supprimé","saved":"L’artisan a été retiré des listes actives de toutes ses sections.","confirm":"Supprimer cet artisan de toutes ses sections ? Son compte restera conservé dans la liste des artisans supprimés.","historyHint":"Les travaux, matières, réalisations et versements restent conservés. Vous pourrez terminer les travaux en cours et régler les sommes dues, sans confier de nouveau travail.","listLabel":"Liste des artisans","activeList":"Artisans actifs","deletedList":"Artisans supprimés","empty":"Aucun artisan supprimé dans cette section.","accountHint":"Cet artisan a été supprimé des listes actives. Ses travaux et son compte restent accessibles pour terminer les travaux en cours et régler son solde."},
   payroll: {
-  pdf: {"invalidPeriod":"Choisissez une semaine ou un mois valide à partir de 1900.","pageLabel":"Page","accountAction":"Compte complet PDF","periodAction":"Exporter la période PDF","exporting":"Préparation du PDF…","failed":"Impossible de créer le PDF. Réessayez.","title":"Relevé du compte de l’artisan","overall":"Situation complète du compte","periodSummary":"Statistiques de la période","generated":"Édité le","phone":"Téléphone","weekDay":"Un jour de la semaine","weekRange":"Du {{start}} au {{end}}","yearLabel":"Année {{year}}","weekHint":"Du lundi au dimanche, selon la date réelle de réalisation ou de versement. Le solde de la semaine est un mouvement, pas le reste dû du compte.","monthHint":"Les réalisations et versements sont rattachés au mois concerné, même si le versement a eu lieu plus tard.","balance":"Solde de la période","accountHint":"Le reste dû et les avances sont calculés mois par mois, sans compenser les soldes de mois différents.","filtered":"Écritures affichées : {{kind}}. Les totaux couvrent toute la période.","page":"Page {{page}} / {{pages}}"},
+  pdf: {"invalidPeriod":"Choisissez une semaine ou un mois valide à partir de 1900.","pageLabel":"Page","accountAction":"Compte complet PDF","periodAction":"Exporter la période PDF","exporting":"Préparation du PDF…","failed":"Impossible de créer le PDF. Réessayez.","title":"Relevé du compte de l’artisan","overall":"Situation complète du compte","periodSummary":"Statistiques de la période","generated":"Édité le","phone":"Téléphone","weekDay":"Un jour de la semaine","weekRange":"Du {{start}} au {{end}}","yearLabel":"Année {{year}}","weekHint":"Du lundi au dimanche, selon la date réelle de réalisation ou de versement. Le solde de la semaine est un mouvement, pas le reste dû du compte.","monthHint":"Les réalisations et versements sont rattachés au mois concerné, même si le versement a eu lieu plus tard.","balance":"Solde de la période","accountHint":"Le solde net est égal aux sommes acquises moins les versements. Le détail des sommes dues et des avances reste séparé par mois.","filtered":"Écritures affichées : {{kind}}. Les totaux couvrent toute la période.","page":"Page {{page}} / {{pages}}"},
   "title": "Compte de l’artisan",
   "scopeHint": "Tous les départements de cet artisan. Les montants sont acquis lors de la réalisation.",
   "history": "Historique des gains et versements",
@@ -23,7 +23,8 @@ export const workersFrench = {
   "total": {
     "earned": "Total acquis",
     "paid": "Total versé",
-    "due": "Reste à verser"
+    "due": "Reste à verser",
+    "balance": "Solde restant net"
   },
   "selected": {
     "balance": "Solde de la période",
@@ -33,6 +34,7 @@ export const workersFrench = {
     "advance": "Solde des avances"
   },
   "advanceBalance": "Avances non encore couvertes par les réalisations : {{amount}}. Elles restent rattachées à leurs mois.",
+  "negativeBalanceHint": "Un solde négatif correspond au montant versé en plus des sommes acquises par l’artisan.",
   "unpaidMonths": "Mois avec un reste à verser",
   "paymentType": "Type de versement",
   "types": {
@@ -335,7 +337,7 @@ export const workersArabic = {
   shopFlow: {"progress":"مراحل إنجاز العمل","completed":"منجز","inProgress":"قيد الإنجاز","notAssigned":"لم يُسند بعد","chooseWork":"اختر عملًا من أعمال الآلة","refresh":"تحديث القائمة","selectionHint":"يُنقل العمل كاملًا بعد إنجاز المرحلة السابقة. الأجرة التي ستحددها تخص هذه المرحلة لكل قطعة.","search":"بحث باسم العامل أو باركود القطعة أو العمل","machineWork":"عمل المحل الأصلي","pieceCount":"عدد القطع: {{count}}","loadFailed":"تعذر تحميل أعمال المحل. أعد تحديث القائمة.","empty":"لا توجد أعمال مطابقة في هذا القسم.","unavailable":"أعمال غير متاحة للإسناد","barcodeTitle":"ملصقات باركود القطع","barcodeHint":"لكل قطعة باركود مستقل يرافقها خلال مراحل إنجاز العمل.","printBarcode":"طباعة جميع الملصقات","barcode":"الباركود","allDone":"اكتمل العمل في جميع المراحل","pieceBarcode":"باركود القطعة","printSelection":"القطع المطلوب طباعتها","allPieces":"جميع القطع ({{count}})","onePiece":"قطعة واحدة","pieceNumber":"رقم القطعة","invalidPiece":"أدخل رقم قطعة بين 1 و{{count}}.","printOne":"طباعة ملصق القطعة","matchedPiece":"القطعة المطابقة للباركود: رقم {{number}}"},
   removal: {"title":"حذف العامل","named":"حذف العامل {{name}}","badge":"عامل محذوف","saved":"تم حذف العامل من القوائم النشطة في جميع أقسامه.","confirm":"هل تريد حذف هذا العامل من جميع أقسامه؟ سيبقى حسابه محفوظًا في قائمة العمال المحذوفين.","historyHint":"تبقى الأعمال والمواد والإنجازات والدفعات محفوظة. يمكنك إتمام الأعمال الجارية وتسوية المستحقات، دون إسناد أعمال جديدة للعامل.","listLabel":"قائمة العمال","activeList":"العمال النشطون","deletedList":"العمال المحذوفون","empty":"لا يوجد عمال محذوفون في هذا القسم.","accountHint":"هذا العامل محذوف من القوائم النشطة. تبقى أعماله وحسابه متاحين لإتمام الأعمال الجارية وتسوية المستحقات."},
   payroll: {
-  pdf: {"invalidPeriod":"اختر أسبوعًا أو شهرًا صحيحًا ابتداءً من سنة ١٩٠٠.","pageLabel":"صفحة","accountAction":"كشف الحساب الكامل PDF","periodAction":"تصدير الفترة PDF","exporting":"جارٍ إعداد PDF…","failed":"تعذر إنشاء ملف PDF. حاول مجددًا.","title":"كشف حساب العامل","overall":"الوضع الكامل لحساب العامل","periodSummary":"إحصائيات الفترة","generated":"تاريخ الإصدار","phone":"الهاتف","weekDay":"اختر يومًا من الأسبوع","weekRange":"من {{start}} إلى {{end}}","yearLabel":"سنة {{year}}","weekHint":"من الاثنين إلى الأحد، بحسب تاريخ الإنجاز أو الصرف الفعلي. صافي حركة الأسبوع لا يمثّل المتبقي في الحساب.","monthHint":"تُنسب الإنجازات والدفعات إلى شهر الاستحقاق المحدد، حتى إن صُرفت الدفعة لاحقًا.","balance":"صافي حركة الفترة","accountHint":"يُحسب المتبقي والتسبيقات لكل شهر على حدة، دون خصم أرصدة أشهر من أشهر أخرى.","filtered":"السجلات المعروضة: {{kind}}. الإجماليات تشمل الفترة كاملة.","page":"صفحة {{page}} / {{pages}}"},
+  pdf: {"invalidPeriod":"اختر أسبوعًا أو شهرًا صحيحًا ابتداءً من سنة ١٩٠٠.","pageLabel":"صفحة","accountAction":"كشف الحساب الكامل PDF","periodAction":"تصدير الفترة PDF","exporting":"جارٍ إعداد PDF…","failed":"تعذر إنشاء ملف PDF. حاول مجددًا.","title":"كشف حساب العامل","overall":"الوضع الكامل لحساب العامل","periodSummary":"إحصائيات الفترة","generated":"تاريخ الإصدار","phone":"الهاتف","weekDay":"اختر يومًا من الأسبوع","weekRange":"من {{start}} إلى {{end}}","yearLabel":"سنة {{year}}","weekHint":"من الاثنين إلى الأحد، بحسب تاريخ الإنجاز أو الصرف الفعلي. صافي حركة الأسبوع لا يمثّل المتبقي في الحساب.","monthHint":"تُنسب الإنجازات والدفعات إلى شهر الاستحقاق المحدد، حتى إن صُرفت الدفعة لاحقًا.","balance":"صافي حركة الفترة","accountHint":"صافي المتبقي هو المستحقات ناقص المدفوعات. تبقى تفاصيل المستحقات والتسبيقات محفوظة لكل شهر على حدة.","filtered":"السجلات المعروضة: {{kind}}. الإجماليات تشمل الفترة كاملة.","page":"صفحة {{page}} / {{pages}}"},
   "title": "حساب العامل",
   "scopeHint": "جميع أقسام العامل في حساب واحد. تُحتسب الأجرة عند تسجيل الإنجاز.",
   "history": "سجل المستحقات والدفعات",
@@ -356,7 +358,8 @@ export const workersArabic = {
   "total": {
     "earned": "مجموع المستحقات المكتسبة",
     "paid": "مجموع ما صُرف للعامل",
-    "due": "المتبقي للعامل"
+    "due": "المتبقي للعامل",
+    "balance": "صافي المتبقي"
   },
   "selected": {
     "balance": "صافي حركة الفترة",
@@ -366,6 +369,7 @@ export const workersArabic = {
     "advance": "رصيد التسبيقات"
   },
   "advanceBalance": "تسبيقات لم تغطّها الإنجازات بعد: {{amount}}. يبقى كل تسبيق مرتبطًا بشهره.",
+  "negativeBalanceHint": "الرصيد السالب هو مبلغ صُرف للعامل زائدًا عن مستحقاته المكتسبة، ويُحسب لصالح المحل.",
   "unpaidMonths": "أشهر بها مستحقات غير مسدّدة",
   "paymentType": "نوع المصروف",
   "types": {

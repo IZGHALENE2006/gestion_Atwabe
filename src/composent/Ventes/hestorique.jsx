@@ -1,10 +1,11 @@
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import SalesSummaryCards from "./SalesSummaryCards.jsx";
-import { salesWithRevenue, summarizeSales, saleRevenue, salesPeriodKey } from "../../../shared/salesRevenue.js";
+import { summarizeSales, saleRevenue, salesPeriodKey } from "../../../shared/salesRevenue.js";
 import { useDispatch } from "react-redux";
 import { getMe } from "../../slices/SliceLoginAdmin.jsx";
-import { GetAllEmploye } from "../../slices/sliceEmploye.jsx";
+import useAdminSalesProfit from "./useAdminSalesProfit.js";
+import { summarizeAdminSalesProfit } from "../../../shared/adminSalesProfit.js";
 import { useEffect, useMemo, useState } from "react";
 import {
   IoCalendarOutline,
@@ -33,10 +34,10 @@ function HestoriqueProfit() {
   const [resultSearch, setResultSearch] = useState("");
 
   const { user, role, token } = useSelector((state) => state.LoginAdmin);
-  const { Employe } = useSelector((state) => state.Employe);
+  const report = useAdminSalesProfit(token, role);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  useEffect(() => { if (token) { dispatch(getMe()); if (role === "admin") dispatch(GetAllEmploye()); } }, [dispatch, token, role]);
+  useEffect(() => { if (token) { dispatch(getMe());  } }, [dispatch, token, role]);
 
   const locale = i18n.language === "ar" ? "ar-MA" : "fr-MA";
   const isRtl = i18n.dir() === "rtl";
@@ -53,14 +54,9 @@ function HestoriqueProfit() {
   }, [token, navigate]);
 
   const allVentes = useMemo(() => {
-    if (role === "admin") {
-      const adminVentes = salesWithRevenue(user || {}).map((v) => ({ ...v, nameEmp: user?.name || t("historyPage.admin") }));
-      const employeVentes =
-        Employe?.flatMap((e) => salesWithRevenue(e).map((v) => ({ ...v, nameEmp: e.name || t("historyPage.employee") }))) || [];
-      return [...adminVentes, ...employeVentes];
-    }
+    if (role === "admin") return report.sales;
     return (user?.ventes || []).map((v) => ({ ...v, nameEmp: user?.name || t("historyPage.admin") }));
-  }, [role, user, Employe, t]);
+  }, [role, user, report.sales, t]);
 
   const filterByPeriod = (list, key) => {
     if (!periodValue) return [];
@@ -93,13 +89,13 @@ function HestoriqueProfit() {
           <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-[0.2em] mt-1">{t("historyPage.subtitle")}</p>
         </div>
 
-        <SalesSummaryCards summary={summary} history />
+        <SalesSummaryCards summary={summary} history ownerProfit={role === "admin" ? summarizeAdminSalesProfit(displayData) : undefined} loading={role === "admin" && report.loading} error={role === "admin" && report.error} onRetry={report.retry} />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white dark:bg-slate-900 p-5 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="relative group">
             <IoFilterOutline className={`absolute ${iconClass} top-1/2 -translate-y-1/2 text-primary-500 z-10`} />
             <select
-              value={filterType}
+              data-sales-period value={filterType}
               onChange={(e) => {
                 const next = e.target.value;
                 setFilterType(next);
@@ -119,7 +115,7 @@ function HestoriqueProfit() {
             <input
               type={filterType === "day" ? "date" : filterType === "month" ? "month" : "number"}
               placeholder={filterType === "year" ? "YYYY" : ""}
-              value={periodValue}
+              data-sales-period-value value={periodValue}
               onChange={(e) => setPeriodValue(e.target.value)}
               className={`w-full ${padClass} py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 outline-none text-[11px] font-black uppercase cursor-pointer`}
             />
@@ -129,7 +125,7 @@ function HestoriqueProfit() {
             <IoSearchOutline className={`absolute ${iconClass} top-1/2 -translate-y-1/2 text-slate-400`} size={20} />
             <input
               type="text"
-              value={resultSearch}
+              data-sales-history-search value={resultSearch}
               onChange={(e) => setResultSearch(e.target.value)}
               placeholder={t("historyPage.searchResults")}
               className={`w-full ${padClass} py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 outline-none text-[11px] font-bold tracking-widest uppercase`}

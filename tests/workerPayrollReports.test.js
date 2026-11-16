@@ -32,6 +32,7 @@ test("weekly reports use payment day and Paris earning day while entry filters l
   const filtered=buildWorkerPayrollReport(account,{mode:"week",week:"2026-11-06",kind:"payment"});assert.equal(filtered.entries.length,2);assert.deepEqual(filtered.totals,week.totals);assert.equal(account.entries.length,6);
 });
 
+
 async function inspect(doc) {
   const task=getDocument({data:new Uint8Array(doc.output("arraybuffer"))}),pdf=await task.promise,pages=[];
   try{for(let n=1;n<=pdf.numPages;n++){
@@ -57,4 +58,19 @@ test("long reports paginate, repeat headers, retain final rows and render an emp
   const extra=Array.from({length:65},(_,index)=>({id:"row-"+index,kind:"earning",month:"2026-11",date:"2026-11-06T10:00:00Z",amount:1.25,category:"machine",productName:"جلابيب المحل قماش من القطن الممتاز مع تفاصيل الخياطة المطلوبة للزبون Atelier "+index,quantity:1}));
   const pages=await inspect(await createWorkerPayrollPDF({worker:{...reportWorker,name:"أمينة ".repeat(25)},account:reportAccount(extra),language:"ar",issuedAt}));assert.ok(pages.length>=3);assert.ok(pages.every(page=>page.text.includes("كشف حساب العامل")));assert.ok(pages.map(page=>page.text).join(" ").includes("Atelier 64"));
   const empty=await inspect(await createWorkerPayrollPDF({worker:reportWorker,account:reportAccount(),filter:{mode:"year",year:"2025"},language:"fr",issuedAt}));assert.ok(empty.map(page=>page.text).join(" ").includes("Aucune écriture"));
+});
+
+for (const language of ['ar', 'fr']) test(language + ': signed worker balance is retained in monthly, yearly and complete PDF summaries', async () => {
+  const entries = [
+    { id: 'earned', kind: 'earning', month: '2026-11', date: '2026-11-03T10:00:00Z', amount: 150, category: 'machine', productName: 'جلابيب المحل', quantity: 3, unitWage: 50 },
+    { id: 'advance', kind: 'payment', paymentType: 'advance', month: '2026-11', paidOn: '2026-11-01', date: '2026-11-01T10:00:00Z', amount: 200 },
+  ];
+  const { workerPayrollSummary } = await import('../shared/workerPayroll.js');
+  const account = { entries, ...workerPayrollSummary(entries) };
+  for (const filter of [{ mode: 'month', month: '2026-11' }, { mode: 'year', year: '2026' }, { mode: 'all' }]) {
+    const report = buildWorkerPayrollReport(account, filter); assert.equal(report.totals.balance, -50); assert.equal(report.accountTotals.balance, -50);
+    const pages = await inspect(await createWorkerPayrollPDF({ worker: reportWorker, account, filter, language, issuedAt }));
+    const text = pages.map(page => page.text).join(' '), visual = pages.flatMap(page => page.visual);
+    for (const expected of ['150.00 DH', '200.00 DH', '-50.00 DH']) assert.ok(text.includes(expected) || visual.some(run => run.includes(expected)), 'Missing: ' + expected);
+  }
 });

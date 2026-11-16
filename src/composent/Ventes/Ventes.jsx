@@ -1,12 +1,13 @@
 import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import SalesSummaryCards from "./SalesSummaryCards.jsx";
-import { salesWithRevenue, summarizeSales, saleRevenue, salesPeriodKey } from "../../../shared/salesRevenue.js";
+import { summarizeSales, saleRevenue, salesPeriodKey } from "../../../shared/salesRevenue.js";
 import { IoWalletOutline, IoSearchOutline, IoPersonOutline } from "react-icons/io5";
 import { FaUserTie, FaPrint } from "react-icons/fa";
 import { TbBrandShopee } from "react-icons/tb";
 import { useDispatch, useSelector } from "react-redux";
-import { GetAllEmploye } from "../../slices/sliceEmploye";
+import useAdminSalesProfit from "./useAdminSalesProfit.js";
+import { summarizeAdminSalesProfit } from "../../../shared/adminSalesProfit.js";
 import { useEffect, useMemo, useState } from "react";
 import { getMe } from "../../slices/SliceLoginAdmin";
 import DailogInfoVentes from "./Dailoginfoventes";
@@ -20,7 +21,8 @@ function Ventes() {
   const { t, i18n } = useTranslation();
   const { exportPdf, isExporting, exportError } = usePdfExport(generateFactureVentesPDF);
   const { user, role, token } = useSelector((state) => state.LoginAdmin);
-  const { Employe } = useSelector((state) => state.Employe);
+  const report = useAdminSalesProfit(token, role);
+  const Employe = report.employees;
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -37,7 +39,7 @@ function Ventes() {
   useEffect(() => {
     if (token) {
       dispatch(getMe());
-      if (role === "admin") dispatch(GetAllEmploye());
+      
     }
   }, [dispatch, token, role]);
 
@@ -46,14 +48,9 @@ function Ventes() {
   }, [token, navigate]);
 
   const allVentes = useMemo(() => {
-    if (role === "admin") {
-      const adminVentes = salesWithRevenue(user || {}).map((v) => ({ ...v, nameEmp: t("salesPage.admin"), empId: "admin" }));
-      const employeVentes =
-        Employe?.flatMap((e) => salesWithRevenue(e).map((v) => ({ ...v, nameEmp: e.name, empId: e._id }))) || [];
-      return [...adminVentes, ...employeVentes];
-    }
+    if (role === "admin") return report.sales;
     return (user?.ventes || []).map((v) => ({ ...v, nameEmp: user?.name, empId: user?._id }));
-  }, [role, user, Employe, t]);
+  }, [role, user, report.sales]);
 
   const dayLabel = new Date().toLocaleDateString(locale);
   const salesToday = allVentes.filter((entry) => salesPeriodKey(entry.DateVante) === salesPeriodKey());
@@ -93,14 +90,14 @@ function Ventes() {
           </div>
         </div>
 
-        <SalesSummaryCards summary={summary} />
+        <SalesSummaryCards summary={summary} ownerProfit={role === "admin" ? summarizeAdminSalesProfit(displayData) : undefined} loading={role === "admin" && report.loading} error={role === "admin" && report.error} onRetry={report.retry} />
 
         <div className="flex flex-col lg:flex-row gap-4 bg-white dark:bg-slate-900 p-5 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
           {role === "admin" && (
             <div className="relative flex-1 lg:max-w-xs group">
               <IoPersonOutline className={`absolute ${iconSideClass} top-1/2 -translate-y-1/2 text-primary-500 z-10`} size={18} />
               <select
-                value={selectedEmployeId}
+                data-sales-seller-filter value={selectedEmployeId}
                 onChange={(e) => setSelectedEmployeId(e.target.value)}
                 className={`w-full ${selectStartPad} py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 outline-none transition-all appearance-none cursor-pointer text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300`}
               >
@@ -131,7 +128,7 @@ function Ventes() {
                 type="text"
                 placeholder={t("salesPage.searchProduct")}
                 className={`w-full ${startPadClass} py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 focus:border-primary-500 outline-none transition-all text-[11px] font-bold tracking-widest uppercase`}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                data-sales-search onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <EmployeeOperation module="profits" operation="download"><button

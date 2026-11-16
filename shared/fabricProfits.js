@@ -49,7 +49,8 @@ export function fabricProfitEntries(movements) {
     const knownCost = cents(sale.costAmount) !== null && typeof sale.purchaseUnitPrice === 'number' && Number.isFinite(sale.purchaseUnitPrice) && sale.purchaseUnitPrice >= 0 && sale.purchaseUnitPrice <= 1000000;
     const costCents = knownCost ? cents(sale.costAmount) : null;
     return {
-      id: String(row._id), reference: row.source === 'tailoring' ? row.sourceOrderBarcode : 'FB-' + String(row._id), occurredAt: row.occurredAt,
+      id: String(row._id), reference: row.source === 'tailoring' ? row.sourceOrderBarcode : sale.invoiceId ? 'FI-' + String(sale.invoiceId).toUpperCase() : 'FB-' + String(row._id), occurredAt: row.occurredAt,
+      ...(sale.invoiceId ? { invoiceId: String(sale.invoiceId) } : {}),
       source: row.source === 'tailoring' ? 'tailoring' : 'direct', ...(row.source === 'tailoring' ? { sourceOrderId: row.sourceOrderId, sourceOrderBarcode: row.sourceOrderBarcode, sourceLineId: row.sourceLineId, sourceLineNumber: row.sourceLineNumber, sourceGarmentType: row.sourceGarmentType } : {}), ...(row.cancelledAt ? { cancelledAt: row.cancelledAt } : {}),
       type: row.type, fabricReference: row.reference || '', color: row.color, colorNumber: row.colorNumber || '', barcode: row.barcode,
       meters: row.meters, beforeMeters: row.beforeMeters, remainingMeters: row.remainingMeters,

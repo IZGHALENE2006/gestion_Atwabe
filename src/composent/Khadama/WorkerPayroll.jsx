@@ -36,8 +36,8 @@ export default function WorkerPayroll({ token, worker, revision }) {
   try { report = buildWorkerPayrollReport(state, filter); }
   catch { report = { period: null, entries: [], ...workerPayrollSummary([]) }; }
   const { months, totals, entries } = report;
-  const periodColumns = filter.mode === "week" ? ["month", "earned", "paid", "balance"] : ["month", "earned", "paid", "due", "advance"];
-  const periodAmounts = filter.mode === "week" ? ["earned", "paid", "balance"] : ["earned", "paid", "due", "advance"];
+  const periodColumns = filter.mode === "week" ? ["month", "earned", "paid", "balance"] : ["month", "earned", "paid", "balance", "due", "advance"];
+  const periodAmounts = filter.mode === "week" ? ["earned", "paid", "balance"] : ["earned", "paid", "balance", "due", "advance"];
   const exportPDF = async mode => {
     if (exportRef.current || state.loading || state.error || !state.permissions?.download || mode !== "all" && !report.period) return;
     exportRef.current = true; setExporting(mode); setExportError(false);
@@ -52,7 +52,8 @@ export default function WorkerPayroll({ token, worker, revision }) {
     <header className="payroll-heading"><div><h2 id="worker-payroll-heading"><IoWalletOutline />{t("workers.payroll.title")}</h2><p>{t("workers.payroll.scopeHint")}</p></div><div className="payroll-actions"><EmployeeOperation module="workers" anyOf={["payroll", "download"]}><button type="button" className="work-button work-button-quiet" data-payroll-history onClick={() => setOpen(true)} disabled={state.loading || Boolean(state.error)} aria-haspopup="dialog" aria-expanded={open} aria-controls="worker-payroll-history"><IoTimeOutline />{t("workers.payroll.history")}</button></EmployeeOperation>{state.permissions?.download && <button type="button" data-export-worker-account className="work-button work-button-blue" disabled={Boolean(exporting) || state.loading || Boolean(state.error)} onClick={() => exportPDF("all")}><IoDownloadOutline />{t(exporting === "all" ? "workers.payroll.pdf.exporting" : "workers.payroll.pdf.accountAction")}</button>}{!state.loading && !state.error && (state.permissions?.pay || state.permissions?.advance) && <button type="button" data-record-worker-payment className="work-button work-button-blue" onClick={() => { setPayment(true); setSaved(false); }}><IoWalletOutline />{t("workers.payroll.recordPayment")}</button>}<button type="button" className="work-button work-button-quiet" aria-label={t("workers.retry")} onClick={reload} disabled={state.loading}><IoRefreshOutline /></button></div></header>
     {exportError && !open && <p role="alert" className="work-feedback work-feedback-error">{t("workers.payroll.pdf.failed")}</p>}
     {state.loading ? <p role="status">{t("common.loading")}</p> : state.error ? <p role="alert" className="work-feedback work-feedback-error">{t(`workers.payroll.errors.${state.error}`)}</p> : <>
-      <dl className="payroll-cards">{["earned", "paid", "due"].map(item => <div key={item} className={`payroll-card-${item}`}><dt>{t(`workers.payroll.total.${item}`)}</dt><dd data-payroll-total={item} data-value={state.totals[item]}>{money(state.totals[item])}</dd></div>)}</dl>
+      <dl className="payroll-cards">{["earned", "paid", "balance"].map(item => <div key={item} className={`payroll-card-${item}${item === 'balance' && state.totals.balance < 0 ? ' is-negative' : ''}`}><dt>{t(`workers.payroll.total.${item}`)}</dt><dd data-payroll-total={item} data-value={state.totals[item]}><bdi>{money(state.totals[item])}</bdi></dd></div>)}</dl>
+      {state.totals.balance < 0 && <p className="payroll-balance-hint" data-payroll-negative-hint>{t('workers.payroll.negativeBalanceHint')}</p>}
       {state.totals.advance > 0 && <p className="payroll-advance" data-payroll-advance={state.totals.advance}>{t("workers.payroll.advanceBalance", { amount: money(state.totals.advance) })}</p>}
       {state.totals.unpriced > 0 && <p className="payroll-warning">{t("workers.payroll.unpricedHint", { count: state.totals.unpriced })}</p>}
       {saved && <p role="status" className="work-feedback work-feedback-success">{t("workers.payroll.paymentSaved")}</p>}
