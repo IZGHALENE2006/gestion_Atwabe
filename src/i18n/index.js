@@ -1,3 +1,4 @@
+import { ownerDebtsArabic } from './ownerDebts.js';
 import { fabricInvoicesArabic } from './fabricInvoices.js';
 import { employeePayrollArabic } from './employeePayroll.js';
 import { productBatchesArabic } from "./productBatches.js";
@@ -20,6 +21,7 @@ const resources = {
   fr: { translation: french },
   ar: {
     translation: {
+      ownerDebts: ownerDebtsArabic,
       globalSearch: globalSearchArabic,
       fabricInvoices: fabricInvoicesArabic,
       creditDocuments: creditDocumentsArabic,

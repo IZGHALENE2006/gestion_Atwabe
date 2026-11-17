@@ -1,4 +1,4 @@
-.work-page, .work-dialog, .workers-directory, .sfifa-inventory {
+.work-page, .work-dialog, .tailoring-assignment-dialog, .workers-directory, .sfifa-inventory {
   --work-surface: #fff;
   --work-background: #f4f6fc;
   --work-ink: #17243d;
@@ -7,7 +7,7 @@
   --work-blue: #2563eb;
   color: var(--work-ink);
 }
-.dark :is(.work-page, .work-dialog, .workers-directory, .sfifa-inventory) {
+.dark :is(.work-page, .work-dialog, .tailoring-assignment-dialog, .workers-directory, .sfifa-inventory) {
   --work-surface: #162136;
   --work-background: #0d1525;
   --work-ink: #f0f5ff;
@@ -531,3 +531,29 @@
 .dark .worker-djellaba-heading h3 { color: #c1dcff; }
 .dark .worker-djellaba-fabric-note { background: #203b58; color: #c2ddf8; }
 @media(max-width: 720px) { .worker-djellaba-layout { grid-template-columns: 1fr; } .worker-djellaba-heading { flex-wrap: wrap; } }
+
+.work-list-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; min-width: 0; }
+.work-number-filter { display: grid; gap: 5px; min-width: 140px; color: var(--work-muted); font-size: 12px; font-weight: 700; }
+.work-number-filter .work-input { min-height: 46px; padding-block: 10px; }
+[data-shop-trouser-custom-length] { margin-top: 10px; }
+@media (max-width: 600px) { .work-list-controls { width: 100%; } .work-number-filter { flex: 1; } .work-list-controls .work-search { flex: 2; width: auto; min-width: 180px; } }
+
+.shop-transfer-pieces { min-width: 0; border: 0; margin: 16px 0 0; padding: 0; }
+.shop-transfer-pieces legend { font-size: 15px; font-weight: 800; padding-bottom: 12px; }
+.shop-piece-table-scroll { min-width: 0; max-width: 100%; overflow: auto; border: 1px solid var(--work-border); border-radius: 14px; background: var(--work-surface); }
+.shop-piece-table { width: 100%; min-width: 620px; border-collapse: collapse; text-align: start; font-size: 12px; }
+.shop-piece-table th, .shop-piece-table td { padding: 12px; border-bottom: 1px solid var(--work-border); text-align: start; vertical-align: middle; }
+.shop-piece-table thead th { background: var(--work-background); font-weight: 800; white-space: nowrap; }
+.shop-piece-table small { display: block; margin-top: 4px; color: var(--work-muted); }
+.shop-piece-table bdi[data-selected-piece-barcode], .shop-piece-table bdi[data-completion-piece-barcode] { font-family: monospace; white-space: nowrap; }
+.shop-piece-table input[type=checkbox] { width: 19px; height: 19px; accent-color: #2563eb; cursor: pointer; }
+.shop-piece-table tr:last-child > * { border-bottom: 0; }
+.shop-piece-table tr:has(input:checked), .shop-piece-table tr[data-matched-piece=true] { background: #2563eb0a; }
+.shop-piece-ready, .shop-piece-blocked { display: inline-block; padding: 5px 8px; border-radius: 8px; font-weight: 700; }
+.shop-piece-ready { background: #10b98116; color: #047857; }
+.shop-piece-blocked { background: #f59e0b16; color: #a16207; }
+.dark .shop-piece-ready { color: #6ee7b7; }
+.dark .shop-piece-blocked { color: #fcd34d; }
+.work-dialog.shop-piece-dialog { width: min(1000px, calc(100dvw - 24px)); }
+.shop-work-picker { grid-template-columns: minmax(0, 1fr); }
+.shop-work-selection { min-width: 0; }

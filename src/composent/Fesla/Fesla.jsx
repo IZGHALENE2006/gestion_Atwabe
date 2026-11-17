@@ -11,10 +11,12 @@ import { loadTailoringOrders, loadTailoringTracking } from "./feslaApi.js";
 import DjellabaSettingsDialog from "./DjellabaSettingsDialog.jsx";
 import TailoringProfits from "./TailoringProfits.jsx";
 import TailoringOrderForm from "./TailoringOrderForm.jsx";
+import TailoringAssignmentDialog from "./TailoringAssignmentDialog.jsx";
 import TailoringOrdersTable from "./TailoringOrdersTable.jsx";
 import TailoringOrderDetailsDialog from "./TailoringOrderDetailsDialog.jsx";
 import TailoringOrderActionDialog from "./TailoringOrderActionDialog.jsx";
 import TailoringOrderLabelDialog from "./TailoringOrderLabelDialog.jsx";
+import TailoringWhatsAppDialog from "./TailoringWhatsAppDialog.jsx";
 import TailoringReceiptDialog from "./TailoringReceiptDialog.jsx";
 import { tailoringOrderReceipt, tailoringPaymentReceipt } from "../../../shared/tailoringReceipts.js";
 import "./feslaBarcode.css";
@@ -38,8 +40,10 @@ export default function Fesla() {
   const [searchMode, setSearchMode] = useState("general");
   const [label, setLabel] = useState(null);
   const [receipt, setReceipt] = useState(null);
+  const [whatsapp, setWhatsapp] = useState(null);
   const [details, setDetails] = useState(null);
   const [action, setAction] = useState(null);
+  const [assignment, setAssignment] = useState(null);
   const searchRef = useRef(null);
   const [editor, setEditor] = useState(null);
   const [status, setStatus] = useState(null);
@@ -48,6 +52,7 @@ export default function Fesla() {
   const sectionOrders = state.orders.filter(matchesSearchTarget).filter(order => tailoringGarmentType(order) === garmentType);
   const visible = filterTailoringOrders(sectionOrders, search, { barcodeOnly: searchMode === "barcode" });
   const selectedOrder = details?.token === token ? state.orders.find(order => order._id === details.id) : null;
+  const assignmentOrder = assignment?.token === token ? state.orders.find(order => order._id === assignment.id) : null;
   const actionOrder = action?.token === token ? state.orders.find(order => order._id === action.id) : null;
   useEffect(() => {
     if (!token) return;
@@ -68,16 +73,21 @@ export default function Fesla() {
     return () => controller.abort();
   }, [token, trackingAttempt, operations.tracking]);
   const refreshTracking = () => setTrackingAttempt(value => value + 1);
-  const changeSection = () => { setPriceEditor(null); setSearch(""); setEditor(null); setDetails(null); setAction(null); setLabel(null); setReceipt(null); setStatus(null); };
+  const changeSection = () => { setPriceEditor(null); setSearch(""); setEditor(null); setDetails(null); setAction(null); setLabel(null); setReceipt(null); setWhatsapp(null); setAssignment(null); setStatus(null); };
   const edit = (order = null) => { setDetails(null); setEditor({ token, order }); setStatus(null); };
-  const printReceipt = (order, payment) => { if (!operations.print) return; setDetails(null); setReceipt({ token, document: payment ? tailoringPaymentReceipt(order, payment) : tailoringOrderReceipt(order) }); };
+  const printReceipt = (order, payment) => { if (!operations.print) return; setDetails(null); setReceipt({ token, order, document: payment ? tailoringPaymentReceipt(order, payment) : tailoringOrderReceipt(order) }); };
+  const shareDocument = (order, document) => { if (!operations.share) return; setDetails(null); setReceipt(null); setWhatsapp({ token, order, document }); };
+  const shareReceipt = (order, payment) => shareDocument(order, payment ? tailoringPaymentReceipt(order, payment) : tailoringOrderReceipt(order));
+  const notifyCustomer = order => { if (!operations.share || order.cancelledAt) return; setDetails(null); setWhatsapp({ token, order }); };
   const printOrder = order => { setDetails(null); setLabel({ token, order }); };
+  const assign = order => { if (!operations.assign || order.cancelledAt || order.deliveredAt) return; setDetails(null); setAssignment({ token, id: order._id }); setStatus(null); };
+  const assignmentSaved = () => { setAssignment(null); refreshTracking(); setStatus({ token, key: "assignment.saved" }); if (operations.details) setDetails({ token, id: assignment.id }); };
   const openAction = (order, mode) => { setDetails(null); setAction({ token, id: order._id, mode }); setStatus(null); };
   const actionSaved = order => {
     setResult(current => ({ ...current, orders: current.orders.map(entry => entry._id === order._id ? order : entry) }));
     setStatus({ token, key: action.mode === "payment" ? "paymentAdded" : action.mode === "cancel" ? "cancellation.saved" : "orderDelivered" });
     setAction(null);
-    if (action.mode === "payment" && order.paymentReceipt) printReceipt(order, order.paymentReceipt);
+    if (action.mode === "payment" && order.paymentReceipt && operations.print) printReceipt(order, order.paymentReceipt);
     else setDetails({ token, id: order._id });
   };
   const reloaded = data => { if (Array.isArray(data.orders)) setResult({ ...data, token, attempt, loading: false, error: "" }); };
@@ -102,7 +112,7 @@ export default function Fesla() {
     </section>
     {state.loading && <p role="status" className="p-8 text-center text-sm text-slate-500">{t("common.loading")}</p>}
     {state.error && <div role="alert" className="rounded-xl bg-rose-50 p-5 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"><p>{t(`fesla.errors.${state.error}`)}</p><button type="button" onClick={() => setAttempt((value) => value + 1)} className="mt-3 font-bold underline">{t("fesla.retry")}</button></div>}
-    {!state.loading && !state.error && (visible.length ? <TailoringOrdersTable onEdit={edit} onLabel={printOrder} onReceipt={operations.print ? printReceipt : undefined} orders={visible} tracking={tracking} canEdit={state.permissions.update} onAction={openAction} onDetails={order => { setDetails({ token, id: order._id }); refreshTracking(); }} /> : <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700"><IoCutOutline size={38} className="mx-auto mb-4 text-slate-400" /><p className="font-semibold">{t(sectionOrders.length ? "fesla.noResults" : "fesla.empty")}</p>{!sectionOrders.length && <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t("fesla.emptyHint")}</p>}</div>)}
+    {!state.loading && !state.error && (visible.length ? <TailoringOrdersTable onAssign={operations.assign && state.permissions.assign ? assign : undefined} onShareReceipt={operations.share ? shareReceipt : undefined} onNotify={operations.share ? notifyCustomer : undefined} onEdit={edit} onLabel={printOrder} onReceipt={operations.print ? printReceipt : undefined} orders={visible} tracking={tracking} canEdit={state.permissions.update} onAction={openAction} onDetails={order => { setDetails({ token, id: order._id }); refreshTracking(); }} /> : <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700"><IoCutOutline size={38} className="mx-auto mb-4 text-slate-400" /><p className="font-semibold">{t(sectionOrders.length ? "fesla.noResults" : "fesla.empty")}</p>{!sectionOrders.length && <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t("fesla.emptyHint")}</p>}</div>)}
     </>}
-  </div>{receipt?.token === token && <TailoringReceiptDialog document={receipt.document} onClose={() => setReceipt(null)} />}{selectedOrder && <EmployeeOperation module="tailoring" operation="details"><TailoringOrderDetailsDialog onReceipt={operations.print ? printReceipt : undefined} order={selectedOrder} tracking={tracking} onRefreshTracking={refreshTracking} token={token} canEdit={state.permissions.update} onClose={() => setDetails(null)} onEdit={edit} onPrint={printOrder} onAction={openAction} /></EmployeeOperation>}{actionOrder && (state.permissions[action.mode === "payment" ? "payment" : action.mode === "cancel" ? "cancel" : "deliver"]) && <TailoringOrderActionDialog key={`${action.id}-${action.mode}`} order={actionOrder} mode={action.mode} token={token} onClose={() => setAction(null)} onSaved={actionSaved} onReload={reloaded} />}{editor?.token === token && <TailoringOrderForm key={editor.order?._id || garmentType} garmentType={garmentType} order={editor.order} token={token} onClose={() => setEditor(null)} onSaved={saved} />}{label?.token === token && <TailoringOrderLabelDialog order={label.order} onClose={() => setLabel(null)} />}{priceEditor?.token === token && <DjellabaSettingsDialog garmentType={garmentType} token={token} onClose={() => setPriceEditor(null)} onSaved={() => { setPriceEditor(null); setStatus({ token, key: garmentType === "shirts" ? "adjustments.shirtsSettingsSaved" : garmentType === "djellaba" ? "costs.settingsSaved" : garmentType + ".costs.settingsSaved" }); }} />}</main>;
+  </div>{assignmentOrder && operations.assign && <TailoringAssignmentDialog key={token + assignmentOrder._id} order={assignmentOrder} token={token} onClose={() => setAssignment(null)} onSaved={assignmentSaved} />}{receipt?.token === token && <TailoringReceiptDialog onShare={operations.share ? () => shareDocument(receipt.order, receipt.document) : undefined} document={receipt.document} onClose={() => setReceipt(null)} />}{whatsapp?.token === token && operations.share && <TailoringWhatsAppDialog key={whatsapp.order._id + (whatsapp.document?.reference || "notice") + i18n.language} order={whatsapp.order} document={whatsapp.document} onClose={() => setWhatsapp(null)} />}{selectedOrder && <EmployeeOperation module="tailoring" operation="details"><TailoringOrderDetailsDialog onAssign={operations.assign && state.permissions.assign ? assign : undefined} onShareReceipt={operations.share ? shareReceipt : undefined} onNotify={operations.share ? notifyCustomer : undefined} onReceipt={operations.print ? printReceipt : undefined} order={selectedOrder} tracking={tracking} onRefreshTracking={refreshTracking} token={token} canEdit={state.permissions.update} onClose={() => setDetails(null)} onEdit={edit} onPrint={printOrder} onAction={openAction} /></EmployeeOperation>}{actionOrder && (state.permissions[action.mode === "payment" ? "payment" : action.mode === "cancel" ? "cancel" : "deliver"]) && <TailoringOrderActionDialog key={`${action.id}-${action.mode}`} order={actionOrder} mode={action.mode} token={token} onClose={() => setAction(null)} onSaved={actionSaved} onReload={reloaded} />}{editor?.token === token && <TailoringOrderForm key={editor.order?._id || garmentType} garmentType={garmentType} order={editor.order} token={token} onClose={() => setEditor(null)} onSaved={saved} />}{label?.token === token && <TailoringOrderLabelDialog order={label.order} onClose={() => setLabel(null)} />}{priceEditor?.token === token && <DjellabaSettingsDialog garmentType={garmentType} token={token} onClose={() => setPriceEditor(null)} onSaved={() => { setPriceEditor(null); setStatus({ token, key: garmentType === "shirts" ? "adjustments.shirtsSettingsSaved" : garmentType === "djellaba" ? "costs.settingsSaved" : garmentType + ".costs.settingsSaved" }); }} />}</main>;
 }

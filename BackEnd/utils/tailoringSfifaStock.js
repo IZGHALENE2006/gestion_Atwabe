@@ -1,7 +1,7 @@
 import { ensureSfifaStyleBalances, changeSfifaTypeBalance } from './sfifaStyleBalances.js';
 import SfifaStock from '../models/SfifaStock.js';
 import TailoringOrder from '../models/TailoringOrder.js';
-import { SFIFA_STOCK_LIMIT, SFIFA_STOCK_GROUP_LIMIT, sfifaQuantityUnits, sfifaStockStyles } from '../../shared/sfifaStock.js';
+import { SFIFA_STOCK_LIMIT, SFIFA_STOCK_GROUP_LIMIT, sfifaQuantityUnits, sfifaStockStyles, sfifaVariantIdentity } from '../../shared/sfifaStock.js';
 import { tailoringSfifaStyle } from '../../shared/tailoringSfifa.js';
 
 const fail = (message, status = 409) => Object.assign(new Error(message), { status });
@@ -26,14 +26,15 @@ export async function resolveTailoringSfifaRows(order, session) {
     }
     const stock = stocks.get(key), variant = stock?.variants?.find(row => same(row._id, input.variantId));
     if (!stock || (!variant && !same(stock._id, input.variantId))) throw fail('sfifaStockUnavailable');
-    const fields = {}, styles = sfifaStockStyles(stock, variant?.code, { includeExhausted: true });
-    if (stock.width !== item.sfifa.width) fields['items.' + index + '.sfifa.width'] = 'sfifaWidthMismatch';
+    const identity = sfifaVariantIdentity(stock, variant);
+    const fields = {}, styles = sfifaStockStyles(stock, variant?.code, { includeExhausted: true, variantId: variant?._id });
+    if (identity.width !== item.sfifa.width) fields['items.' + index + '.sfifa.width'] = 'sfifaWidthMismatch';
     if (styles.length ? !styles.includes(input.meterType) : input.meterType !== undefined) fields['items.' + index + '.sfifa.stock.meterType'] = 'chooseSfifaMeterType';
     if (input.meterType && tailoringSfifaStyle(input.meterType) !== item.sfifa.style) fields['items.' + index + '.sfifa.stock.meterType'] = 'chooseSfifaMeterType';
     if (sfifaQuantityUnits(input.meters) === null || input.meters <= 0) fields['items.' + index + '.sfifa.stock.meters'] = 'invalidSfifaMeters';
     if (Object.keys(fields).length) throw Object.assign(fail('invalidOrder', 400), { fields });
-    input.family = stock.family; input.code = variant?.code;
-    rows.push({ lineId: item.lineId, stockId: stock._id, variantId: variant?._id || stock._id, meters: input.meters, width: stock.width, family: stock.family, ...(variant ? { code: variant.code } : {}), ...(input.meterType ? { meterType: input.meterType } : {}) });
+    input.family = identity.family; input.code = variant?.code;
+    rows.push({ lineId: item.lineId, stockId: stock._id, variantId: variant?._id || stock._id, meters: input.meters, width: identity.width, family: identity.family, ...(variant ? { code: variant.code } : {}), ...(input.meterType ? { meterType: input.meterType } : {}) });
   }
   return { rows, stocks };
 }
@@ -51,7 +52,7 @@ export function changeTailoringSfifa(stock, group, reverse = false) {
   let delta = 0;
   for (const row of group.rows) {
     const unassigned = same(row.variantId, stock._id), target = unassigned ? stock : stock.variants?.find(entry => same(entry._id, row.variantId));
-    if (!target || row.width !== stock.width || row.family !== stock.family || !unassigned && target.code !== row.code) throw fail('sfifaStockUnavailable');
+    if (!target) throw fail('sfifaStockUnavailable');
     const key = unassigned ? 'unassignedQuantity' : 'quantity', amount = row.delta * (reverse ? -1 : 1);
     const after = units(target[key] ?? (unassigned ? stock.quantity : 0)) + amount;
     if (after < 0) throw fail('insufficientSfifaStock');

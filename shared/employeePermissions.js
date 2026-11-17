@@ -16,6 +16,7 @@ export function canOpenEmployeePage(role, user, path) {
   if (module === "fabrics" && /\/profits\/?$/i.test(url.pathname)) return canEmployeeOperation(role, user, module, "profits");
   if (module === "tailoring" && url.searchParams.get("view") === "profits") return canEmployeeOperation(role, user, module, "profits");
   if (module === "credit" && /\/add\/?$/i.test(url.pathname)) return canEmployeeOperation(role, user, module, "add");
+  if (module === 'credit' && /\/mydebts\/?$/i.test(url.pathname)) return ['ownerDebts','addOwnerDebt','payOwnerDebt','ownerDebtHistory'].some(operation=>canEmployeeOperation(role,user,module,operation));
   if (module === "profits" && /\/hestorique\/?$/i.test(url.pathname)) return canEmployeeOperation(role, user, module, "history");
   return true;
 }

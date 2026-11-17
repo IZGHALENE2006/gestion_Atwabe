@@ -1,3 +1,4 @@
+import { listOrderAssignmentWorkers, listOrderAssignmentOptions, assignOrderWork } from "../controlles/TailoringAssignments.js";
 import express from "express";
 import { auth } from "../middleware/auth.js";
 import { uploadTailoringImages } from "../middleware/tailoringUpload.js";
@@ -13,6 +14,9 @@ router.get("/sfifa-options", listTailoringSfifaOptions);
 router.get("/work-status", listTailoringTracking);
 router.get("/cost-settings", getDjellabaCostSettings);
 router.put("/cost-settings", saveDjellabaCostSettings);
+router.get("/:id/assignment-workers", listOrderAssignmentWorkers);
+router.get("/:id/assignment-options", listOrderAssignmentOptions);
+router.post("/:id/assignments", assignOrderWork);
 router.get("/:id/photo", getTailoringPhoto);
 router.get("/:id/items/:lineId/photo", getTailoringPhoto);
 router.post("/", tailoringWriteAccess("add"), uploadTailoringImages, addTailoringOrder);

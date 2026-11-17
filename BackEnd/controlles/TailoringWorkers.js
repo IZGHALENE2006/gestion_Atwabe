@@ -18,6 +18,7 @@ const sendError = (res, error, fallback) => {
 };
 export async function workerAccessFor(req, action) {
   if (!["admin", "Employe"].includes(req.user?.role)) throw fail("forbidden", 403);
+  if (req.tailoringAssignmentAccess && (action === "assign" || Array.isArray(action) && action.includes("assign"))) return req.tailoringAssignmentAccess;
   const admin = req.user.role === "admin";
   const actor = await (admin ? AdminModel : EmployeModel).findById(req.user.id).select("_id idAdmin isActive action moduleAccess operationPermissions");
   if (!actor || (!admin && !actor.isActive)) throw fail("forbidden", 403);

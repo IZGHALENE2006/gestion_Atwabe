@@ -37,6 +37,7 @@ import ChangePassword from './composent/profile/UpdatePassword'
 import Usercridit from './composent/Usercridit/usercridit'
 import AddUserCredit from './composent/Usercridit/pageAddUserCridite'
 import ListUsercridite from './composent/Usercridit/ListUserCridite'
+import OwnerDebts from './composent/Usercridit/OwnerDebts.jsx';
 import UserCreditDetails from './composent/Usercridit/UserCreditDetails'
 import { useTranslation } from 'react-i18next'
 import PageNave from './composent/NavBar/pageNave'
@@ -126,6 +127,7 @@ const toggleLanguage = () => {
         <Route path='cridit' element={<Usercridit/>}>
             <Route path='add' element={<AddUserCredit/>}/>
             <Route path='UserCridit' element={<ListUsercridite/>}/>
+            <Route path='MyDebts' element={<OwnerDebts/>}/>
             <Route path='UserCreditDetails/:id' element={<UserCreditDetails/>}/>
             
      

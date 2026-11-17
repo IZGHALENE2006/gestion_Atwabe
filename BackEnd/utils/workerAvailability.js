@@ -2,6 +2,7 @@ import WorkerWork from "../models/WorkerWork.js";
 import SfifaStock from "../models/SfifaStock.js";
 import TailoringWorker from "../models/TailoringWorker.js";
 import { remainingWorkQuantity } from "../../shared/workerWork.js";
+import { resumeSfifaTransfer } from './sfifaWorkTransfers.js';
 
 // Serialize linked assignments in this API process, including assignments saved
 // inside sfifa stock. Always recheck committed work after acquiring the queue.
@@ -18,11 +19,16 @@ export async function withOrderAssignmentLock(idAdmin, orderId, commit) {
 }
 
 export async function loadClientAssignments(idAdmin, orderId) {
-  const [ordinary, stocks] = await Promise.all([
+  const [ordinary, loaded] = await Promise.all([
     WorkerWork.find({ idAdmin, workType: "client", ...(orderId ? { "tailoring.orderId": orderId } : {}) }).select("idAdmin workType category workerId quantity completedQuantity tailoring.orderId tailoring.lineIds").lean(),
-    SfifaStock.find({ idAdmin }).select("production").lean(),
+    SfifaStock.find({ idAdmin }).select("production idAdmin").lean(),
   ]);
-  return [...ordinary, ...stocks.flatMap(stock => stock.production || [])].filter(work => !work.deletedAt && String(work.idAdmin) === String(idAdmin) && work.workType === "client" && work.tailoring && (!orderId || String(work.tailoring.orderId) === String(orderId)));
+  let stocks = loaded;
+  if (stocks.some(stock => stock.production?.some(work => work.relocatedAt))) {
+    for (const stock of stocks) for (const work of stock.production || []) if (work.relocatedAt) await resumeSfifaTransfer(stock, work);
+    stocks = await SfifaStock.find({ idAdmin }).select('production idAdmin').lean();
+  }
+  return [...ordinary, ...stocks.flatMap(stock => stock.production || [])].filter(work => !work.relocatedAt && !work.deletedAt && String(work.idAdmin) === String(idAdmin) && work.workType === "client" && work.tailoring && (!orderId || String(work.tailoring.orderId) === String(orderId)));
 }
 
 export function blockingAssignments(works, orderId, category, lineIds) {

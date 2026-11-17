@@ -1,3 +1,4 @@
+import OwnerDebtsRoute from './Routes/OwnerDebtsRoute.js';
 import express from 'express'
 import cors from 'cors'
 import { productImagesDirectory } from './utils/productImages.js'
@@ -43,6 +44,7 @@ const app = express()
  app.use('/tailoring-workers', TailoringWorkersRoute)
  app.use('/sfifa-stock', SfifaStockRoute)
  app.use('/side-expenses', SideExpensesRoute)
+ app.use('/owner-debts', OwnerDebtsRoute)
  app.use('/uploads/products', express.static(productImagesDirectory, {
    dotfiles: 'deny',
    index: false,

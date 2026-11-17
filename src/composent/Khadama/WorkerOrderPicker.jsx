@@ -1,24 +1,32 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { tailoringGarmentType } from "../../../shared/tailoring.js";
 import WorkerBlockingNotice from "./WorkerBlockingNotice.jsx";
+import { loadOrderAssignmentOptions } from "../Fesla/tailoringAssignmentsApi.js";
 import { loadWorkerOrderOptions } from "./workersApi.js";
 
-export default function WorkerOrderPicker({ token, workerId, category, orderId, lineIds, onChange, disabled, fields, fixedOrder = false, garmentType, trouserType }) {
+export default function WorkerOrderPicker({ token, workerId, category, orderId, lineIds, onChange, disabled, fields, fixedOrder = false, garmentType, trouserType, assignmentOrderId, selectAvailableOnLoad = false }) {
   const { t } = useTranslation();
+  const initialSelection = useRef(null);
   const [result, setResult] = useState(null), [attempt, setAttempt] = useState(0);
-  const scope = `${token}:${workerId}:${category}:${garmentType || ""}:${attempt}`;
+  const scope = `${token}:${workerId}:${category}:${garmentType || ""}:${trouserType || ""}:${assignmentOrderId || ""}:${attempt}`;
   const state = result?.scope === scope ? result : { orders: [], loading: true, error: "" };
   useEffect(() => {
     const controller = new AbortController();
-    loadWorkerOrderOptions(token, workerId, category, controller.signal, garmentType).then(data => {
+    const request = assignmentOrderId ? loadOrderAssignmentOptions(token, assignmentOrderId, workerId, category, controller.signal, garmentType) : loadWorkerOrderOptions(token, workerId, category, controller.signal, garmentType);
+    request.then(data => {
       if (!Array.isArray(data.orders)) throw new Error("Invalid orders response");
       if (!controller.signal.aborted) setResult({ scope, orders: data.orders, loading: false, error: "" });
     }).catch(error => { if (!controller.signal.aborted) setResult({ scope, orders: [], loading: false, error: error.response?.status === 403 ? "forbidden" : "loadOrdersFailed" }); });
     return () => controller.abort();
-  }, [token, workerId, category, scope, garmentType]);
+  }, [token, workerId, category, scope, garmentType, assignmentOrderId]);
   const orders = state.orders.map(order => ({ ...order, items: order.items.filter(item => !trouserType || item.trouserType === trouserType) })).filter(order => order.items.length);
   const selected = orders.find(order => order._id === orderId);
+  useEffect(() => {
+    if (!selectAvailableOnLoad || state.loading || state.error || initialSelection.current === scope) return;
+    initialSelection.current = scope;
+    onChange({ lineIds: selected?.items.filter(item => item.available).map(item => item.lineId) || [] });
+  }, [selectAvailableOnLoad, state.loading, state.error, scope, selected, onChange]);
   const availableOrders = fixedOrder ? orders.filter(order => order._id === orderId) : orders;
   const errorFor = key => fields[key] && <p id={`worker-work-${key}-error`} className="work-field-error">{t(`workers.work.errors.${fields[key]}`)}</p>;
   return <div className="worker-order-picker">

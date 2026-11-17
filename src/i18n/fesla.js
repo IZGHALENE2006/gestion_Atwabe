@@ -1,5 +1,9 @@
+import { tailoringAssignmentsArabic, tailoringAssignmentsFrench } from "./tailoringAssignments.js";
+import { tailoringSharingArabic, tailoringSharingFrench } from "./tailoringSharing.js";
 import { tailoringAdjustmentsArabic, tailoringAdjustmentsFrench } from "./tailoringAdjustments.js";
 export const feslaFrench = {
+  assignment: tailoringAssignmentsFrench,
+  whatsapp: tailoringSharingFrench,
   adjustments: tailoringAdjustmentsFrench,
   stockSfifa: {"source":"Source de la sfifa","manual":"Sfifa habituelle","fromStock":"Sfifa du stock","choose":"Choisir le numéro en stock","unassigned":"Sans numéro","meterType":"Type de couleurs","chooseType":"Choisir le type disponible","meters":"Mètres de sfifa pour cette pièce","available":"Disponible pour cette pièce, réservation comprise : {{meters}} m","hint":"Choisissez la largeur ci-dessus, puis le numéro et le type. Le métrage est déduit à la sauvegarde ; les tarifs existants restent appliqués.","cancelBeforeDelivery":"Annuler avant livraison ? Le tissu et la sfifa prélevés seront restitués. La commande sera exclue des bénéfices ; les paiements et historiques seront conservés.","cancelAfterDelivery":"Annuler la commande livrée ? Sa valeur et ses bénéfices seront exclus des statistiques. Aucun tissu ni sfifa ne sera restitué. La livraison, les paiements et les historiques seront conservés."},
   fabricStock: {"piece":"Rouleau de tissu","choosePiece":"Choisir le rouleau","available":"Stock actuel : {{meters}} m","hint":"Le métrage est déduit du rouleau à l’enregistrement, ajusté à la modification et restitué seulement à l’annulation avant livraison.","cancelConfirm":"Annuler cette commande ? Tous les mètres de tissu prélevés seront rendus aux rouleaux d’origine. La commande et les paiements restent dans l’historique ; ses montants sont exclus des bénéfices."},
@@ -262,6 +266,8 @@ export const feslaFrench = {
 };
 
 export const feslaArabic = {
+  assignment: tailoringAssignmentsArabic,
+  whatsapp: tailoringSharingArabic,
   adjustments: tailoringAdjustmentsArabic,
   stockSfifa: {"source":"مصدر السفيفة","manual":"السفيفة المعتادة","fromStock":"سفيفة من المخزون","choose":"اختر رقم السفيفة من المخزون","unassigned":"دون رقم","meterType":"نوع ألوان السفيفة","chooseType":"اختر النوع المتاح","meters":"أمتار السفيفة لهذه القطعة","available":"المتاح لهذه القطعة مع أمتارها المحجوزة: {{meters}} م","hint":"اختر الرقيقة أو العريضة أعلاه، ثم رقم السفيفة ونوع ألوانها. تُخصم الأمتار عند حفظ الطلب؛ ويظل ثمن القطعة محسوبًا بأسعار الإعدادات الحالية.","cancelBeforeDelivery":"هل تريد إلغاء الطلب قبل تسليمه؟ ستُعاد أمتار الثوب والسفيفة المخصومة إلى المخزون، ويُستبعد الطلب من الأرباح. تبقى الدفعات والسجلات محفوظة.","cancelAfterDelivery":"هل تريد إلغاء الطلب المسلّم؟ ستُستبعد قيمته وأرباحه من الإحصائيات، ولن تُعاد أمتار الثوب أو السفيفة إلى المخزون. تبقى بيانات التسليم والدفعات والسجلات محفوظة."},
   fabricStock: {"piece":"لفة الثوب","choosePiece":"اختر اللفة","available":"المتاح حاليًا: {{meters}} م","hint":"تُخصم الأمتار من اللفة عند حفظ الطلب، ويُحتسب الفرق عند تعديله، وتُعاد الأمتار عند إلغائه قبل التسليم فقط.","cancelConfirm":"هل تريد إلغاء هذا الطلب؟ ستُعاد جميع أمتار الثوب المخصومة إلى لفاتها الأصلية. يبقى الطلب والدفعات في السجل، وتُستبعد مبالغه من الأرباح."},

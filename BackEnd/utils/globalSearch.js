@@ -1,3 +1,4 @@
+import { sfifaVariantIdentity } from "../../shared/sfifaStock.js";
 import mongoose from 'mongoose';
 import Product from '../models/productModel.js';
 import Fabric from '../models/Fabric.js';
@@ -84,12 +85,12 @@ export async function searchApplication({ owner, actorId, role, user, query, gro
     },
     sfifa: async () => {
       const codeMatch = /^SF-([a-f\d]{24})$/i.exec(query), number = /^\d+$/.test(searchText(query)) ? Number(searchText(query)) : null;
-      const filter = codeMatch ? { $or: [{ _id: oid(codeMatch[1]) }, { 'variants._id': oid(codeMatch[1]) }] } : number !== null ? { 'variants.code': number } : searchConditions(query, ['family'], { width: 'width' });
+      const filter = codeMatch ? { $or: [{ _id: oid(codeMatch[1]) }, { 'variants._id': oid(codeMatch[1]) }] } : number !== null ? { 'variants.code': number } : searchConditions(query, ['family', 'variants.family'], { width: 'width', 'variants.width': 'width' });
       const rows = await find(SfifaStock, { ...scope, ...filter }, '_id width family variants unassignedQuantity quantity', take);
       return rows.flatMap(row => {
         const variants = (row.variants || []).filter(entry => codeMatch ? toId(entry).toLowerCase() === codeMatch[1].toLowerCase() : number === null || entry.code === number);
         const choices = variants.length ? variants : codeMatch && toId(row).toLowerCase() !== codeMatch[1].toLowerCase() || number !== null ? [] : [{ _id: row._id, quantity: row.unassignedQuantity ?? row.quantity }];
-        return choices.slice(0, take).map(entry => ({ ...item(entry, formatSfifaCode(entry.code, row.family) || row.family, pathFor('/Home/SfifaStock', entry, formatSfifaCode(entry.code, row.family) || row.family), [keyFact('width', 'sfifaStock.widths.' + row.width), fact('family', row.family), fact('meters', entry.quantity)], sfifaStockBarcode(entry)), titleKey: 'globalSearch.sfifaItem', titleValue: formatSfifaCode(entry.code, row.family) || row.family }));
+        return choices.slice(0, take).map(entry => { const identity = sfifaVariantIdentity(row, entry), label = formatSfifaCode(entry.code, identity.family) || identity.family; return { ...item(entry, label, pathFor('/Home/SfifaStock', entry, label), [keyFact('width', 'sfifaStock.widths.' + identity.width), fact('family', identity.family), fact('meters', entry.quantity)], sfifaStockBarcode(entry)), titleKey: 'globalSearch.sfifaItem', titleValue: label }; });
       });
     },
     tailoring: async () => {
@@ -99,8 +100,8 @@ export async function searchApplication({ owner, actorId, role, user, query, gro
     },
     workers: async () => (await find(TailoringWorker, { ...scope, deletedAt: { $exists: false }, ...searchConditions(query, ['name', 'phone'], { category: 'category', categories: 'category' }) }, '_id name phone category categories', take)).map(row => item(row, row.name, '/Home/Khadama/' + workerCategories(row)[0] + '/workers/' + toId(row), [fact('phone', row.phone), ...workerCategories(row).map(category => keyFact('section', 'workers.categories.' + category))])),
     work: async () => {
-      const fields = '_id workerId category workType garmentType productName quantity completedQuantity shopFlow.originId tailoring.clientName tailoring.barcode tailoring.garmentType';
-      const filter = { ...scope, deletedAt: { $exists: false }, ...workQuery(query) };
+      const fields = '_id workerId category workType garmentType productName quantity completedQuantity shopFlow.originId shopFlow.pieceNumbers tailoring.clientName tailoring.barcode tailoring.garmentType';
+      const filter = { ...scope, deletedAt: { $exists: false }, relocatedAt: { $exists: false }, ...workQuery(query) };
       const [regular, sfifa] = await Promise.all([
         find(WorkerWork, filter, fields, take),
         SfifaStock.aggregate([{ $match: { idAdmin: oid(owner) } }, { $unwind: '$production' }, { $replaceRoot: { newRoot: '$production' } }, { $match: { ...filter, idAdmin: oid(owner) } }, { $sort: { _id: -1 } }, { $limit: take }, { $project: Object.fromEntries(fields.split(' ').map(field => [field, 1])) }]).option({ maxTimeMS: 3000 }),

@@ -1,6 +1,7 @@
+import { currentSfifaViews } from "../utils/sfifaIdentity.js";
 import { ensureSfifaStyleBalances } from "../utils/sfifaStyleBalances.js";
 import SfifaStock from '../models/SfifaStock.js';
-import { sfifaStockStyles } from '../../shared/sfifaStock.js';
+import { sfifaStockStyles, sfifaVariantIdentity } from '../../shared/sfifaStock.js';
 import { hasTailoringSfifa } from '../utils/tailoringSfifaStock.js';
 import { moduleOperationPermissions } from "../../shared/employeePermissions.js";
 import mongoose from "mongoose";
@@ -32,7 +33,7 @@ const sendError = (res, error, fallback) => {
   if (error.name === "VersionError") return res.status(409).json({ message: "conflict" });
   return res.status(error.status || 500).json({ message: error.status ? error.message : fallback });
 };
-async function accessFor(req, action) {
+export async function accessFor(req, action) {
   if (!["admin", "Employe"].includes(req.user?.role)) throw fail("forbidden", 403);
   const admin = req.user.role === "admin";
   const actor = await (admin ? AdminModel : EmployeModel).findById(req.user.id).select("_id name role idAdmin isActive action moduleAccess operationPermissions");
@@ -100,7 +101,7 @@ export async function listTailoringSfifaOptions(req, res) {
     const { idAdmin } = await accessFor(req, ['add', 'update']);
     const stocks = await SfifaStock.find({ idAdmin }).lean();
     for (const stock of stocks) await ensureSfifaStyleBalances(stock);
-    const items = stocks.flatMap(stock => [...(stock.variants || []).map(row => ({ stockId: stock._id, variantId: row._id, width: stock.width, family: stock.family, code: row.code, quantity: row.quantity, styles: sfifaStockStyles(stock, row.code) })), ...((stock.unassignedQuantity ?? stock.quantity) > 0 ? [{ stockId: stock._id, variantId: stock._id, width: stock.width, family: stock.family, quantity: stock.unassignedQuantity ?? stock.quantity, styles: sfifaStockStyles(stock) }] : [])]);
+    const items = stocks.flatMap(stock => [...(stock.variants || []).map(row => ({ stockId: stock._id, variantId: row._id, ...sfifaVariantIdentity(stock, row), quantity: row.quantity, styles: sfifaStockStyles(stock, row.code, { variantId: row._id }) })), ...((stock.unassignedQuantity ?? stock.quantity) > 0 ? [{ stockId: stock._id, variantId: stock._id, width: stock.width, family: stock.family, quantity: stock.unassignedQuantity ?? stock.quantity, styles: sfifaStockStyles(stock) }] : [])]);
     res.json({ items });
   } catch (error) { sendError(res, error, 'sfifaStockUnavailable'); }
 }
@@ -110,7 +111,7 @@ export async function listTailoringOrders(req, res) {
     const orders = await TailoringOrder.find({ idAdmin }).sort({ orderDate: -1, createdAt: -1, _id: -1 }).lean();
     const ready = [];
     for (const row of orders) ready.push(row.stockOperation ? await resumeTailoringFabricStock(await TailoringOrder.findOne({ _id: row._id, idAdmin })) : row);
-    res.json({ orders: ready.filter(Boolean).map(publicOrder), permissions });
+    res.json({ orders: await currentSfifaViews(idAdmin, ready.filter(Boolean).map(publicOrder)), permissions });
   } catch (error) { sendError(res, error, "loadFailed"); }
 }
 

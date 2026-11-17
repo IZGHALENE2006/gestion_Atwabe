@@ -41,7 +41,7 @@ export default function SfifaStock() {
   const reload = () => { setEditor(null); setStatus(null); setAttempt(value => value + 1); };
   const saved = response => {
     setResult(current => current?.token === token ? { ...current, items: [...response.items, ...current.items.filter(item => item.parentId !== response.parentId)] } : current);
-    setStatus({ token, key: editor.mode === "delete" ? "deleted" : editor.mode === "restock" ? "restocked" : editor.stock?.isUnassigned ? "classified" : editor.stock ? "updated" : "added" }); setEditor(null); if (editor.mode === "new") setFilters(emptyFilters);
+    setStatus({ token, key: editor.mode === "delete" ? "deleted" : editor.mode === "restock" ? "restocked" : editor.stock?.isUnassigned ? "classified" : editor.stock ? "updated" : "added" }); setEditor(null); if (["new", "edit"].includes(editor.mode)) setFilters(emptyFilters);
   };
   if (!token) return <Navigate to="/LoginChoise" replace />;
   const number = value => new Intl.NumberFormat(i18n.language === "ar" ? "ar-MA" : "fr-MA", { maximumFractionDigits: 3 }).format(value);

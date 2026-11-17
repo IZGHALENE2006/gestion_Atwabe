@@ -1,0 +1,10 @@
+import express from 'express';
+import { auth } from '../middleware/auth.js';
+import { listOwnerDebts, addOwnerDebt, listOwnerDebtPayments, addOwnerDebtPayment } from '../controlles/OwnerDebts.js';
+const router=express.Router();
+router.use(auth);
+router.get('/',listOwnerDebts);
+router.post('/',addOwnerDebt);
+router.get('/payments',listOwnerDebtPayments);
+router.post('/payments',addOwnerDebtPayment);
+export default router;

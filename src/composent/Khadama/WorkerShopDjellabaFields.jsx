@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IoCheckmarkCircleOutline, IoColorPaletteOutline, IoRefreshOutline } from 'react-icons/io5';
-import { WORKER_GARMENT_SIZES, WORKER_SFIFA_METERS } from '../../../shared/workerMaterials.js';
+import { WORKER_GARMENT_SIZES, WORKER_SFIFA_METERS, WORKER_DJELLABA_NUMBERS } from '../../../shared/workerMaterials.js';
 import { formatSfifaCode } from '../../../shared/sfifaStock.js';
 import { loadWorkerMaterialOptions } from './workersApi.js';
+import { creditWorkerMaterialOptions } from './workerWorkEditing.js';
 
-export default function WorkerShopDjellabaFields({ token, workerId, value, onChange, disabled, fields = {}, fixedWork }) {
+export default function WorkerShopDjellabaFields({ token, workerId, value, onChange, disabled, fields = {}, fixedWork, creditRows }) {
   const { t, i18n } = useTranslation();
   const [result, setResult] = useState(null), [attempt, setAttempt] = useState(0);
   const scope = `${token}:${workerId}:${attempt}`, state = result?.scope === scope ? result : { loading: true, fabrics: [], sfifa: [], error: false };
@@ -13,10 +14,10 @@ export default function WorkerShopDjellabaFields({ token, workerId, value, onCha
     const controller = new AbortController();
     loadWorkerMaterialOptions(token, workerId, controller.signal).then(data => {
       if (!Array.isArray(data.fabrics) || !Array.isArray(data.sfifa)) throw new Error('Invalid material options');
-      if (!controller.signal.aborted) setResult({ scope, ...data, loading: false, error: false });
+      if (!controller.signal.aborted) setResult({ scope, ...creditWorkerMaterialOptions(data, creditRows), loading: false, error: false });
     }).catch(() => { if (!controller.signal.aborted) setResult({ scope, loading: false, fabrics: [], sfifa: [], error: true }); });
     return () => controller.abort();
-  }, [token, workerId, scope]);
+  }, [token, workerId, scope, creditRows]);
   const config = value.shopDjellaba, selected = config.colorIds || [], assigned = new Set(fixedWork?.shopDjellaba.colorIds || []);
   const fabric = state.fabrics.find(fabric => fabric._id === config.fabricId), colors = fabric?.colors || [], available = colors.filter(color => !assigned.has(color._id));
   const sfifa = state.sfifa.find(sfifa => sfifa.parentId === config.sfifaId && sfifa._id === config.variantId);
@@ -29,6 +30,7 @@ export default function WorkerShopDjellabaFields({ token, workerId, value, onCha
     <header className="worker-djellaba-heading"><div><h3 id="worker-djellaba-title">{t('workers.work.shopDjellaba.title')}</h3><p className="work-field-hint">{t('workers.work.shopDjellaba.hint')}</p></div><button type="button" data-refresh-djellaba-options disabled={disabled || state.loading} onClick={() => setAttempt(n => n + 1)} className="work-text-button"><IoRefreshOutline aria-hidden="true" />{t('workers.work.materials.refresh')}</button></header>
     {state.error && <p role="alert" className="work-field-error">{t('workers.work.errors.loadMaterialsFailed')}</p>}
     <div className="worker-djellaba-layout"><div>
+      <div className="work-field"><label htmlFor={props('modelNumber').id}>{t('workers.work.shopDjellaba.modelNumber')}</label><select {...props('modelNumber')} data-djellaba-number dir="ltr" value={config.modelNumber ?? ''} disabled={disabled || Boolean(fixedWork)} onChange={event => patch({ modelNumber: event.target.value })}><option value="">{t('workers.work.shopDjellaba.chooseModelNumber')}</option>{WORKER_DJELLABA_NUMBERS.map(value => <option key={value} value={value}>{value}</option>)}</select>{errorFor('modelNumber')}</div>
       <div className="work-field"><label htmlFor={props('fabricId').id}>{t('workers.work.materials.fabric')}</label><select {...props('fabricId')} data-djellaba-fabric value={config.fabricId || ''} onChange={event => patch({ fabricId: event.target.value, colorIds: [] })} disabled={disabled || state.loading || state.error || Boolean(fixedWork)} required><option value="">{t(state.loading ? 'common.loading' : 'workers.work.materials.chooseFabric')}</option>{state.fabrics.map(fabric => <option key={fabric._id} value={fabric._id}>{fabric.type}{fabric.reference ? ` · ${fabric.reference}` : ''}</option>)}</select>{errorFor('fabricId')}</div>
       <div className="worker-trouser-measures"><div className="work-field"><label htmlFor={props('size').id}>{t('workers.work.pieceCards.size')}</label><select {...props('size')} data-djellaba-size dir="ltr" value={config.size || ''} onChange={event => patch({ size: event.target.value })} disabled={disabled || Boolean(fixedWork)}><option value="">{t('workers.work.pieceCards.chooseSize')}</option>{WORKER_GARMENT_SIZES.map(size => <option key={size} value={size}>{size}</option>)}</select>{errorFor('size')}</div><div className="work-field"><label htmlFor={props('meters').id}>{t('workers.work.shopDjellaba.meters')}</label><input {...props('meters')} data-djellaba-meters value={config.meters ?? ''} onChange={event => patch({ meters: event.target.value })} disabled={disabled || Boolean(fixedWork)} inputMode="decimal" dir="ltr" maxLength={11} placeholder="0" />{errorFor('meters')}</div></div>
       <p className="work-field-hint worker-djellaba-fabric-note">{t('workers.work.shopDjellaba.fabricNote')}</p>

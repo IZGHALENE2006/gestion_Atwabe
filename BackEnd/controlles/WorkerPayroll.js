@@ -24,7 +24,7 @@ async function accountFor(worker, idAdmin) {
     SfifaStock.find({ idAdmin, "production.workerId": worker._id }).select("production").lean(),
   ]);
   const all = new Map(works.map(work => [String(work._id), work]));
-  for (const stock of stocks) for (const work of stock.production || []) if (String(work.workerId) === String(worker._id)) all.set(String(work._id), work);
+  for (const stock of stocks) for (const work of stock.production || []) if (!work.relocatedAt && String(work.workerId) === String(worker._id)) all.set(String(work._id), work);
   // Deleted assignments retain their already earned amounts.
   return buildWorkerPayroll([...all.values()], worker.payments || []);
 }

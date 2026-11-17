@@ -1,3 +1,4 @@
+import { findSfifaIdentity, bindSfifaVariant } from "../utils/sfifaIdentity.js";
 import { ensureSfifaStyleBalances, changeSfifaTypeBalance, sfifaTargetSummary } from '../utils/sfifaStyleBalances.js';
 import { protectTailoringSfifaDeletion } from '../utils/tailoringSfifaStock.js';
 import { moduleOperationPermissions } from "../../shared/employeePermissions.js";
@@ -7,7 +8,7 @@ import EmployeModel from "../models/EmployeModele.js";
 import SfifaStock from "../models/SfifaStock.js";
 import TailoringWorker from "../models/TailoringWorker.js";
 import { protectWorkerMaterialDeletion } from '../utils/workerMaterials.js';
-import { SFIFA_METER_TYPES, SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, SFIFA_STOCK_SCALE, sfifaQuantityUnits, sfifaStockBarcode, validateSfifaClassification, validateSfifaStock } from "../../shared/sfifaStock.js";
+import { SFIFA_METER_TYPES, SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, SFIFA_STOCK_SCALE, sfifaQuantityUnits, sfifaStockBarcode, validateSfifaClassification, validateSfifaStock, validateSfifaStockCorrection, sfifaVariantIdentity, sfifaVariantMatches, sfifaReceiptMatches } from "../../shared/sfifaStock.js";
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
 const sameStyleMeters = (left, right) => left === undefined && right === undefined || Boolean(left && right && SFIFA_METER_TYPES.every(key => left[key] === right[key]));
@@ -15,13 +16,13 @@ const groupUnits = quantity => sfifaQuantityUnits(quantity, { max: SFIFA_STOCK_G
 const publicRows = stock => {
   const base = { parentId: stock._id, width: stock.width, family: stock.family, __v: stock.__v ?? 0, createdAt: stock.createdAt, updatedAt: stock.updatedAt };
   const variants = stock.variants || [], unassigned = stock.unassignedQuantity ?? stock.quantity;
-  const rows = variants.map(variant => ({ ...base, _id: variant._id, code: variant.code, quantity: variant.quantity, ...(variant.styleMeters ? sfifaTargetSummary(stock, variant._id) : {}), barcode: sfifaStockBarcode(variant), isUnassigned: false }));
+  const rows = variants.map(variant => ({ ...base, ...sfifaVariantIdentity(stock, variant), _id: variant._id, code: variant.code, quantity: variant.quantity, ...(variant.styleMeters ? sfifaTargetSummary(stock, variant._id) : {}), barcode: sfifaStockBarcode(variant), isUnassigned: false }));
   if (unassigned > 0 || (stock.variants === undefined && !stock.production?.length)) rows.push({ ...base, _id: stock._id, code: null, quantity: unassigned, ...(stock.unassignedStyleMeters ? sfifaTargetSummary(stock, stock._id) : {}), barcode: sfifaStockBarcode(stock), isUnassigned: true });
   return rows;
 };
-const publicMutation = (stock, code) => {
+const publicMutation = (stock, code, variantId) => {
   const items = publicRows(stock);
-  return { parentId: stock._id, ...items.find(item => !item.isUnassigned && item.code === code), items };
+  return { parentId: stock._id, ...items.find(item => !item.isUnassigned && (variantId ? String(item._id) === String(variantId) : item.code === code)), items };
 };
 const prepareStock = stock => {
   if (stock.unassignedQuantity === undefined) stock.unassignedQuantity = stock.quantity;
@@ -52,6 +53,7 @@ export async function listSfifaStock(req, res) {
   try {
     const { idAdmin, permissions } = await accessFor(req);
     const items = await SfifaStock.find({ idAdmin }).sort({ width: 1, family: 1 }).lean();
+    for (const stock of items) await ensureSfifaStyleBalances(stock);
     res.json({ items: items.flatMap(publicRows), permissions });
   } catch (error) { sendError(res, error, "loadFailed"); }
 }
@@ -78,11 +80,12 @@ export async function addSfifaStock(req, res) {
         const processed = await SfifaStock.findOne({ idAdmin, "receipts.requestId": requestId });
         if (processed) {
           const receipt = processed.receipts.find(entry => entry.requestId === requestId);
-          if (processed.width !== input.width || processed.family !== input.family || receipt.code !== input.code || receipt.quantity !== input.quantity || !sameStyleMeters(receipt.styleMeters, input.styleMeters)) throw fail("requestConflict", 409);
-          return res.json(publicMutation(processed, input.code));
+          if ((receipt.width || processed.width) !== input.width || (receipt.family || processed.family) !== input.family || receipt.code !== input.code || receipt.quantity !== input.quantity || !sameStyleMeters(receipt.styleMeters, input.styleMeters)) throw fail("requestConflict", 409);
+          return res.json(publicMutation(processed, input.code, receipt.variantId));
         }
-        const existing = await SfifaStock.findOne({ idAdmin, width: input.width, family: input.family });
-        const receipt = { requestId, quantity: input.quantity, code: input.code, ...(input.styleMeters ? { styleMeters: input.styleMeters } : {}), createdBy, date: new Date() };
+        const matched = await findSfifaIdentity(idAdmin, input);
+        const existing = await SfifaStock.findOne(matched ? { idAdmin, _id: matched.stock._id } : { idAdmin, width: input.width, family: input.family });
+        const receipt = { requestId, width: input.width, family: input.family, quantity: input.quantity, code: input.code, ...(input.styleMeters ? { styleMeters: input.styleMeters } : {}), createdBy, date: new Date() };
         if (existing) {
           const previous = existing.receipts.find(entry => entry.requestId === requestId);
           if (previous) {
@@ -91,17 +94,18 @@ export async function addSfifaStock(req, res) {
           }
           prepareStock(existing);
           await ensureSfifaStyleBalances(existing);
-          const variant = existing.variants.find(entry => entry.code === input.code);
+          const variant = existing.variants.find(entry => sfifaVariantMatches(existing, entry, input));
           const quantity = sfifaQuantityUnits(variant?.quantity || 0) + sfifaQuantityUnits(input.quantity);
           if (quantity > SFIFA_STOCK_LIMIT * SFIFA_STOCK_SCALE) throw quantityLimit();
-          if (!variant) existing.variants.push({ code: input.code, quantity: 0, styleMeters: { single: 0, double: 0, gradient: 0 } });
-          const target = existing.variants.find(row => row.code === input.code);
+          if (!variant) existing.variants.push({ width: input.width, family: input.family, code: input.code, quantity: 0, styleMeters: { single: 0, double: 0, gradient: 0 } });
+          const target = existing.variants.find(row => sfifaVariantMatches(existing, row, input));
+          receipt.variantId = target._id;
           for (const key of SFIFA_METER_TYPES) target.styleMeters[key] = Math.round((target.styleMeters[key] + (input.styleMeters?.[key] || 0)) * 1000) / 1000;
           target.quantity = quantity / SFIFA_STOCK_SCALE;
           existing.quantity = (groupUnits(existing.quantity) + sfifaQuantityUnits(input.quantity)) / SFIFA_STOCK_SCALE;
           existing.receipts.push(receipt);
           await existing.save();
-          return res.status(201).json(publicMutation(existing, input.code));
+          return res.status(201).json(publicMutation(existing, input.code, target._id));
         }
         const stock = await SfifaStock.create({ width: input.width, family: input.family, quantity: input.quantity, unassignedQuantity: 0, variants: [{ code: input.code, quantity: input.quantity, styleMeters: input.styleMeters || { single: 0, double: 0, gradient: 0 } }], unassignedStyleMeters: { single: 0, double: 0, gradient: 0 }, idAdmin, createdBy, receipts: [receipt] });
         return res.status(201).json(publicMutation(stock, input.code));
@@ -122,7 +126,8 @@ export async function updateSfifaStock(req, res) {
     prepareStock(stock);
     await ensureSfifaStyleBalances(stock);
     const input = validateSfifaClassification({ width: stock.width, family: stock.family, code: req.body?.code, quantity: req.body?.quantity }, stock.unassignedQuantity);
-    const variant = stock.variants.find(entry => entry.code === input.code);
+    const variant = stock.variants.find(entry => sfifaVariantMatches(stock, entry, input));
+    if (!variant && await findSfifaIdentity(idAdmin, input)) throw fail("sfifaIdentityExists", 409);
     const quantity = sfifaQuantityUnits(variant?.quantity || 0) + sfifaQuantityUnits(input.quantity);
     if (quantity > SFIFA_STOCK_LIMIT * SFIFA_STOCK_SCALE) throw quantityLimit();
     if (variant) variant.quantity = quantity / SFIFA_STOCK_SCALE;
@@ -144,13 +149,21 @@ export async function updateSfifaVariant(req, res) {
     const variant = stock.variants?.find(entry => String(entry._id) === req.params.variantId.toLowerCase());
     if (!variant) throw fail("notFound", 404);
     await ensureSfifaStyleBalances(stock);
-    const input = validateSfifaStock({ width: stock.width, family: stock.family, code: variant.code, quantity: req.body?.quantity }, { allowZero: true });
+    const input = validateSfifaStockCorrection({ ...sfifaVariantIdentity(stock, variant), ...Object.fromEntries(['width', 'family', 'code', 'quantity', 'styleMeters'].filter(key => req.body[key] !== undefined).map(key => [key, req.body[key]])) });
+    const duplicate = await findSfifaIdentity(idAdmin, input);
+    if (duplicate && String(duplicate.variant._id) !== String(variant._id)) throw fail('sfifaIdentityExists', 409);
+    bindSfifaVariant(stock, variant);
     changeSfifaTypeBalance(stock, variant._id, sfifaQuantityUnits(input.quantity) - sfifaQuantityUnits(variant.quantity));
     stock.quantity = (groupUnits(stock.quantity) - sfifaQuantityUnits(variant.quantity) + sfifaQuantityUnits(input.quantity)) / SFIFA_STOCK_SCALE;
     variant.quantity = input.quantity;
+    if (input.styleMeters) variant.styleMeters = input.styleMeters;
+    variant.width = input.width; variant.family = input.family; variant.code = input.code;
+    for (const work of stock.production || []) if (String(work.sfifa?.variantId) === String(variant._id)) {
+      work.sfifa.width = input.width; work.sfifa.family = input.family; work.sfifa.code = input.code;
+    }
     await stock.save();
-    res.json(publicMutation(stock, input.code));
-  } catch (error) { sendError(res, error); }
+    res.json(publicMutation(stock, input.code, variant._id));
+  } catch (error) { if (error.code === 11000) return res.status(409).json({ message: 'sfifaIdentityExists' }); sendError(res, error); }
 }
 
 // Keep receipts and worker production when removing a visible stock entry.
@@ -187,21 +200,21 @@ export async function restockSfifaVariant(req, res) {
         const stock = await SfifaStock.findOne({ _id: req.params.id, idAdmin });
         const variant = stock?.variants?.find(entry => String(entry._id) === req.params.variantId.toLowerCase());
         if (!variant) throw fail("notFound", 404);
-        const input = validateSfifaStock({ width: stock.width, family: stock.family, code: variant.code, quantity: req.body.quantity });
+        const input = validateSfifaStock({ ...sfifaVariantIdentity(stock, variant), quantity: req.body.quantity });
         const processed = await SfifaStock.findOne({ idAdmin, "receipts.requestId": requestId });
         if (processed) {
           const receipt = processed.receipts.find(entry => entry.requestId === requestId);
-          if (String(processed._id) !== String(stock._id) || receipt.workId || receipt.code !== variant.code || receipt.quantity !== input.quantity || receipt.styleMeters !== undefined) throw fail("requestConflict", 409);
-          return res.json(publicMutation(processed, variant.code));
+          if (String(processed._id) !== String(stock._id) || receipt.workId || (receipt.variantId ? String(receipt.variantId) !== String(variant._id) : !sfifaReceiptMatches(stock, receipt, variant)) || receipt.quantity !== input.quantity || receipt.styleMeters !== undefined) throw fail("requestConflict", 409);
+          return res.json(publicMutation(processed, variant.code, variant._id));
         }
         await ensureSfifaStyleBalances(stock);
         const units = sfifaQuantityUnits(variant.quantity) + sfifaQuantityUnits(input.quantity);
         if (units > SFIFA_STOCK_LIMIT * SFIFA_STOCK_SCALE) throw quantityLimit();
         variant.quantity = units / SFIFA_STOCK_SCALE;
         stock.quantity = (groupUnits(stock.quantity) + sfifaQuantityUnits(input.quantity)) / SFIFA_STOCK_SCALE;
-        stock.receipts.push({ requestId, code: variant.code, quantity: input.quantity, createdBy, date: new Date() });
+        stock.receipts.push({ requestId, variantId: variant._id, ...sfifaVariantIdentity(stock, variant), quantity: input.quantity, createdBy, date: new Date() });
         await stock.save();
-        return res.status(201).json(publicMutation(stock, variant.code));
+        return res.status(201).json(publicMutation(stock, variant.code, variant._id));
       } catch (error) {
         if (error.name !== "VersionError" && error.code !== 11000) throw error;
         if (attempt === 3) throw fail("stockConflict", 409);
@@ -218,7 +231,7 @@ export async function listSfifaRestocks(req, res) {
     if (!stock) throw fail("notFound", 404);
     const row = publicRows(stock).find(item => req.params.variantId ? String(item._id) === req.params.variantId.toLowerCase() && !item.isUnassigned : item.isUnassigned);
     if (!row) throw fail("notFound", 404);
-    const receipts = stock.receipts.filter(receipt => row.isUnassigned ? receipt.code === undefined || receipt.code === null : receipt.code === row.code);
+    const receipts = stock.receipts.filter(receipt => row.isUnassigned ? receipt.code === undefined || receipt.code === null : sfifaReceiptMatches(stock, receipt, stock.variants.find(variant => String(variant._id) === String(row._id))));
     const workerIdFor = receipt => receipt.workerId || stock.production?.find(work => String(work._id) === String(receipt.workId))?.workerId;
     const workerIds = [...new Set(receipts.filter(receipt => !receipt.workerName).map(workerIdFor).filter(Boolean).map(String))];
     const workers = workerIds.length ? await TailoringWorker.find({ idAdmin, _id: { $in: workerIds } }).select("_id name").lean() : [];

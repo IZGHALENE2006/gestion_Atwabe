@@ -2,7 +2,7 @@ import { WORKER_SFIFA_FAMILIES, SFIFA_CUSTOMER_FAMILY, workerSfifaCreditsStock }
 import mongoose from "mongoose";
 import WorkerWork from "./WorkerWork.js";
 import { workerMaterialDebitSchema } from './workerMaterialSchema.js';
-import { SFIFA_METER_TYPES, SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, SFIFA_STOCK_WIDTHS, parseSfifaStyleMeters, sfifaCodeNumber, sfifaQuantityUnits } from "../../shared/sfifaStock.js";
+import { SFIFA_METER_TYPES, SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, SFIFA_STOCK_WIDTHS, SFIFA_STOCK_FAMILIES, sfifaVariantIdentity, sfifaIdentityKey, parseSfifaStyleMeters, sfifaCodeNumber, sfifaQuantityUnits } from "../../shared/sfifaStock.js";
 
 const styleMetersSchema = new mongoose.Schema(Object.fromEntries(SFIFA_METER_TYPES.map(key => [key, { type: Number, required: true, min: 0, max: SFIFA_STOCK_LIMIT, validate: value => sfifaQuantityUnits(value) !== null }])), { _id: false });
 const receiptSchema = new mongoose.Schema({
@@ -10,6 +10,9 @@ const receiptSchema = new mongoose.Schema({
   quantity: { type: Number, required: true, validate: value => sfifaQuantityUnits(value) !== null && value > 0 },
   styleMeters: { type: styleMetersSchema, default: undefined },
   code: { type: Number, default: undefined },
+  variantId: { type: mongoose.Schema.Types.ObjectId, default: undefined },
+  width: { type: String, enum: SFIFA_STOCK_WIDTHS, default: undefined },
+  family: { type: String, enum: SFIFA_STOCK_FAMILIES.map(row => row.value), default: undefined },
   workId: { type: mongoose.Schema.Types.ObjectId, default: undefined },
   workerId: { type: mongoose.Schema.Types.ObjectId, ref: "TailoringWorker", default: undefined },
   workerName: { type: String, trim: true, maxlength: 160, default: undefined },
@@ -24,6 +27,9 @@ receiptSchema.pre("validate", function () {
   } catch { this.invalidate("styleMeters", "Invalid style meters"); }
 });
 const variantSchema = new mongoose.Schema({
+  width: { type: String, enum: SFIFA_STOCK_WIDTHS, default: undefined },
+  family: { type: String, enum: SFIFA_STOCK_FAMILIES.map(row => row.value), default: undefined },
+  identityKey: { type: String, default: undefined },
   styleMeters: { type: styleMetersSchema, default: undefined },
   code: { type: Number, required: true, validate: Number.isSafeInteger },
   quantity: { type: Number, required: true, min: 0, max: SFIFA_STOCK_LIMIT, validate: value => sfifaQuantityUnits(value) !== null },
@@ -57,7 +63,9 @@ schema.pre("validate", function () {
   const requests = new Set();
   const receipts = new Map(this.receipts.map(receipt => [receipt.requestId, receipt]));
   for (const work of this.production || []) {
-    if (work.category !== "sfifa" || work.sfifa?.width !== this.width || work.sfifa?.family !== this.family || String(work.idAdmin) !== String(this.idAdmin) || requests.has(work.requestId)) this.invalidate("production", "Invalid sfifa production work");
+    const variant = work.sfifa?.variantId && this.variants?.find(row => String(row._id) === String(work.sfifa.variantId));
+    const identity = variant ? sfifaVariantIdentity(this, variant) : work.sfifa?.variantId ? work.sfifa : this;
+    if (work.category !== "sfifa" || work.sfifa?.width !== identity.width || work.sfifa?.family !== identity.family || String(work.idAdmin) !== String(this.idAdmin) || requests.has(work.requestId)) this.invalidate("production", "Invalid sfifa production work");
     requests.add(work.requestId);
     for (const event of work.completions) {
       const receipt = receipts.get(event.requestId);
@@ -66,23 +74,26 @@ schema.pre("validate", function () {
         if (workerSfifaCreditsStock(work) || receipt) this.invalidate("production", "Client completion must not credit stock");
         continue;
       }
-      if (!receipt || String(receipt.workId) !== String(work._id) || String(receipt.workerId) !== String(work.workerId) || receipt.code !== work.sfifa?.code || receipt.quantity !== event.quantity) this.invalidate("production", "Missing or inconsistent production receipt");
+      if (!receipt || String(receipt.workId) !== String(work._id) || String(receipt.workerId) !== String(work.workerId) || receipt.quantity !== event.quantity) this.invalidate("production", "Missing or inconsistent production receipt");
     }
   }
   if (new Set(this.receipts.map(receipt => receipt.requestId)).size !== this.receipts.length) this.invalidate("receipts", "Repeated stock receipt");
-  for (const receipt of this.receipts) if (receipt.code !== undefined && sfifaCodeNumber(receipt.code, this.family) === null) this.invalidate("receipts", "Invalid sfifa number");
+  for (const receipt of this.receipts) if (receipt.code !== undefined && sfifaCodeNumber(receipt.code, receipt.family || this.family) === null) this.invalidate("receipts", "Invalid sfifa number");
   if (this.variants !== undefined) {
     if (this.unassignedQuantity === undefined) this.invalidate("unassignedQuantity", "Missing unassigned balance");
     const codes = new Set();
     let total = sfifaQuantityUnits(this.unassignedQuantity) ?? 0;
     for (const variant of this.variants) {
-      if (sfifaCodeNumber(variant.code, this.family) === null || codes.has(variant.code)) this.invalidate("variants", "Invalid or repeated sfifa number");
-      codes.add(variant.code); total += sfifaQuantityUnits(variant.quantity) ?? 0;
+      const identity = sfifaVariantIdentity(this, variant), key = sfifaIdentityKey(identity);
+      if (sfifaCodeNumber(variant.code, identity.family) === null || codes.has(key)) this.invalidate("variants", "Invalid or repeated sfifa number");
+      variant.identityKey = key;
+      codes.add(key); total += sfifaQuantityUnits(variant.quantity) ?? 0;
     }
     if (total !== sfifaQuantityUnits(this.quantity, { max: SFIFA_STOCK_GROUP_LIMIT })) this.invalidate("quantity", "Inconsistent sfifa balance");
   }
 });
 schema.index({ idAdmin: 1, width: 1, family: 1 }, { unique: true });
+schema.index({ idAdmin: 1, 'variants.identityKey': 1 }, { unique: true, partialFilterExpression: { 'variants.identityKey': { $type: 'string' } } });
 schema.index({ idAdmin: 1, "receipts.requestId": 1 }, { unique: true, partialFilterExpression: { "receipts.requestId": { $type: "string" } } });
 schema.index({ idAdmin: 1, "production.requestId": 1 }, { unique: true, partialFilterExpression: { "production.requestId": { $type: "string" } } });
 schema.index({ idAdmin: 1, "production.workerId": 1 });

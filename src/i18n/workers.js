@@ -1,5 +1,6 @@
+import { workEditingFrench, workEditingArabic } from './workerWorkEditing.js';
 export const workersFrench = {
-  shopFlow: {"progress":"Étapes du travail","completed":"Terminé","inProgress":"En cours","notAssigned":"Pas encore confié","chooseWork":"Choisir un travail de la machine","refresh":"Actualiser la liste","selectionHint":"Le travail complet passe à l’étape suivante après réalisation de l’étape précédente. Le tarif saisi concerne cette étape, par pièce.","search":"Rechercher par artisan, code-barres de pièce ou du travail","machineWork":"Travail d’origine du magasin","pieceCount":"Nombre de pièces : {{count}}","loadFailed":"Impossible de charger les travaux. Actualisez la liste.","empty":"Aucun travail correspondant dans cette section.","unavailable":"Travaux indisponibles","barcodeTitle":"Étiquettes des pièces","barcodeHint":"Chaque pièce possède un code-barres distinct conservé pendant toutes les étapes du travail.","printBarcode":"Imprimer toutes les étiquettes","barcode":"Code-barres","allDone":"Toutes les étapes sont terminées","pieceBarcode":"Code-barres de la pièce","printSelection":"Pièces à imprimer","allPieces":"Toutes les pièces ({{count}})","onePiece":"Une seule pièce","pieceNumber":"Numéro de la pièce","invalidPiece":"Saisissez un numéro de pièce entre 1 et {{count}}.","printOne":"Imprimer cette pièce","matchedPiece":"Pièce correspondant au code-barres : n° {{number}}"},
+  shopFlow: {"choosePieces":"Pièces à confier à cette étape","selectPiece":"Sélection","fabric":"Tissu et couleur","size":"Taille","pieceStatus":"État","ready":"Prête à confier","readyCount":"Prêtes : {{count}}","selectedCount":"Pièces sélectionnées : {{count}}","stageCount":"{{completed}} réalisées sur {{total}}","progress":"Étapes du travail","completed":"Terminé","inProgress":"En cours","notAssigned":"Pas encore confié","chooseWork":"Choisir un travail de la machine","refresh":"Actualiser la liste","selectionHint":"Chaque pièce réalisée peut passer à l’étape suivante sans attendre les autres. Sélectionnez les pièces prêtes ; le tarif concerne chaque pièce de cette étape.","search":"Rechercher par artisan, code-barres de pièce ou du travail","machineWork":"Travail d’origine du magasin","pieceCount":"Nombre de pièces : {{count}}","loadFailed":"Impossible de charger les travaux. Actualisez la liste.","empty":"Aucun travail correspondant dans cette section.","unavailable":"Travaux indisponibles","barcodeTitle":"Étiquettes des pièces","barcodeHint":"Chaque pièce possède un code-barres distinct conservé pendant toutes les étapes du travail.","printBarcode":"Imprimer toutes les étiquettes","barcode":"Code-barres","allDone":"Toutes les étapes sont terminées","pieceBarcode":"Code-barres de la pièce","printSelection":"Pièces à imprimer","allPieces":"Toutes les pièces ({{count}})","onePiece":"Une seule pièce","pieceNumber":"Numéro de la pièce","invalidPiece":"Saisissez un numéro de pièce entre 1 et {{count}}.","printOne":"Imprimer cette pièce","matchedPiece":"Pièce correspondant au code-barres : n° {{number}}"},
   removal: {"title":"Supprimer l’artisan","named":"Supprimer l’artisan {{name}}","badge":"Artisan supprimé","saved":"L’artisan a été retiré des listes actives de toutes ses sections.","confirm":"Supprimer cet artisan de toutes ses sections ? Son compte restera conservé dans la liste des artisans supprimés.","historyHint":"Les travaux, matières, réalisations et versements restent conservés. Vous pourrez terminer les travaux en cours et régler les sommes dues, sans confier de nouveau travail.","listLabel":"Liste des artisans","activeList":"Artisans actifs","deletedList":"Artisans supprimés","empty":"Aucun artisan supprimé dans cette section.","accountHint":"Cet artisan a été supprimé des listes actives. Ses travaux et son compte restent accessibles pour terminer les travaux en cours et régler son solde."},
   payroll: {
   pdf: {"invalidPeriod":"Choisissez une semaine ou un mois valide à partir de 1900.","pageLabel":"Page","accountAction":"Compte complet PDF","periodAction":"Exporter la période PDF","exporting":"Préparation du PDF…","failed":"Impossible de créer le PDF. Réessayez.","title":"Relevé du compte de l’artisan","overall":"Situation complète du compte","periodSummary":"Statistiques de la période","generated":"Édité le","phone":"Téléphone","weekDay":"Un jour de la semaine","weekRange":"Du {{start}} au {{end}}","yearLabel":"Année {{year}}","weekHint":"Du lundi au dimanche, selon la date réelle de réalisation ou de versement. Le solde de la semaine est un mouvement, pas le reste dû du compte.","monthHint":"Les réalisations et versements sont rattachés au mois concerné, même si le versement a eu lieu plus tard.","balance":"Solde de la période","accountHint":"Le solde net est égal aux sommes acquises moins les versements. Le détail des sommes dues et des avances reste séparé par mois.","filtered":"Écritures affichées : {{kind}}. Les totaux couvrent toute la période.","page":"Page {{page}} / {{pages}}"},
@@ -99,6 +100,7 @@ export const workersFrench = {
   }
 },
   work: {
+    editing: workEditingFrench,
     cancelWork: "Annuler le travail",
     confirmCancelWork: "Annuler et restituer le stock",
     cancelTrouserWorkConfirm: "Le travail sera retiré et tous les mètres de tissu attribués aux couleurs choisies seront restitués au stock.",
@@ -129,9 +131,9 @@ export const workersFrench = {
     confirmDelete: "Supprimer le travail",
     increaseHistory: "Historique des quantités ajoutées",
     increaseEntry: "Reste avant l’ajout : {{before}} · Reste après : {{after}}",
-    shopDjellaba: { title: "Djellabas du magasin par couleur", hint: "Choisissez le tissu et les couleurs. Chaque couleur correspond à une djellaba avec 3 mètres de sfifa.", colorHint: "Chaque couleur sélectionnée compte pour une djellaba.", count: "Djellabas sélectionnées : {{number}}", meters: "Tissu par djellaba (m, facultatif)", fabricNote: "Les mètres de tissu sont indicatifs et restent dans le stock.", sfifaTotal: "Sfifa à déduire du stock" },
+    shopDjellaba: { modelNumber: "Numéro", chooseModelNumber: "Choisir le numéro", allNumbers: "Tous les numéros", title: "Djellabas du magasin par couleur", hint: "Choisissez le tissu et les couleurs. Chaque couleur correspond à une djellaba avec 3 mètres de sfifa.", colorHint: "Chaque couleur sélectionnée compte pour une djellaba.", count: "Djellabas sélectionnées : {{number}}", meters: "Tissu par djellaba (m, facultatif)", fabricNote: "Les mètres de tissu sont indicatifs et restent dans le stock.", sfifaTotal: "Sfifa à déduire du stock" },
     cancelDjellabaWorkConfirm: "Le travail sera retiré et la sfifa sera restituée. Les mètres de tissu restent inchangés.",
-    shopTrousers: { details: "Détails des pantalons du magasin", noFabrics: "Aucun type de tissu enregistré dans le stock.", metersPerPiece: "Mètres par pantalon", metersHint: "La même longueur de tissu sera déduite de chaque couleur sélectionnée lors de la sauvegarde.", availableMeters: "Disponible", totalMeters: "Total du tissu utilisé", oneTrouser: "1 pantalon", untrackedColor: "État non précisé dans les anciens enregistrements", completeColors: "Couleurs des pantalons réalisés", completionHint: "Cochez uniquement les couleurs remises par le travailleur. Chaque couleur compte pour un pantalon réalisé.", legacyCompletionHint: "{{number}} pantalon(s) ont été réalisés sans indication de couleur dans les anciens enregistrements. Sélectionnez uniquement les nouveaux pantalons reçus.", length: "Longueur (cm)", chooseLength: "Choisir la longueur", colors: "Couleurs du tissu", colorHint: "Chaque couleur sélectionnée correspond à un pantalon. La quantité est calculée automatiquement.", colorNumber: "N°", allColors: "Tout sélectionner", clearColors: "Tout désélectionner", selectedCount: "Pantalons sélectionnés : {{number}}", chooseFabricFirst: "Choisissez un tissu pour afficher ses couleurs.", noColors: "Aucune couleur disponible pour ce tissu.", alreadyAssigned: "Déjà attribuée à ce travail" },
+    shopTrousers: { customLength: "Longueur personnalisée", enterCustomLength: "Saisir la longueur en cm", details: "Détails des pantalons du magasin", noFabrics: "Aucun type de tissu enregistré dans le stock.", metersPerPiece: "Mètres par pantalon", metersHint: "La même longueur de tissu sera déduite de chaque couleur sélectionnée lors de la sauvegarde.", availableMeters: "Disponible", totalMeters: "Total du tissu utilisé", oneTrouser: "1 pantalon", untrackedColor: "État non précisé dans les anciens enregistrements", completeColors: "Couleurs des pantalons réalisés", completionHint: "Cochez uniquement les couleurs remises par le travailleur. Chaque couleur compte pour un pantalon réalisé.", legacyCompletionHint: "{{number}} pantalon(s) ont été réalisés sans indication de couleur dans les anciens enregistrements. Sélectionnez uniquement les nouveaux pantalons reçus.", length: "Longueur (cm)", chooseLength: "Choisir la longueur", colors: "Couleurs du tissu", colorHint: "Chaque couleur sélectionnée correspond à un pantalon. La quantité est calculée automatiquement.", colorNumber: "N°", allColors: "Tout sélectionner", clearColors: "Tout désélectionner", selectedCount: "Pantalons sélectionnés : {{number}}", chooseFabricFirst: "Choisissez un tissu pour afficher ses couleurs.", noColors: "Aucune couleur disponible pour ce tissu.", alreadyAssigned: "Déjà attribuée à ce travail" },
     trousers: {
       types: { shop: "Pantalons pour la vente", client: "Pantalons des clients" },
       typeHints: { shop: "Production de pantalons destinés à la vente.", client: "Pantalons ordinaires ou qandrissi confiés pour les clients." },
@@ -235,7 +237,7 @@ export const workersFrench = {
       invalidShopTrouser: "Vérifiez le type, le tissu et la taille du pantalon.",
       chooseDjellabaColors: "Sélectionnez les couleurs des djellabas, sans répéter une couleur déjà attribuée.",
       chooseCompletedTrouserColors: "Choisissez les couleurs exactes des pantalons reçus, sans répéter une couleur déjà réalisée.",
-      invalidTrouserLength: "Choisissez une longueur : 80, 85, 90 ou 95 cm.",
+      invalidTrouserLength: "Choisissez ou saisissez une longueur supérieure à 0 et inférieure ou égale à 1 000 cm.",
       chooseTrouserColors: "Sélectionnez au moins une couleur, sans doublons ni couleurs déjà attribuées.",
       trouserColorsChanged: "Les couleurs de ce tissu ont changé. Actualisez la liste et vérifiez votre sélection.",
       invalidSize: "Choisissez une taille : S, M, L, XL, XXL ou 3XL.",
@@ -263,6 +265,9 @@ export const workersFrench = {
       invalidWorkType: "Choisissez les travaux du magasin ou des clients.",
       chooseOrder: "Choisissez une commande Fesla valide.",
       chooseGarments: "Choisissez au moins une pièce de la commande.",
+      orderCancelled: "Cette commande a été annulée. Elle ne peut plus être confiée à un artisan.",
+      invalidOrderAssignment: "L’affectation doit concerner la commande ouverte et les travaux des clients.",
+      loadOrderAssignmentFailed: "Impossible de charger l’affectation de cette commande. Réessayez.",
       orderNotFound: "Cette commande n’est plus disponible. Actualisez les travaux.",
       orderAlreadyDelivered: "Cette commande a déjà été livrée au client.",
       orderGarmentsChanged: "Les pièces de la commande ont changé. Actualisez les travaux.",
@@ -291,6 +296,9 @@ export const workersFrench = {
       forbidden: "Vous n’avez pas l’autorisation d’effectuer cette action.",
       loadWorkFailed: "Impossible de charger les travaux. Réessayez.",
       saveWorkFailed: "Impossible d’enregistrer le travail. Vos informations restent dans le formulaire.",
+      chooseShopPieces: 'Sélectionnez les pièces prêtes à confier à cette étape.', invalidDjellabaNumber: 'Choisissez un numéro de 1 à 5.',
+      cannotEditStartedWork: 'Ce travail ne peut plus être modifié après une première réalisation.',
+      workEditPending: 'La modification est enregistrée mais doit être finalisée. Actualisez puis réessayez.',
     },
   },
   title: "Artisans",
@@ -334,7 +342,7 @@ export const workersFrench = {
 };
 
 export const workersArabic = {
-  shopFlow: {"progress":"مراحل إنجاز العمل","completed":"منجز","inProgress":"قيد الإنجاز","notAssigned":"لم يُسند بعد","chooseWork":"اختر عملًا من أعمال الآلة","refresh":"تحديث القائمة","selectionHint":"يُنقل العمل كاملًا بعد إنجاز المرحلة السابقة. الأجرة التي ستحددها تخص هذه المرحلة لكل قطعة.","search":"بحث باسم العامل أو باركود القطعة أو العمل","machineWork":"عمل المحل الأصلي","pieceCount":"عدد القطع: {{count}}","loadFailed":"تعذر تحميل أعمال المحل. أعد تحديث القائمة.","empty":"لا توجد أعمال مطابقة في هذا القسم.","unavailable":"أعمال غير متاحة للإسناد","barcodeTitle":"ملصقات باركود القطع","barcodeHint":"لكل قطعة باركود مستقل يرافقها خلال مراحل إنجاز العمل.","printBarcode":"طباعة جميع الملصقات","barcode":"الباركود","allDone":"اكتمل العمل في جميع المراحل","pieceBarcode":"باركود القطعة","printSelection":"القطع المطلوب طباعتها","allPieces":"جميع القطع ({{count}})","onePiece":"قطعة واحدة","pieceNumber":"رقم القطعة","invalidPiece":"أدخل رقم قطعة بين 1 و{{count}}.","printOne":"طباعة ملصق القطعة","matchedPiece":"القطعة المطابقة للباركود: رقم {{number}}"},
+  shopFlow: {"choosePieces":"القطع المطلوب إسنادها لهذه المرحلة","selectPiece":"اختيار","fabric":"الثوب واللون","size":"المقاس","pieceStatus":"حالة القطعة","ready":"جاهزة للإسناد","readyCount":"الجاهز: {{count}}","selectedCount":"القطع المحددة: {{count}}","stageCount":"المنجز: {{completed}} من {{total}}","progress":"مراحل إنجاز العمل","completed":"منجز","inProgress":"قيد الإنجاز","notAssigned":"لم يُسند بعد","chooseWork":"اختر عملًا من أعمال الآلة","refresh":"تحديث القائمة","selectionHint":"يمكن تمرير كل قطعة منجزة إلى المرحلة التالية دون انتظار بقية العمل. حدد القطع الجاهزة، والأجرة تخص هذه المرحلة لكل قطعة.","search":"بحث باسم العامل أو باركود القطعة أو العمل","machineWork":"عمل المحل الأصلي","pieceCount":"عدد القطع: {{count}}","loadFailed":"تعذر تحميل أعمال المحل. أعد تحديث القائمة.","empty":"لا توجد أعمال مطابقة في هذا القسم.","unavailable":"أعمال غير متاحة للإسناد","barcodeTitle":"ملصقات باركود القطع","barcodeHint":"لكل قطعة باركود مستقل يرافقها خلال مراحل إنجاز العمل.","printBarcode":"طباعة جميع الملصقات","barcode":"الباركود","allDone":"اكتمل العمل في جميع المراحل","pieceBarcode":"باركود القطعة","printSelection":"القطع المطلوب طباعتها","allPieces":"جميع القطع ({{count}})","onePiece":"قطعة واحدة","pieceNumber":"رقم القطعة","invalidPiece":"أدخل رقم قطعة بين 1 و{{count}}.","printOne":"طباعة ملصق القطعة","matchedPiece":"القطعة المطابقة للباركود: رقم {{number}}"},
   removal: {"title":"حذف العامل","named":"حذف العامل {{name}}","badge":"عامل محذوف","saved":"تم حذف العامل من القوائم النشطة في جميع أقسامه.","confirm":"هل تريد حذف هذا العامل من جميع أقسامه؟ سيبقى حسابه محفوظًا في قائمة العمال المحذوفين.","historyHint":"تبقى الأعمال والمواد والإنجازات والدفعات محفوظة. يمكنك إتمام الأعمال الجارية وتسوية المستحقات، دون إسناد أعمال جديدة للعامل.","listLabel":"قائمة العمال","activeList":"العمال النشطون","deletedList":"العمال المحذوفون","empty":"لا يوجد عمال محذوفون في هذا القسم.","accountHint":"هذا العامل محذوف من القوائم النشطة. تبقى أعماله وحسابه متاحين لإتمام الأعمال الجارية وتسوية المستحقات."},
   payroll: {
   pdf: {"invalidPeriod":"اختر أسبوعًا أو شهرًا صحيحًا ابتداءً من سنة ١٩٠٠.","pageLabel":"صفحة","accountAction":"كشف الحساب الكامل PDF","periodAction":"تصدير الفترة PDF","exporting":"جارٍ إعداد PDF…","failed":"تعذر إنشاء ملف PDF. حاول مجددًا.","title":"كشف حساب العامل","overall":"الوضع الكامل لحساب العامل","periodSummary":"إحصائيات الفترة","generated":"تاريخ الإصدار","phone":"الهاتف","weekDay":"اختر يومًا من الأسبوع","weekRange":"من {{start}} إلى {{end}}","yearLabel":"سنة {{year}}","weekHint":"من الاثنين إلى الأحد، بحسب تاريخ الإنجاز أو الصرف الفعلي. صافي حركة الأسبوع لا يمثّل المتبقي في الحساب.","monthHint":"تُنسب الإنجازات والدفعات إلى شهر الاستحقاق المحدد، حتى إن صُرفت الدفعة لاحقًا.","balance":"صافي حركة الفترة","accountHint":"صافي المتبقي هو المستحقات ناقص المدفوعات. تبقى تفاصيل المستحقات والتسبيقات محفوظة لكل شهر على حدة.","filtered":"السجلات المعروضة: {{kind}}. الإجماليات تشمل الفترة كاملة.","page":"صفحة {{page}} / {{pages}}"},
@@ -435,6 +443,7 @@ export const workersArabic = {
 },
   work: {
     cancelWork: "إلغاء العمل",
+    editing: workEditingArabic,
     confirmCancelWork: "تأكيد الإلغاء وإرجاع المخزون",
     cancelTrouserWorkConfirm: "سيُحذف العمل من القائمة وتُعاد جميع أمتار الثوب الخاصة بالألوان المحددة إلى المخزون.",
     cancelWorkConfirm: "سيُحذف العمل من القائمة وتُعاد جميع أمتار الثوب والسفيفة الخاصة به إلى مخزونها الأصلي.",
@@ -464,9 +473,9 @@ export const workersArabic = {
     confirmDelete: "تأكيد حذف العمل",
     increaseHistory: "سجل الزيادات",
     increaseEntry: "المتبقي قبل الزيادة: {{before}} · المتبقي بعدها: {{after}}",
-    shopDjellaba: { title: "جلابيب المحل حسب الألوان", hint: "اختر الثوب والألوان. كل لون يُحسب جلابة واحدة مع 3 أمتار من السفيفة.", colorHint: "كل لون تحدده يُحسب جلابة واحدة.", count: "عدد الجلابيب المحددة: {{number}}", meters: "أمتار الثوب لكل جلابة (اختياري)", fabricNote: "أمتار الثوب للتسجيل فقط وتبقى في المخزون.", sfifaTotal: "السفيفة التي ستُخصم من المخزون" },
+    shopDjellaba: { modelNumber: "الرقم", chooseModelNumber: "اختر الرقم", allNumbers: "جميع الأرقام", title: "جلابيب المحل حسب الألوان", hint: "اختر الثوب والألوان. كل لون يُحسب جلابة واحدة مع 3 أمتار من السفيفة.", colorHint: "كل لون تحدده يُحسب جلابة واحدة.", count: "عدد الجلابيب المحددة: {{number}}", meters: "أمتار الثوب لكل جلابة (اختياري)", fabricNote: "أمتار الثوب للتسجيل فقط وتبقى في المخزون.", sfifaTotal: "السفيفة التي ستُخصم من المخزون" },
     cancelDjellabaWorkConfirm: "سيُحذف العمل من القائمة وتُعاد السفيفة الخاصة به إلى المخزون. تبقى أمتار الثوب كما هي.",
-    shopTrousers: { details: "تفاصيل سراويل المحل", noFabrics: "لا توجد أنواع أثواب مسجلة في المخزون.", metersPerPiece: "الأمتار لكل سروال", metersHint: "يُخصم هذا المقدار من كل لون محدد عند حفظ العمل.", availableMeters: "المتوفر", totalMeters: "مجموع أمتار الثوب المستعملة", oneTrouser: "سروال واحد", untrackedColor: "لم تُحدد حالته في الإنجازات السابقة", completeColors: "ألوان السراويل المنجزة", completionHint: "حدد فقط ألوان السراويل التي أحضرها العامل. كل لون تحدده يُحسب سروالًا منجزًا.", legacyCompletionHint: "يوجد إنجاز سابق لعدد {{number}} من السراويل دون تحديد ألوانها. حدد فقط السراويل الجديدة التي تسلمتها الآن.", length: "الطول (سم)", chooseLength: "اختر الطول", colors: "ألوان الثوب", colorHint: "كل لون تحدده يُحسب سروالًا واحدًا. تُحسب الكمية تلقائيًا من الألوان المحددة.", colorNumber: "الرقم", allColors: "تحديد الكل", clearColors: "إلغاء تحديد الكل", selectedCount: "عدد السراويل المحددة: {{number}}", chooseFabricFirst: "اختر نوع الثوب لعرض ألوانه.", noColors: "لا توجد ألوان متاحة لهذا الثوب.", alreadyAssigned: "مضاف إلى هذا العمل" },
+    shopTrousers: { customLength: "طول مخصص", enterCustomLength: "أدخل الطول بالسنتيمتر", details: "تفاصيل سراويل المحل", noFabrics: "لا توجد أنواع أثواب مسجلة في المخزون.", metersPerPiece: "الأمتار لكل سروال", metersHint: "يُخصم هذا المقدار من كل لون محدد عند حفظ العمل.", availableMeters: "المتوفر", totalMeters: "مجموع أمتار الثوب المستعملة", oneTrouser: "سروال واحد", untrackedColor: "لم تُحدد حالته في الإنجازات السابقة", completeColors: "ألوان السراويل المنجزة", completionHint: "حدد فقط ألوان السراويل التي أحضرها العامل. كل لون تحدده يُحسب سروالًا منجزًا.", legacyCompletionHint: "يوجد إنجاز سابق لعدد {{number}} من السراويل دون تحديد ألوانها. حدد فقط السراويل الجديدة التي تسلمتها الآن.", length: "الطول (سم)", chooseLength: "اختر الطول", colors: "ألوان الثوب", colorHint: "كل لون تحدده يُحسب سروالًا واحدًا. تُحسب الكمية تلقائيًا من الألوان المحددة.", colorNumber: "الرقم", allColors: "تحديد الكل", clearColors: "إلغاء تحديد الكل", selectedCount: "عدد السراويل المحددة: {{number}}", chooseFabricFirst: "اختر نوع الثوب لعرض ألوانه.", noColors: "لا توجد ألوان متاحة لهذا الثوب.", alreadyAssigned: "مضاف إلى هذا العمل" },
     trousers: {
       types: { shop: "سراويل البيع", client: "سراويل الزبائن" },
       typeHints: { shop: "إنتاج السراويل المخصّصة للبيع في المحل.", client: "سراويل الزبائن من النوع العادي أو القندريسي." },
@@ -570,7 +579,7 @@ export const workersArabic = {
       invalidShopTrouser: "تحقق من نوع السروال والثوب والمقاس.",
       chooseDjellabaColors: "حدد ألوان الجلابيب دون تكرار لون سبق إضافته إلى العمل.",
       chooseCompletedTrouserColors: "حدد ألوان السراويل التي تسلمتها بالضبط، دون تكرار لون سبق إنجازه.",
-      invalidTrouserLength: "اختر أحد الأطوال: 80 أو 85 أو 90 أو 95 سم.",
+      invalidTrouserLength: "اختر أو أدخل طولًا أكبر من صفر ولا يتجاوز 1000 سم.",
       chooseTrouserColors: "حدد لونًا واحدًا على الأقل، دون تكرار الألوان المضافة إلى العمل.",
       trouserColorsChanged: "تغيرت ألوان هذا الثوب. حدّث القائمة وتحقق من الألوان المحددة.",
       invalidSize: "اختر أحد المقاسات: S أو M أو L أو XL أو XXL أو 3XL.",
@@ -598,6 +607,9 @@ export const workersArabic = {
       invalidWorkType: "اختر أعمال المحل أو أعمال الزبائن.",
       chooseOrder: "اختر طلب فصلة صحيحًا.",
       chooseGarments: "اختر قطعة واحدة على الأقل من الطلب.",
+      orderCancelled: "أُلغي هذا الطلب، ولا يمكن إسناد عمل جديد له.",
+      invalidOrderAssignment: "يجب أن يكون الإسناد للطلب المفتوح ضمن أعمال الزبائن.",
+      loadOrderAssignmentFailed: "تعذر تحميل بيانات إسناد الطلب. حاول مجددًا.",
       orderNotFound: "هذا الطلب لم يعد متاحًا. حدّث الأعمال.",
       orderAlreadyDelivered: "تم تسليم هذا الطلب للزبون مسبقًا.",
       orderGarmentsChanged: "تغيّرت قطع الطلب. حدّث الأعمال قبل الإسناد.",
@@ -626,6 +638,9 @@ export const workersArabic = {
       forbidden: "ليس لديك صلاحية تنفيذ هذا الإجراء.",
       loadWorkFailed: "تعذر تحميل الأعمال. حاول مجددًا.",
       saveWorkFailed: "تعذر حفظ العمل. ستبقى المعلومات في النموذج لتتمكن من المحاولة مجددًا.",
+      chooseShopPieces: 'حدد القطع الجاهزة التي تريد إسنادها لهذه المرحلة.', invalidDjellabaNumber: 'اختر رقمًا من 1 إلى 5.',
+      cannotEditStartedWork: 'لا يمكن تعديل العمل بعد تسجيل أي إنجاز، ولو كان جزئيًا.',
+      workEditPending: 'حُفظ التعديل ويحتاج إلى إكمال. حدّث القائمة ثم أعد المحاولة.',
     },
   },
   title: "العمّال",

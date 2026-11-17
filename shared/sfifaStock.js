@@ -9,10 +9,21 @@ export const SFIFA_STOCK_SCALE = 1000;
 export const SFIFA_STOCK_GROUP_LIMIT = SFIFA_STOCK_LIMIT * 31;
 export const SFIFA_METER_TYPES = ["single", "double", "gradient"];
 
-export function sfifaStockStyles(stock, code, { includeExhausted = false } = {}) {
-  const target = code === undefined || code === null ? stock?.unassignedStyleMeters : stock?.variants?.find(row => row.code === code)?.styleMeters;
+// A stock number keeps its IDs and barcode when its classification is corrected.
+export const sfifaVariantIdentity = (stock, variant) => ({ width: variant?.width || stock.width, family: variant?.family || stock.family, ...(variant?.code !== undefined ? { code: variant.code } : {}) });
+export const sfifaIdentityKey = value => `${value.width}:${value.family}:${value.code}`;
+export const sfifaVariantMatches = (stock, variant, identity) => sfifaIdentityKey(sfifaVariantIdentity(stock, variant)) === sfifaIdentityKey(identity);
+export function sfifaReceiptMatches(stock, receipt, variant) {
+  if (receipt.variantId) return String(receipt.variantId) === String(variant?._id || stock._id);
+  const identity = sfifaVariantIdentity(stock, variant);
+  return (receipt.code ?? null) === (identity.code ?? null) && (receipt.width || stock.width) === identity.width && (receipt.family || stock.family) === identity.family;
+}
+
+export function sfifaStockStyles(stock, code, { includeExhausted = false, variantId } = {}) {
+  const variant = stock?.variants?.find(row => variantId ? String(row._id) === String(variantId) : row.code === code);
+  const target = code === undefined || code === null ? stock?.unassignedStyleMeters : variant?.styleMeters;
   if (target !== undefined && !includeExhausted) return SFIFA_METER_TYPES.filter(style => (sfifaQuantityUnits(target[style]) ?? 0) > 0);
-  const receipts = (stock?.receipts || []).filter(receipt => (receipt.code ?? null) === (code ?? null));
+  const receipts = (stock?.receipts || []).filter(receipt => sfifaReceiptMatches(stock, receipt, variant || (code === undefined || code === null ? undefined : { code })));
   return SFIFA_METER_TYPES.filter(style => (sfifaQuantityUnits(target?.[style]) ?? 0) > 0 || receipts.some(receipt => (sfifaQuantityUnits(receipt.styleMeters?.[style]) ?? 0) > 0));
 }
 
@@ -72,6 +83,15 @@ export function validateSfifaClassification(input, available) {
   const value = validateSfifaStock(input, { allowZero: available === 0 });
   if (sfifaQuantityUnits(value.quantity) > sfifaQuantityUnits(available)) throw Object.assign(new Error("invalidStock"), { fields: { quantity: "exceedsUnassigned" } });
   return value;
+}
+
+export function validateSfifaStockCorrection(input) {
+  const value = validateSfifaStock({ ...input, styleMeters: undefined }, { allowZero: true });
+  if (input.styleMeters === undefined) return value;
+  const styles = parseSfifaStyleMeters(input.styleMeters);
+  const styleMeters = styles?.meters || Object.fromEntries(SFIFA_METER_TYPES.map(key => [key, 0]));
+  if ((styles?.quantity || 0) > value.quantity) throw Object.assign(new Error('invalidStock'), { fields: { quantity: 'stylesExceedTotal' } });
+  return { ...value, styleMeters };
 }
 export function sfifaStockBarcode(stockOrId) {
   const id = String(stockOrId?._id ?? stockOrId ?? "");

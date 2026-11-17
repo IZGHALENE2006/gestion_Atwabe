@@ -3,7 +3,17 @@ import { sfifaQuantityUnits } from './sfifaStock.js';
 
 export const trouserMeterUnits = raw => sfifaQuantityUnits(raw, { max: FABRIC_LIMITS.meters });
 export const trouserConsumesStock = work => work?.category === 'trousers' && work.workType === 'shop' && work.shopTrouser?.metersPerPiece !== undefined;
-export const trouserStockRows = work => (work.trouserStockOperations || []).filter(operation => operation.state !== 'failed').flatMap(operation => operation.rows);
+export function activeTrouserStockOperations(work) {
+  const operations = (work.trouserStockOperations || []).filter(operation => operation.state !== 'failed');
+  const lastEdit = operations.findLastIndex(operation => operation.kind === 'edit');
+  return operations.slice(Math.max(0, lastEdit));
+}
+export const trouserStockRows = work => activeTrouserStockOperations(work).flatMap(operation => operation.rows.map(row => ({ ...(row.toObject ? row.toObject() : row), fabricId: operation.fabricId || work.shopTrouser.fabricId })));
+export const SHOP_TROUSER_LENGTH_MAX = 1000;
+export function parseShopTrouserLength(raw) {
+  const units = sfifaQuantityUnits(raw, { max: SHOP_TROUSER_LENGTH_MAX });
+  return units !== null && units > 0 ? units / 1000 : null;
+}
 export const completedTrouserColorIds = work => (work.completions || []).flatMap(event => event.shopTrouserColorIds || []).map(String);
 export const availableTrouserColors = work => {
   const completed = new Set(completedTrouserColorIds(work));

@@ -119,3 +119,8 @@ body:has(.work-details-dialog[open]) { overflow: hidden; }
   .work-detail-event-heading time { font-size: 10px; }
   .work-details-footer { padding: 11px 15px; }
 }
+ .work-edit-snapshots { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; margin-top:15px; }
+ .work-edit-snapshot { border:1px solid var(--work-border); background:var(--work-background); border-radius:12px; padding:14px; min-width:0; overflow-wrap:anywhere; }
+ .work-edit-snapshot h4 { color:var(--work-blue); font-size:13px; font-weight:800; margin-bottom:10px; }
+ .work-edit-snapshot p { font-size:12px; line-height:1.9; margin-top:7px; }
+ @media(max-width:600px) { .work-edit-snapshots { grid-template-columns:minmax(0,1fr); } }

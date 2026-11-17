@@ -1,14 +1,15 @@
 import { isShopDjellabaBatch } from '../../shared/workerShopDjellaba.js';
+import { parseShopTrouserLength, activeTrouserStockOperations } from '../../shared/workerShopTrousers.js';
 import { trouserStockOperationSchema } from './workerTrouserStockSchema.js';
 import { trouserMeterUnits, trouserConsumesStock } from '../../shared/workerShopTrousers.js';
-import { SHOP_FLOW_GARMENTS, shopFlowSlot } from '../../shared/workerShopFlow.js';
+import { SHOP_FLOW_GARMENTS, shopFlowSlot, shopFlowPieceSlot } from '../../shared/workerShopFlow.js';
 import { WORKER_SFIFA_FAMILIES, SFIFA_CUSTOMER_FAMILY, workerSfifaCreditsStock } from '../../shared/workerSfifa.js';
 import { tailoringMoneyCents } from "../../shared/tailoring.js";
 import { workerCompletionEarning, workerPayrollMonthValid } from "../../shared/workerPayroll.js";
 import mongoose from "mongoose";
 import { workerMaterialOperationSchema, workerMaterialCancellationSchema, workerMaterialRowSchema } from './workerMaterialSchema.js';
-import { supportsWorkerMaterialHistory, workerMaterialRows, workerHasPieceWages, workerPieceWageCents, WORKER_GARMENT_SIZES } from '../../shared/workerMaterials.js';
-import { WORK_QUANTITY_LIMIT, WORK_TRACKING_CATEGORIES, WORK_TYPES, TROUSER_TYPES, SHOP_TROUSER_LENGTHS, workerWageCents, workerOrderGarmentTypes, workQuantityUnits } from "../../shared/workerWork.js";
+import { supportsWorkerMaterialHistory, workerMaterialRows, workerHasPieceWages, workerPieceWageCents, WORKER_GARMENT_SIZES, WORKER_DJELLABA_NUMBERS } from '../../shared/workerMaterials.js';
+import { WORK_QUANTITY_LIMIT, WORK_TRACKING_CATEGORIES, WORK_TYPES, TROUSER_TYPES, workerWageCents, workerOrderGarmentTypes, workQuantityUnits } from "../../shared/workerWork.js";
 import { SFIFA_STOCK_WIDTHS, sfifaCodeNumber } from "../../shared/sfifaStock.js";
 
 import { TAILORING_SFIFA_GARMENT_TYPES, TAILORING_GARMENT_TYPES, tailoringGarmentType } from "../../shared/tailoring.js";
@@ -17,6 +18,7 @@ const requestPattern = /^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f
 const validQuantity = function (value) { return workQuantityUnits(value, this.category ?? this.parent()?.category) !== null; };
 const quantityField = min => ({ type: Number, required: true, min, max: WORK_QUANTITY_LIMIT, validate: validQuantity });
 const sfifaSchema = new mongoose.Schema({
+  variantId: { type: mongoose.Schema.Types.ObjectId, default: undefined },
   width: { type: String, enum: SFIFA_STOCK_WIDTHS, required: true },
   family: { type: String, enum: WORKER_SFIFA_FAMILIES.map(family => family.value), required: true },
   code: { type: Number, required: function () { return this.family !== SFIFA_CUSTOMER_FAMILY; }, validate: function (value) { return this.family === SFIFA_CUSTOMER_FAMILY ? value === undefined : sfifaCodeNumber(value, this.family) !== null; } },
@@ -65,6 +67,9 @@ const tailoringSchema = new mongoose.Schema({
   items: { type: [garmentSchema], required: true },
 }, { _id: false });
 const shopFlowSchema = new mongoose.Schema({
+  lineIds: { type: [String], default: undefined },
+  pieceNumbers: { type: [Number], default: undefined },
+  sources: { type: [new mongoose.Schema({ lineId: { type: String, required: true }, workId: { type: mongoose.Schema.Types.ObjectId, required: true }, workerName: { type: String, default: '' } }, { _id: false })], default: undefined },
   originId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'WorkerWork' },
   sourceWorkId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'WorkerWork' },
   sourceCategory: { type: String, required: true, enum: ['machine', 'finishing'] },
@@ -72,8 +77,18 @@ const shopFlowSchema = new mongoose.Schema({
   materials: { type: [workerMaterialRowSchema], default: [] },
 }, { _id: false });
 const schema = new mongoose.Schema({
+  relocatedAt: { type: Date, default: undefined },
+  transfer: { type: mongoose.Schema.Types.Mixed, default: undefined },
+  edits: { type: [new mongoose.Schema({
+    requestId: { type: String, required: true, match: requestPattern }, fingerprint: { type: String, required: true },
+    sequence: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
+    before: quantityField(0.001), after: quantityField(0.001),
+    beforeSnapshot: { type: mongoose.Schema.Types.Mixed, required: true }, afterSnapshot: { type: mongoose.Schema.Types.Mixed, required: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, required: true }, actorName: { type: String, default: '' }, date: { type: Date, required: true },
+  })], default: [] },
   trouserStockOperations: { type: [trouserStockOperationSchema], default: undefined },
   shopDjellaba: { type: new mongoose.Schema({
+    modelNumber: { type: Number, enum: WORKER_DJELLABA_NUMBERS, default: undefined },
     fabricId: { type: mongoose.Schema.Types.ObjectId, required: true }, colorIds: { type: [String], required: true },
     sfifaId: { type: mongoose.Schema.Types.ObjectId, required: true }, variantId: { type: mongoose.Schema.Types.ObjectId, required: true },
     size: { type: String, enum: WORKER_GARMENT_SIZES, default: undefined }, meters: { type: Number, required: true, min: 0 },
@@ -82,12 +97,13 @@ const schema = new mongoose.Schema({
   }, { _id: false }), default: undefined },
   shopFlow: { type: shopFlowSchema, default: undefined },
   shopFlowSlot: { type: String, default: undefined },
+  shopFlowPieceSlots: { type: [String], default: undefined },
   shopTrouser: { type: new mongoose.Schema({
     fabricId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Fabric' },
     fabricType: { type: String, required: true, maxlength: 120 },
     fabricReference: { type: String, default: '', maxlength: 120 },
     size: { type: String, required: true, enum: WORKER_GARMENT_SIZES },
-    length: { type: Number, enum: SHOP_TROUSER_LENGTHS, default: undefined },
+    length: { type: Number, validate: value => parseShopTrouserLength(value) !== null, default: undefined },
     metersPerPiece: { type: Number, default: undefined, validate: value => value === undefined || trouserMeterUnits(value) !== null && value > 0 },
     colors: { type: [new mongoose.Schema({ colorId: { type: mongoose.Schema.Types.ObjectId, required: true }, name: { type: String, required: true, maxlength: 120 }, number: { type: String, default: '', maxlength: 120 } }, { _id: false })], default: undefined },
   }, { _id: false }), default: undefined },
@@ -108,7 +124,7 @@ const schema = new mongoose.Schema({
   materialStatus: { type: String, enum: ['pending', 'ready', 'returning'], default: undefined },
   materialCancellation: { type: workerMaterialCancellationSchema, default: undefined },
   cancelledAt: { type: Date, default: undefined },
-  unitWage: { type: Number, default: undefined, immutable: true, validate: value => value === undefined || tailoringMoneyCents(value) !== null },
+  unitWage: { type: Number, default: undefined, validate: value => value === undefined || tailoringMoneyCents(value) !== null },
   quantity: quantityField(0.001),
   initialQuantity: { ...quantityField(0.001), required: false, default: undefined },
   completedQuantity: { ...quantityField(0), default: 0 },
@@ -120,14 +136,20 @@ const schema = new mongoose.Schema({
 schema.pre("validate", function () {
   if (this.shopDjellaba) {
     const rows = workerMaterialRows(this), ids = this.shopDjellaba.colorIds;
+    if (rows.some(row => row.modelNumber !== this.shopDjellaba.modelNumber)) this.invalidate('shopDjellaba.modelNumber', 'Assigned pieces must keep the batch number');
     if (!isShopDjellabaBatch(this) || !ids.length || ids.length > 100 || ids.length !== this.quantity || new Set(ids).size !== ids.length || rows.length !== this.quantity && !this.deletedAt || rows.some(row => row.fabricStockDeducted !== false || String(row.fabricId) !== String(this.shopDjellaba.fabricId) || !ids.includes(String(row.colorId)) || row.lineId !== String(row.colorId) || row.pieceId !== undefined || row.pieceBarcode !== undefined)) this.invalidate('shopDjellaba', 'Invalid color-based shop djellaba batch');
-  } else if (workerMaterialRows(this).some(row => row.fabricStockDeducted === false)) this.invalidate('materialOperations', 'Fabric reference requires a shop djellaba batch');
+  } else if (!this.shopFlow && workerMaterialRows(this).some(row => row.fabricStockDeducted === false)) this.invalidate('materialOperations', 'Fabric reference requires a shop djellaba batch');
   if (this.shopFlow) {
     if (this.workType !== 'shop' || !['finishing', 'mesbanto'].includes(this.category) || !SHOP_FLOW_GARMENTS.includes(this.garmentType) || this.shopFlow.sourceCategory !== (this.category === 'finishing' ? 'machine' : 'finishing') || this.materialOperations?.length || this.additions.length || this.shopFlow.materials.length && this.shopFlow.materials.length !== this.quantity) this.invalidate('shopFlow', 'Invalid shop production stage');
     if (workerWageCents(this.unitWage, this.quantity, this.category) === null) this.invalidate('unitWage', 'Invalid shop stage wage');
     if (this.category === 'finishing' && String(this.shopFlow.sourceWorkId) !== String(this.shopFlow.originId)) this.invalidate('shopFlow', 'Finishing must follow its machine origin');
-    if ((!this.deletedAt && this.shopFlowSlot !== shopFlowSlot(this.shopFlow.originId, this.category)) || (this.deletedAt && this.shopFlowSlot !== undefined)) this.invalidate('shopFlowSlot', 'Invalid shop production slot');
-  } else if (this.shopFlowSlot !== undefined) this.invalidate('shopFlowSlot', 'Missing shop production link');
+    if (this.shopFlow.lineIds !== undefined) {
+      const ids = this.shopFlow.lineIds, numbers = this.shopFlow.pieceNumbers || [], sources = this.shopFlow.sources || [], rows = this.shopFlow.materials;
+      if (ids.length !== this.quantity || new Set(ids).size !== ids.length || ids.some((id, index) => !/^[a-f\d]{24}$/.test(id) || rows[index]?.lineId !== id) || numbers.length !== ids.length || new Set(numbers).size !== ids.length || numbers.some(number => !Number.isSafeInteger(number) || number < 1 || number > WORK_QUANTITY_LIMIT) || sources.length !== ids.length || sources.some((source, index) => source.lineId !== ids[index] || this.category === 'finishing' && String(source.workId) !== String(this.shopFlow.originId)) || String(sources[0]?.workId) !== String(this.shopFlow.sourceWorkId)) this.invalidate('shopFlow', 'Invalid shop piece selection');
+      const slots = ids.map(id => shopFlowPieceSlot(this.shopFlow.originId, this.category, id)).sort();
+      if (this.shopFlowSlot !== undefined || (this.deletedAt ? this.shopFlowPieceSlots !== undefined : JSON.stringify(this.shopFlowPieceSlots) !== JSON.stringify(slots))) this.invalidate('shopFlowPieceSlots', 'Invalid shop piece claims');
+    } else if (this.shopFlowPieceSlots !== undefined || (!this.deletedAt && this.shopFlowSlot !== shopFlowSlot(this.shopFlow.originId, this.category)) || (this.deletedAt && this.shopFlowSlot !== undefined)) this.invalidate('shopFlowSlot', 'Invalid shop production slot');
+  } else if (this.shopFlowSlot !== undefined || this.shopFlowPieceSlots !== undefined) this.invalidate('shopFlowSlot', 'Missing shop production link');
   if (this.materialOperations?.length) {
     const order = this.tailoring || this.archivedTailoring, rows = workerMaterialRows(this);
     if (!supportsWorkerMaterialHistory(this.category, this.workType, order ? tailoringGarmentType(order) : this.garmentType) || new Set(rows.map(row => row.lineId)).size !== rows.length || rows.length > this.quantity || (order && rows.some(row => !order.lineIds.includes(row.lineId)))) this.invalidate('materialOperations', 'Invalid garment materials');
@@ -135,6 +157,7 @@ schema.pre("validate", function () {
   const pieceWages = workerHasPieceWages(this), rows = workerMaterialRows(this), pricedEvents = [];
   if (pieceWages && (this.unitWage !== undefined || rows.length !== this.quantity || workerPieceWageCents(rows) === null)) this.invalidate('materialOperations', 'Invalid per-piece wages');
   let pricedCompleted = 0;
+  const stagePieceIds = this.shopFlow?.materials.length === this.quantity ? this.shopFlow.materials.map(row => row.lineId) : null, completedStagePieces = new Set();
   for (const event of this.completions) {
     if (event.stockCredited !== undefined && (this.category !== "sfifa" || typeof event.stockCredited !== "boolean" || (event.stockCredited === false && workerSfifaCreditsStock(this)) || (event.stockCredited === true && this.sfifa?.family === SFIFA_CUSTOMER_FAMILY))) this.invalidate("completions", "Invalid completion stock effect");
     if (pieceWages) {
@@ -151,7 +174,10 @@ schema.pre("validate", function () {
       } catch { this.invalidate("completions", "Invalid completion earnings"); }
     }
     const scale = this.category === "sfifa" ? 1000 : 1;
-    if (!pieceWages && event.lineIds !== undefined) this.invalidate('completions', 'Unexpected completed pieces');
+    if (stagePieceIds) {
+      if (this.shopFlow.lineIds && event.lineIds === undefined || event.lineIds !== undefined && (event.lineIds.length !== event.quantity || new Set(event.lineIds).size !== event.lineIds.length || event.lineIds.some(id => !stagePieceIds.includes(id) || completedStagePieces.has(id)))) this.invalidate('completions', 'Invalid completed stage pieces');
+      for (const id of event.lineIds || []) completedStagePieces.add(id);
+    } else if (!pieceWages && event.lineIds !== undefined) this.invalidate('completions', 'Unexpected completed pieces');
     pricedEvents.push(event);
     pricedCompleted = Math.round((pricedCompleted + event.quantity) * scale) / scale;
   }
@@ -161,13 +187,14 @@ schema.pre("validate", function () {
   const coloredTrousers = this.shopTrouser?.length !== undefined || this.shopTrouser?.colors !== undefined;
   if (coloredTrousers) {
     const ids = (this.shopTrouser.colors || []).map(color => String(color.colorId));
-    const additions = this.additions.flatMap(event => event.shopTrouserColorIds || []);
+    const lastEdit = this.edits?.at(-1)?.sequence || 0;
+    const additions = this.additions.filter(event => event.sequence > lastEdit).flatMap(event => event.shopTrouserColorIds || []);
     const completed = this.completions.flatMap(event => event.shopTrouserColorIds || []);
     if (new Set(completed).size !== completed.length || completed.some(id => !ids.includes(id)) || this.completions.some(event => event.shopTrouserColorIds !== undefined && event.shopTrouserColorIds.length !== event.quantity || trouserConsumesStock(this) && event.shopTrouserColorIds === undefined)) this.invalidate('completions', 'Completed trouser colors must be unique assigned pieces');
-    if (!SHOP_TROUSER_LENGTHS.includes(this.shopTrouser.length) || !ids.length || ids.length !== this.quantity || new Set(ids).size !== ids.length || new Set(additions).size !== additions.length || additions.some(id => !ids.includes(id)) || this.additions.some(event => event.shopTrouserColorIds?.length !== event.quantity)) this.invalidate('shopTrouser', 'Selected colors must match the trouser quantity and length');
+    if (parseShopTrouserLength(this.shopTrouser.length) === null || !ids.length || ids.length !== this.quantity || new Set(ids).size !== ids.length || new Set(additions).size !== additions.length || additions.some(id => !ids.includes(id)) || this.additions.some(event => event.shopTrouserColorIds?.length !== event.quantity)) this.invalidate('shopTrouser', 'Selected colors must match the trouser quantity and length');
   } else if ([...this.completions, ...this.additions].some(event => event.shopTrouserColorIds !== undefined)) this.invalidate('completions', 'Unexpected trouser colors');
   if (trouserConsumesStock(this)) {
-    const operations = this.trouserStockOperations || [], seenColors = new Set(), seenRequests = new Set();
+    const operations = this.trouserStockOperations || [], active = activeTrouserStockOperations(this), seenColors = new Set(), seenRequests = new Set();
     const selected = new Set((this.shopTrouser.colors || []).map(color => String(color.colorId)));
     if (!coloredTrousers || !operations.length || this.materialOperations?.length) this.invalidate('trouserStockOperations', 'Missing trouser stock journal');
     for (const operation of operations) {
@@ -179,10 +206,17 @@ schema.pre("validate", function () {
         if (rolls.has(key)) this.invalidate('trouserStockOperations', 'Repeated trouser roll');
         rolls.add(key); amounts.set(colorId, (amounts.get(colorId) || 0) + trouserMeterUnits(row.meters));
       }
+      if (!active.includes(operation)) continue;
+      if (operation.fabricId && String(operation.fabricId) !== String(this.shopTrouser.fabricId)) this.invalidate('trouserStockOperations', 'Invalid active fabric allocation');
       if ([...amounts.values()].some(units => units !== trouserMeterUnits(this.shopTrouser.metersPerPiece))) this.invalidate('trouserStockOperations', 'Inconsistent trouser metre allocation');
       if (operation.state === 'failed') continue;
       for (const colorId of amounts.keys()) { if (seenColors.has(colorId) || !selected.has(colorId)) this.invalidate('trouserStockOperations', 'Unassigned or repeated trouser color'); seenColors.add(colorId); }
       const event = this.additions.find(event => event.requestId === operation.requestId);
+      if (operation.kind === 'edit') {
+        const edit = this.edits.find(event => event.requestId === operation.requestId);
+        if (!edit || !operation.fabricId || !operation.previousRequests || !operation.previousRows || amounts.size !== edit.after || JSON.stringify([...amounts.keys()].sort()) !== JSON.stringify((edit.afterSnapshot.shopTrouser?.colors || []).map(color => String(color.colorId)).sort())) this.invalidate('trouserStockOperations', 'Invalid trouser edit journal');
+        continue;
+      }
       if (operation.kind === 'assign' ? operation.requestId !== this.requestId || amounts.size !== (this.initialQuantity ?? this.quantity) : !event || JSON.stringify([...amounts.keys()].sort()) !== JSON.stringify([...event.shopTrouserColorIds].sort())) this.invalidate('trouserStockOperations', 'Inconsistent trouser assignment journal');
     }
     if (!this.deletedAt && selected.size !== seenColors.size) this.invalidate('trouserStockOperations', 'Missing trouser color allocations');
@@ -198,16 +232,18 @@ schema.pre("validate", function () {
   let remaining = workQuantityUnits(this.initialQuantity ?? this.quantity, this.category), added = 0, completed = 0;
   if (this.additions.length && this.initialQuantity === undefined) this.invalidate("initialQuantity", "Missing initial quantity");
   const seen = new Set();
-  const events = [...this.completions.map((event, index) => ({ event, sequence: event.sequence ?? index + 1, addition: false })), ...this.additions.map(event => ({ event, sequence: event.sequence, addition: true }))].sort((a, b) => a.sequence - b.sequence);
-  for (const [index, { event, sequence, addition }] of events.entries()) {
-    const quantity = workQuantityUnits(event.quantity, this.category), after = workQuantityUnits(event.after, this.category), expected = remaining + (addition ? quantity : -quantity);
+  const events = [...this.completions.map((event, index) => ({ event, sequence: event.sequence ?? index + 1, addition: false })), ...this.additions.map(event => ({ event, sequence: event.sequence, addition: true })), ...this.edits.map(event => ({ event, sequence: event.sequence, edit: true }))].sort((a, b) => a.sequence - b.sequence);
+  for (const [index, { event, sequence, addition, edit }] of events.entries()) {
+    const quantity = edit ? workQuantityUnits(event.after, this.category) - workQuantityUnits(event.before, this.category) : workQuantityUnits(event.quantity, this.category), after = workQuantityUnits(event.after, this.category), expected = remaining + (addition || edit ? quantity : -quantity);
     if (sequence !== index + 1 || workQuantityUnits(event.before, this.category) !== remaining || after !== expected || seen.has(event.requestId)) this.invalidate("completions", "Invalid work history");
-    if (addition) added += quantity; else completed += quantity;
+    if (edit && completed > 0) this.invalidate('edits', 'Cannot edit completed work');
+    if (addition || edit) added += quantity; else completed += quantity;
     remaining = after; seen.add(event.requestId);
   }
   if (workQuantityUnits(this.quantity, this.category) !== workQuantityUnits(this.initialQuantity ?? this.quantity, this.category) + added || workQuantityUnits(this.completedQuantity, this.category) !== completed || workQuantityUnits(this.completedQuantity, this.category) !== workQuantityUnits(this.quantity, this.category) - remaining) this.invalidate("completedQuantity", "Invalid work quantities");
 });
 schema.index({ idAdmin: 1, workerId: 1, category: 1, createdAt: -1, _id: -1 });
+schema.index({ idAdmin: 1, shopFlowPieceSlots: 1 }, { unique: true, partialFilterExpression: { shopFlowPieceSlots: { $type: 'array' } } });
 schema.index({ idAdmin: 1, shopFlowSlot: 1 }, { unique: true, partialFilterExpression: { shopFlowSlot: { $type: 'string' } } });
 schema.index({ idAdmin: 1, 'shopFlow.originId': 1 });
 schema.index({ idAdmin: 1, requestId: 1 }, { unique: true });

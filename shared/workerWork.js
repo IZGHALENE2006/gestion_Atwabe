@@ -1,10 +1,11 @@
+import { parseShopTrouserLength } from './workerShopTrousers.js';
 import { isShopDjellabaBatch, validateShopDjellabaBatch } from './workerShopDjellaba.js';
 import { trouserMeterUnits, validateTrouserColorCompletion } from './workerShopTrousers.js';
 import { validateShopFlowSelection } from './workerShopFlow.js';
 import { validateWorkerSfifa } from './workerSfifa.js';
 import { TAILORING_GARMENT_TYPES, TAILORING_SFIFA_GARMENT_TYPES, tailoringGarmentType, tailoringMoneyCents } from "./tailoring.js";
 import { WORKER_CATEGORIES } from "./workers.js";
-import { usesWorkerMaterials, workerHasPieceWages, workerMaterialRows, workerPieceWageCents, validateWorkerPieceCompletion, validateShopWorkerMaterials, validateWorkerMaterialSelection, WORKER_GARMENT_SIZES } from './workerMaterials.js';
+import { usesWorkerMaterials, workerHasPieceWages, workerHasPieceSelection, workerMaterialRows, workerPieceWageCents, validateWorkerPieceCompletion, validateShopWorkerMaterials, validateWorkerMaterialSelection, WORKER_GARMENT_SIZES } from './workerMaterials.js';
 import { SFIFA_STOCK_SCALE, sfifaQuantityUnits } from "./sfifaStock.js";
 
 export const WORK_TRACKING_CATEGORIES = [...WORKER_CATEGORIES];
@@ -54,7 +55,7 @@ export function workerWorkCompleted(work) {
   return quantity !== null && quantity > 0 && completed !== null && completed >= quantity;
 }
 
-export const nextWorkSequence = work => (work.completions?.length || 0) + (work.additions?.length || 0) + 1;
+export const nextWorkSequence = work => (work.completions?.length || 0) + (work.additions?.length || 0) + (work.edits?.length || 0) + 1;
 
 export function validateWorkerIncrease(input, work, { checkLimits = true } = {}) {
   if (work.shopFlow) throw Object.assign(new Error('invalidWork'), { fields: { quantity: 'shopFlowFixedQuantity' } });
@@ -174,8 +175,8 @@ export function validateWorkerWork(input, { allowLegacyTrouserClient = false } =
     // Older assignments have neither field; keep their stored request fingerprints valid.
     if (input.shopTrouser?.length !== undefined || input.shopTrouser?.colorIds !== undefined || input.shopTrouser?.metersPerPiece !== undefined) {
       const rawLength = input.shopTrouser.length;
-      const length = typeof rawLength === 'number' || typeof rawLength === 'string' ? Number(rawLength) : NaN;
-      if (!SHOP_TROUSER_LENGTHS.includes(length)) fields['shopTrouser.length'] = 'invalidTrouserLength';
+      const length = parseShopTrouserLength(rawLength);
+      if (length === null) fields['shopTrouser.length'] = 'invalidTrouserLength';
       let colorIds;
       try { colorIds = shopTrouserColorSelection(input.shopTrouser); } catch (error) { Object.assign(fields, error.fields); }
       shopTrouser = { ...shopTrouser, length, colorIds: colorIds || [] };
@@ -207,5 +208,5 @@ export function validateWorkerCompletion(input, remaining, category, work) {
   if (quantity === null) fields.quantity = category === "sfifa" ? "invalidMeters" : "invalidQuantity";
   else if (remaining !== undefined && workQuantityUnits(quantity, category) > workQuantityUnits(remaining, category)) fields.quantity = category === "sfifa" ? "exceedsRemainingMeters" : "exceedsRemaining";
   if (Object.keys(fields).length) throw Object.assign(new Error("invalidWork"), { fields });
-  return { quantity, ...(work && hasShopTrouserColors(work) ? { colorIds: validateTrouserColorCompletion(work, quantity, input?.colorIds) } : {}), ...(work && workerHasPieceWages(work) ? { lineIds: validateWorkerPieceCompletion(work, quantity, input?.lineIds) } : {}) };
+  return { quantity, ...(work && hasShopTrouserColors(work) ? { colorIds: validateTrouserColorCompletion(work, quantity, input?.colorIds) } : {}), ...(work && workerHasPieceSelection(work) ? { lineIds: validateWorkerPieceCompletion(work, quantity, input?.lineIds) } : {}) };
 }

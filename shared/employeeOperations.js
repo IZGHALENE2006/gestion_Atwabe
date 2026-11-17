@@ -3,11 +3,11 @@ export const EMPLOYEE_MODULE_LABELS = { cashier: "nav.cashier", credit: "nav.cre
 // One catalogue for the permission editor, UI controls and server authorization.
 export const EMPLOYEE_OPERATIONS = {
   cashier: ["history", "sell", "creditSale", "discount", "wholesale", "print"],
-  credit: ["add", "details", "addDebt", "payment", "deleteDebt", "delete", "history", "print", "share"],
-  tailoring: ["add", "update", "discount", "details", "payment", "deliver", "cancel", "settings", "profits", "tracking", "print", "labels"],
+  credit: ["ownerDebts", "addOwnerDebt", "payOwnerDebt", "ownerDebtHistory", "add", "details", "addDebt", "payment", "deleteDebt", "delete", "history", "print", "share"],
+  tailoring: ["assign", "add", "update", "discount", "details", "payment", "deliver", "cancel", "settings", "profits", "tracking", "print", "share", "labels"],
   sfifa: ["details", "add", "update", "restock", "delete", "history", "labels"],
   fabrics: ["invoiceHistory", "addInvoice", "invoicePayment", "invoicePrint", "creditSale", "details", "add", "update", "addColor", "addPiece", "delete", "deleteColor", "deletePiece", "sell", "discount", "wholesale", "reduce", "history", "profits", "labels", "catalog"],
-  workers: ["add", "update", "delete", "assign", "complete", "increase", "deleteWork", "cancelWork", "resume", "details", "financials", "payroll", "pay", "advance", "download", "labels"],
+  workers: ["add", "update", "delete", "assign", "editWork", "complete", "increase", "deleteWork", "cancelWork", "resume", "details", "financials", "payroll", "pay", "advance", "download", "labels"],
   products: ["add", "update", "restock", "delete", "details", "labels"],
   categories: ["add", "update", "delete"], clients: ["add", "update"],
   invoices: ["history", "addInvoice", "addQuote", "addDelivery", "addReturn", "addCreditNote", "stockMove", "discount", "wholesale", "details", "print", "download"],
@@ -19,10 +19,12 @@ export function employeeModules(user) {
 export function hasModuleAccess(role, user, module) { return role === "admin" || role === "Employe" && employeeModules(user).includes(module); }
 function legacyOperation(user, module, operation) {
   if (module === "workers" && operation === "financials") return false;
+  if (module === 'workers' && operation === 'editWork') return false;
   if (module === "fabrics" && ["discount", "wholesale"].includes(operation)) return user?.action?.update === true;
   if (module === "tailoring" && operation === "discount") return user?.action?.update === true;
   if (module === "tailoring" && operation === "cancel") return user?.action?.delete === true;
   if (module === "products" && ["add", "update", "restock", "delete"].includes(operation)) return false;
+  if (module === "credit" && ["ownerDebts", "addOwnerDebt", "payOwnerDebt", "ownerDebtHistory"].includes(operation)) return false;
   if (module === "credit") return !["delete", "deleteDebt"].includes(operation);
   if (["cashier", "categories", "invoices", "profits"].includes(module)) return true;
   const action = operation === "restock" ? "add" : ["assign", "increase"].includes(operation) ? "add" : ["addColor", "addPiece", "complete", "reduce", "sell", "payment", "deliver", "settings", "pay", "advance"].includes(operation) ? "update" : ["deleteColor", "deletePiece", "deleteWork", "cancelWork"].includes(operation) ? "delete" : operation;

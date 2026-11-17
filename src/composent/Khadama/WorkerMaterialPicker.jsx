@@ -5,8 +5,9 @@ import { WORKER_SFIFA_METERS, WORKER_MATERIAL_PIECE_LIMIT, WORKER_GARMENT_SIZES,
 import { formatSfifaCode, sfifaQuantityUnits } from '../../../shared/sfifaStock.js';
 import { loadWorkerMaterialOptions } from './workersApi.js';
 import './workerMaterials.css';
+import { creditWorkerMaterialOptions } from './workerWorkEditing.js';
 
-export default function WorkerMaterialPicker({ token, workerId, workType = 'client', garmentType, lineIds, value, onChange, onAddPiece, onRemovePiece, wages = false, disabled, fields = {} }) {
+export default function WorkerMaterialPicker({ token, workerId, workType = 'client', garmentType, lineIds, value, onChange, onAddPiece, onRemovePiece, wages = false, disabled, fields = {}, creditRows }) {
   const { t, i18n } = useTranslation();
   const [result, setResult] = useState(null), [attempt, setAttempt] = useState(0);
   const scope = `${token}:${workerId}:${attempt}`, state = result?.scope === scope ? result : { loading: true, fabrics: [], sfifa: [], error: false };
@@ -14,10 +15,10 @@ export default function WorkerMaterialPicker({ token, workerId, workType = 'clie
     const controller = new AbortController();
     loadWorkerMaterialOptions(token, workerId, controller.signal).then(data => {
       if (!Array.isArray(data.fabrics) || !Array.isArray(data.sfifa)) throw new Error('Invalid material options');
-      if (!controller.signal.aborted) setResult({ ...data, scope, loading: false, error: false });
+      if (!controller.signal.aborted) setResult({ ...creditWorkerMaterialOptions(data, creditRows), scope, loading: false, error: false });
     }).catch(() => { if (!controller.signal.aborted) setResult({ scope, fabrics: [], sfifa: [], loading: false, error: true }); });
     return () => controller.abort();
-  }, [token, workerId, scope]);
+  }, [token, workerId, scope, creditRows]);
   const number = n => new Intl.NumberFormat(i18n.language === 'ar' ? 'ar-MA' : 'fr-MA', { maximumFractionDigits: 3 }).format(n);
   const selected = lineIds.map(lineId => ({ lineId, ...(value[lineId] || {}) }));
   const wageTotal = wages ? workerPieceWageCents(selected) : null;

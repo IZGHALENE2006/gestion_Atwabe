@@ -27,7 +27,7 @@ async function origin(f, garmentType = 'djellaba') {
  const ids = [randomUUID().replaceAll('-', '').slice(0, 24), randomUUID().replaceAll('-', '').slice(0, 24)];
  return checked(url(f.worker), { category: 'machine', workType: 'shop', garmentType, productName: 'عمل ' + garmentType, quantity: 2, materials: ids.map((id, i) => ({ ...f.selection(id), size: i ? 'XL' : 'M', unitWage: i ? 11 : 9 })), requestId: randomUUID() });
 }
-async function complete(worker, work, quantity = work.remainingQuantity, lineIds = work.materials?.slice(0, quantity).map(row => row.lineId)) {
+async function complete(worker, work, quantity = work.remainingQuantity, lineIds = (work.materials || work.shopFlow?.materials)?.filter(row => !work.completions.some(event => event.lineIds?.includes(row.lineId))).slice(0, quantity).map(row => row.lineId)) {
  return checked(url(worker) + '/' + work._id + '/completions', { quantity, version: work.__v, requestId: randomUUID(), ...(lineIds ? { lineIds } : {}) });
 }
 const selection = (work, category = 'finishing', patch = {}) => ({ category, workType: 'shop', garmentType: work.garmentType, shopOriginId: work._id, unitWage: 5, requestId: randomUUID(), ...patch });
@@ -52,16 +52,23 @@ test('all three shop garment types retain distinct per-piece barcodes and truste
  const account = await request('/tailoring-workers/' + f.finisher._id + '/payroll'); assert.equal(account.data.totals.earned, 30);
 });
 
-test('incomplete machine and finishing work remain visible with reasons but cannot advance, including partially completed work', async t => {
+test('one completed piece advances through finishing and laundry while the other pieces remain at their previous stage', async t => {
  const f = fixture(t); let machine = await origin(f); const body = selection(machine);
  let result = await options(f.finisher, 'finishing'); assert.equal(result.data.works[0].available, false); assert.equal(result.data.works[0].reason, 'shopMachinePending');
  assert.equal((await request(url(f.finisher), body)).data.message, 'shopMachinePending');
- machine = await complete(f.worker, machine, 1); assert.equal((await request(url(f.finisher), body)).status, 409);
  machine = await complete(f.worker, machine, 1, [machine.materials[1].lineId]);
- assert.equal((await request(url(f.laundry), selection(machine, 'mesbanto'))).data.message, 'shopFinishingRequired');
- let finishing = await checked(url(f.finisher), body); finishing = await complete(f.finisher, finishing, 1);
- result = await options(f.laundry, 'mesbanto'); assert.equal(result.data.works[0].reason, 'shopFinishingPending'); assert.equal((await request(url(f.laundry), selection(machine, 'mesbanto'))).status, 409);
- finishing = await complete(f.finisher, finishing, 1); assert.equal(finishing.remainingQuantity, 0); assert.equal((await options(f.laundry, 'mesbanto')).data.works[0].available, true);
+ result = await options(f.finisher, 'finishing'); assert.equal(result.data.works[0].availableQuantity, 1); assert.deepEqual(result.data.works[0].pieces.map(piece => piece.available), [false,true]);
+ let finishing = await checked(url(f.finisher), body); assert.equal(finishing.quantity,1); assert.deepEqual(finishing.shopFlow.lineIds,[machine.materials[1].lineId]); assert.deepEqual(finishing.shopFlow.pieceNumbers,[2]);
+ assert.equal(shopPieceBarcode(finishing,2),shopPieceBarcode(machine,2));assert.equal(shopPieceBarcode(finishing,1),'');
+ assert.equal((await request(url(f.laundry),selection(machine,'mesbanto'))).data.message,'shopMachinePending');
+ finishing = await complete(f.finisher,finishing);assert.equal(finishing.completions[0].earningAmount,5);
+ result=await options(f.laundry,'mesbanto');assert.equal(result.data.works[0].availableQuantity,1);
+ let laundry=await checked(url(f.laundry),selection(machine,'mesbanto'));assert.equal(laundry.quantity,1);assert.deepEqual(laundry.shopFlow.lineIds,[machine.materials[1].lineId]);laundry=await complete(f.laundry,laundry);assert.equal(laundry.completions[0].earningAmount,5);
+ let list=await request(url(f.worker)+'?category=machine');let current=list.data.works.find(work=>work._id===machine._id);assert.equal(current.flow.done,false);assert.deepEqual(current.flow.stages.map(stage=>stage.completedQuantity),[1,1,1]);
+ machine=await complete(f.worker,machine,1,[machine.materials[0].lineId]);
+ finishing=await checked(url(f.finisher),selection(machine));assert.equal(finishing.quantity,1);assert.deepEqual(finishing.shopFlow.pieceNumbers,[1]);finishing=await complete(f.finisher,finishing);
+ laundry=await checked(url(f.laundry),selection(machine,'mesbanto'));assert.deepEqual(laundry.shopFlow.pieceNumbers,[1]);await complete(f.laundry,laundry);
+ list=await request(url(f.worker)+'?category=machine');current=list.data.works.find(work=>work._id===machine._id);assert.equal(current.flow.done,true);assert.deepEqual(current.flow.stages.map(stage=>stage.completedQuantity),[2,2,2]);
 });
 
 test('assignments are retryable, reject duplicates and conflicting retries, and serialize concurrent assignments to different workers', async t => {
@@ -78,7 +85,7 @@ test('later stages block source increases, deletion and material cancellation; d
  assert.equal((await request(url(f.finisher) + '/' + finishing._id + '/increases', { quantity: 1, version: finishing.__v, requestId: randomUUID() })).data.message, 'shopFlowFixedQuantity');
  finishing = await complete(f.finisher, finishing); let laundry = await checked(url(f.laundry), selection(machine, 'mesbanto'));
  assert.equal((await request(url(f.finisher) + '/' + finishing._id, { version: finishing.__v }, admin, 'DELETE')).data.message, 'shopHasLaterStage');
- const removed = await request(url(f.laundry) + '/' + laundry._id, { version: laundry.__v }, admin, 'DELETE'); assert.equal(removed.status, 200); const archived = f.records.find(row => String(row._id) === laundry._id); assert.ok(archived.deletedAt); assert.equal(archived.shopFlowSlot, undefined);
+ const removed = await request(url(f.laundry) + '/' + laundry._id, { version: laundry.__v }, admin, 'DELETE'); assert.equal(removed.status, 200); const archived = f.records.find(row => String(row._id) === laundry._id); assert.ok(archived.deletedAt); assert.equal(archived.shopFlowSlot, undefined); assert.equal(archived.shopFlowPieceSlots, undefined);
  laundry = await checked(url(f.laundry), selection(machine, 'mesbanto')); assert.notEqual(laundry._id, archived._id.toString()); assert.equal(laundry.shopBarcode, machine.shopBarcode);
 });
 
@@ -127,4 +134,52 @@ test('new pieces and partial completions keep old label identities, and scans re
  for (const number of [0, -1, 1.5, 4, NaN, Infinity]) assert.equal(shopPieceBarcode(partial, number), '');
  for (const barcode of [machine.shopBarcode, initialCodes[0] + '0', thirdCode.replace(/003$/, '999'), 'unknown', null]) assert.equal(shopPieceNumber(partial, barcode), null);
  const client = { ...machine, workType: 'client', shopBarcode: undefined }; assert.equal(shopPieceBarcode(client, 1), '');
+});
+
+test('ready pieces can be assigned to different finishers and later collected from their exact sources for laundry', async t => {
+ const f=fixture(t),second=f.seedWorker(owner,['finishing']);second.name='عامل آخر';let machine=await origin(f);
+ const extra=await checked(url(f.worker)+'/'+machine._id+'/increases',{version:machine.__v,quantity:1,materials:[{...f.selection(randomUUID().replaceAll('-','').slice(0,24)),size:'S',unitWage:12}],requestId:randomUUID()});
+ machine=await complete(f.worker,extra,2,[extra.materials[1].lineId,extra.materials[2].lineId]);const stock=JSON.stringify([f.fabrics,f.stocks]);
+ const firstBody=selection(machine,'finishing',{lineIds:[machine.materials[2].lineId],unitWage:7});let first=await checked(url(f.finisher),firstBody);
+ let secondWork=await checked(url(second),selection(machine,'finishing',{lineIds:[machine.materials[1].lineId],unitWage:8}));assert.deepEqual(first.shopFlow.pieceNumbers,[3]);assert.deepEqual(secondWork.shopFlow.pieceNumbers,[2]);
+ const duplicate=await request(url(second),selection(machine,'finishing',{lineIds:[machine.materials[2].lineId]}));assert.equal(duplicate.status,409);
+ const pending=await request(url(second),selection(machine,'finishing',{lineIds:[machine.materials[0].lineId]}));assert.equal(pending.status,409);assert.equal(pending.data.message,'shopMachinePending');
+ const foreign=await request(url(f.finisher),selection(machine,'finishing',{lineIds:['9'.repeat(24)]}));assert.equal(foreign.status,400);
+ assert.equal((await checked(url(f.finisher),firstBody,200))._id,first._id);
+ first=await complete(f.finisher,first);let opts=(await options(f.laundry,'mesbanto')).data.works[0];assert.equal(opts.availableQuantity,1);assert.deepEqual(opts.pieces.map(piece=>piece.available),[false,false,true]);
+ secondWork=await complete(second,secondWork);let laundry=await checked(url(f.laundry),selection(machine,'mesbanto',{lineIds:[machine.materials[2].lineId,machine.materials[1].lineId],unitWage:3}));
+ assert.equal(laundry.quantity,2);assert.deepEqual(laundry.shopFlow.pieceNumbers,[2,3]);assert.deepEqual(laundry.shopFlow.sources.map(source=>source.workId),[secondWork._id,first._id]);assert.equal(shopPieceNumber(laundry,shopPieceBarcode(machine,3)),3);assert.equal(shopPieceNumber(laundry,shopPieceBarcode(machine,1)),null);
+ laundry=await complete(f.laundry,laundry,1,[machine.materials[2].lineId]);assert.equal(laundry.completedQuantity,1);assert.equal(laundry.completions[0].earningAmount,3);assert.deepEqual(laundry.completions[0].lineIds,[machine.materials[2].lineId]);assert.equal(JSON.stringify([f.fabrics,f.stocks]),stock);
+});
+
+test('stage completions require exact assigned pieces, reject duplicates and replay only the same selection',async t=>{
+ const f=fixture(t),machine=await complete(f.worker,await origin(f));let finishing=await checked(url(f.finisher),selection(machine));const ids=finishing.shopFlow.lineIds;
+ for(const lineIds of [undefined,[],[ids[0],ids[0]],['9'.repeat(24)]]){const r=await request(url(f.finisher)+'/'+finishing._id+'/completions',{quantity:1,lineIds,version:finishing.__v,requestId:randomUUID()});assert.equal(r.status,400,JSON.stringify(r));}
+ const body={quantity:1,lineIds:[ids[1]],version:finishing.__v,requestId:randomUUID()};finishing=await checked(url(f.finisher)+'/'+finishing._id+'/completions',body);assert.equal(finishing.completions[0].earningAmount,5);
+ assert.equal((await checked(url(f.finisher)+'/'+finishing._id+'/completions',body,200)).completedQuantity,1);
+ assert.equal((await request(url(f.finisher)+'/'+finishing._id+'/completions',{...body,lineIds:[ids[0]]})).status,409);
+ assert.equal((await request(url(f.finisher)+'/'+finishing._id+'/completions',{...body,requestId:randomUUID(),version:finishing.__v})).status,400);
+ const opts=(await options(f.laundry,'mesbanto')).data.works[0];assert.deepEqual(opts.pieces.map(piece=>piece.available),[false,true]);
+ const blocked=await request(url(f.laundry),selection(machine,'mesbanto',{lineIds:[ids[0]]}));assert.equal(blocked.status,409);assert.equal(blocked.data.message,'shopFinishingPending');
+});
+
+test('deleting an unstarted partial assignment releases only its pieces while another piece can remain in laundry',async t=>{
+ const f=fixture(t),machine=await complete(f.worker,await origin(f)),ids=machine.materials.map(row=>row.lineId);
+ let first=await checked(url(f.finisher),selection(machine,'finishing',{lineIds:[ids[0]]}));const sibling=await checked(url(f.finisher),selection(machine,'finishing',{lineIds:[ids[1]]}));first=await complete(f.finisher,first);
+ await checked(url(f.laundry),selection(machine,'mesbanto',{lineIds:[ids[0]]}));
+ const removed=await request(url(f.finisher)+'/'+sibling._id,{version:sibling.__v},admin,'DELETE');assert.equal(removed.status,200,JSON.stringify(removed));
+ const opts=(await options(f.finisher,'finishing')).data.works[0];assert.deepEqual(opts.pieces.map(piece=>piece.available),[false,true]);
+ const again=await checked(url(f.finisher),selection(machine,'finishing',{lineIds:[ids[1]]}));assert.notEqual(again._id,sibling._id);
+ assert.equal((await request(url(f.finisher)+'/'+first._id,{version:first.__v},admin,'DELETE')).data.message,'shopHasLaterStage');
+});
+
+test('older aggregate stage work remains readable and its later completions identify pieces without changing prior earnings',async t=>{
+ const f=fixture(t),machine=await complete(f.worker,await origin(f));let finishing=await checked(url(f.finisher),selection(machine));let saved=f.records.find(row=>String(row._id)===finishing._id);
+ saved.shopFlow.lineIds=undefined;saved.shopFlow.pieceNumbers=undefined;saved.shopFlow.sources=undefined;saved.shopFlowPieceSlots=undefined;saved.shopFlowSlot=machine._id+':finishing';await saved.save();
+ const before=await request(url(f.finisher)+'/'+finishing._id+'/completions',{quantity:1,version:saved.__v,requestId:randomUUID()});
+ // Old numeric completion events remain valid when loaded from existing data.
+ assert.equal(before.status,400);const date=new Date();saved=f.records.find(row=>String(row._id)===finishing._id);saved.completedQuantity=1;saved.completions.push({requestId:randomUUID(),quantity:1,before:2,after:1,date,createdBy:owner,sequence:1,earningAmount:5,earningMonth:date.toISOString().slice(0,7)});await saved.save();
+ const listing=await request(url(f.finisher)+'?category=finishing');finishing=listing.data.works.find(row=>row._id===finishing._id);assert.equal(finishing.completedQuantity,1);
+ finishing=await complete(f.finisher,finishing,1,[machine.materials[1].lineId]);assert.equal(finishing.completions[0].earningAmount,5);assert.equal(finishing.completions[1].earningAmount,5);
+ assert.equal((await options(f.laundry,'mesbanto')).data.works[0].availableQuantity,2);
 });

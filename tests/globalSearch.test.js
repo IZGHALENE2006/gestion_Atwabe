@@ -87,7 +87,8 @@ test('tailoring and sfifa stable barcode searches work for existing records', as
   assert.equal(group(await run('01'), 'sfifa').items.length, 1);
 });
 test('individual garment barcode finds its original job and subsequent stages without renumbering', async t => {
-  const f = globalSearchFixture(t); f.seed(f.models.WorkerWork, { ...f.work, _id: '710000000000000000000001', category: 'finishing', shopFlow: { originId: f.work._id } });
+  const f = globalSearchFixture(t); f.seed(f.models.WorkerWork, { ...f.work, _id: '710000000000000000000001', quantity: 1, category: 'finishing', shopFlow: { originId: f.work._id, pieceNumbers: [2] } });
+  f.seed(f.models.WorkerWork, { ...f.work, _id: '710000000000000000000002', quantity: 1, category: 'mesbanto', shopFlow: { originId: f.work._id, pieceNumbers: [1] } });
   const code = shopPieceBarcode(f.work, 2), found = group(await run(code), 'work').items;
   assert.equal(found.length, 2); assert.ok(found.every(row => row.barcode === code && row.facts.some(entry => entry.label === 'piece' && entry.value === 2)));
   assert.equal(group(await run(code.slice(0, -3) + '003'), 'work').items.length, 0);

@@ -1,6 +1,7 @@
 import { completedTrouserColorIds } from "../../../shared/workerShopTrousers.js";
+import WorkerWorkEditHistory from './WorkerWorkEditHistory.jsx';
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
-import { shopPieceBarcode } from '../../../shared/workerShopFlow.js';
+import { shopPieceBarcode, shopPieceNumbers } from '../../../shared/workerShopFlow.js';
 import WorkerShopFlowInfo from './WorkerShopFlowInfo.jsx';
 import { workerSfifaFamilyLabel, workerSfifaNumberLabel } from './workerSfifaLabels.js';
 import { useEffect, useRef, useState } from "react";
@@ -8,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { IoAddCircleOutline, IoCheckmarkCircleOutline, IoCloseOutline, IoDocumentTextOutline, IoLayersOutline, IoTimeOutline, IoWalletOutline } from "react-icons/io5";
 import { formatSfifaCode } from "../../../shared/sfifaStock.js";
 import { tailoringGarmentType } from "../../../shared/tailoring.js";
-import { workerHasPieceWages, workerMaterialPending, workerPieceWageCents } from "../../../shared/workerMaterials.js";
+import { workerHasPieceWages, workerHasPieceSelection, workerMaterialPending, workerPieceWageCents } from "../../../shared/workerMaterials.js";
 import { workerWageCents, workerWorkGarmentType, workerWorkType } from "../../../shared/workerWork.js";
 import "./workerWorkDetails.css";
 
@@ -39,6 +40,7 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
     { key: "overview", icon: <IoDocumentTextOutline aria-hidden="true" /> },
     { key: "completions", icon: <IoCheckmarkCircleOutline aria-hidden="true" />, count: completions.length },
     { key: "additions", icon: <IoAddCircleOutline aria-hidden="true" />, count: additions.length },
+    { key: 'edits', icon: <IoDocumentTextOutline aria-hidden="true" />, count: work.edits?.length || 0 },
   ];
   useEffect(() => {
     const dialog = dialogRef.current, opener = document.activeElement;
@@ -67,7 +69,7 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
       <button type="button" data-close-work-details className="work-close" aria-label={t("dialog.close")} onClick={onClose} autoFocus><IoCloseOutline aria-hidden="true" /></button>
     </header>
     <div className="work-details-tabs" role="tablist" aria-label={t("workers.work.details")}>
-      {tabs.map(({ key, icon, count }, index) => <button key={key} type="button" id={`${id}-tab-${key}`} role="tab" data-work-detail-tab={key} aria-selected={tab === key} aria-controls={`${id}-panel`} tabIndex={tab === key ? 0 : -1} onClick={() => setTab(key)} onKeyDown={event => navigateTabs(event, index)}>{icon}<span>{t(`workers.work.detailDialog.${key}`)}</span>{count !== undefined && <bdi>{number(count)}</bdi>}</button>)}
+      {tabs.map(({ key, icon, count }, index) => <button key={key} type="button" id={`${id}-tab-${key}`} role="tab" data-work-detail-tab={key} aria-selected={tab === key} aria-controls={`${id}-panel`} tabIndex={tab === key ? 0 : -1} onClick={() => setTab(key)} onKeyDown={event => navigateTabs(event, index)}>{icon}<span>{t(key === 'edits' ? 'workers.work.editing.history' : `workers.work.detailDialog.${key}`)}</span>{count !== undefined && <bdi>{number(count)}</bdi>}</button>)}
     </div>
     <div ref={bodyRef} className="work-details-body" id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-tab-${tab}`} tabIndex={0}>
       {tab === "overview" ? <>
@@ -112,12 +114,13 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
         {materials.length > 0 && <section className="work-detail-section">
           <div className="work-detail-section-heading"><h3>{t("workers.work.materials.title")}</h3><span className="work-detail-count">{t("workers.work.pieceCards.count", { count: materials.length })}</span></div>
           <ul className="work-detail-pieces">{materials.map((row, index) => <li key={row.lineId} data-work-material className="work-detail-piece">
-            <div className="work-detail-piece-heading"><span className="work-detail-piece-number">{number(index + 1)}</span><h4>{t("workers.work.pieceCards.pieceNumber", { number: index + 1 })}</h4>{pieceWages && <span data-piece-state={completedIds.has(row.lineId) ? "done" : "pending"} className={`work-status-badge ${completedIds.has(row.lineId) ? "work-status-done" : "work-status-pending"}`}>{t(completedIds.has(row.lineId) ? "workers.work.done" : "workers.work.inProgress")}</span>}</div>
+            <div className="work-detail-piece-heading"><span className="work-detail-piece-number">{number(shopPieceNumbers(work)[index])}</span><h4>{t("workers.work.pieceCards.pieceNumber", { number: shopPieceNumbers(work)[index] })}</h4>{workerHasPieceSelection(work) && <span data-piece-state={completedIds.has(row.lineId) ? "done" : "pending"} className={`work-status-badge ${completedIds.has(row.lineId) ? "work-status-done" : "work-status-pending"}`}>{t(completedIds.has(row.lineId) ? "workers.work.done" : "workers.work.inProgress")}</span>}</div>
             <p className="work-detail-fabric-name" dir="auto">{row.fabricType} · {row.fabricColor}</p>
             <dl className="work-detail-piece-fields">
               {row.size && field(t("workers.work.pieceCards.size"), <bdi dir="ltr" data-work-piece-size-value>{row.size}</bdi>)}
+              {row.modelNumber !== undefined && field(t('workers.work.shopDjellaba.modelNumber'), <bdi dir="ltr" data-work-djellaba-number>{row.modelNumber}</bdi>)}
               {field(t(row.fabricStockDeducted === false ? "workers.work.shopDjellaba.meters" : "workers.work.materials.meters"), <><bdi>{number(row.meters)}</bdi> {t("sfifaStock.unit")}</>)}{row.fabricStockDeducted === false && field(t("workers.work.materials.fabric"), t("workers.work.shopDjellaba.fabricNote"), "fabric-reference-note")}
-              {work.shopBarcode && field(t('workers.shopFlow.pieceBarcode'), <bdi dir="ltr" className="work-detail-barcode" data-detail-piece-barcode>{shopPieceBarcode(work, index + 1)}</bdi>)}
+              {work.shopBarcode && field(t('workers.shopFlow.pieceBarcode'), <bdi dir="ltr" className="work-detail-barcode" data-detail-piece-barcode>{shopPieceBarcode(work, shopPieceNumbers(work)[index])}</bdi>)}
               {row.pieceBarcode && field(t("workers.work.detailDialog.fabricBarcode"), <bdi dir="ltr" className="work-detail-barcode">{row.pieceBarcode}</bdi>)}
               {field(t("workers.work.materials.sfifa"), <><span>{t(`sfifaStock.widths.${row.sfifaWidth}`)}</span><bdi dir="ltr">{row.sfifaCode === undefined ? t("workers.work.materials.unassigned") : formatSfifaCode(row.sfifaCode, row.sfifaFamily)}</bdi><span><bdi>{number(row.sfifaMeters)}</bdi> {t("sfifaStock.unit")}</span></>)}
               {row.sfifaStyle && field(t("workers.work.materials.sfifaStyle"), <span data-detail-sfifa-style={row.sfifaStyle}>{t(`sfifaStock.meterTypes.${row.sfifaStyle}`)}</span>)}
@@ -125,10 +128,10 @@ export default function WorkerWorkDetailsDialog({ work, worker, category, onClos
             {canSeeFinancials && row.unitWage !== undefined && <div className="work-detail-piece-wage"><span>{t("workers.payroll.wage")}</span><strong><bdi>{money(row.unitWage)}</bdi></strong></div>}
           </li>)}</ul>
         </section>}
-      </> : <section className={`work-detail-history work-detail-history-${tab}`}>
+      </> : tab === 'edits' ? <WorkerWorkEditHistory work={work} /> : <section className={`work-detail-history work-detail-history-${tab}`}>
         <div className="work-detail-section-heading"><h3>{t(tab === "completions" ? "workers.work.history" : "workers.work.increaseHistory")}</h3><span className="work-detail-count">{t("workers.work.detailDialog.records", { count: tab === "completions" ? completions.length : additions.length })}</span></div>
         {(tab === "completions" ? completions : additions).length ? <ol className="work-detail-timeline">{[...(tab === "completions" ? completions : additions)].reverse().map(event => {
-          const pieceNumbers = (event.lineIds || []).map(lineId => materials.findIndex(row => row.lineId === lineId) + 1).filter(value => value > 0).map(number);
+          const pieceNumbers = (event.lineIds || []).map(lineId => shopPieceNumbers(work)[materials.findIndex(row => row.lineId === lineId)]).filter(value => value > 0).map(number);
           return <li key={event._id} data-work-completion={tab === "completions" ? "" : undefined} data-work-addition={tab === "additions" ? "" : undefined}>
             <span className="work-detail-event-icon" aria-hidden="true">{tab === "completions" ? <IoCheckmarkCircleOutline /> : <IoAddCircleOutline />}</span>
             <article className="work-detail-event"><div className="work-detail-event-heading"><strong><span>{t(`workers.work.detailDialog.${tab === "completions" ? "completed" : "added"}`)}</span><b className="work-detail-event-quantity">+ {quantity(event.quantity)}</b></strong><time dateTime={event.date}>{date(event.date)}</time></div>

@@ -37,7 +37,7 @@ test('fabric metres are optional and even a zero-stock color can be assigned wit
 
 test('invalid, duplicate and foreign colors and mismatched sections never create work or consume stock',async t=>{
   const f=setup(t),before=JSON.stringify(f.fabrics);
-  for(const [key,value] of [['colorIds',[]],['colorIds',[ids(f)[0],ids(f)[0]]],['fabricId','bad'],['variantId','bad'],['unitWage',-1],['size','4XL'],['meters','2.0001'],['sfifaStyle','bad']]){const body=bodyFor(f);body.shopDjellaba[key]=value;const result=await request(pathFor(f),body);assert.equal(result.status,400,JSON.stringify(result));assert.ok(result.data.fields['shopDjellaba.'+key]);}
+  for(const [key,value] of [['colorIds',[]],['colorIds',[ids(f)[0],ids(f)[0]]],['fabricId','bad'],['variantId','bad'],['unitWage',-1],['size','4XL'],['meters','2.0001'],['sfifaStyle','bad'],['modelNumber',0],['modelNumber',6],['modelNumber',1.5],['modelNumber',[1]]]){const body=bodyFor(f);body.shopDjellaba[key]=value;const result=await request(pathFor(f),body);assert.equal(result.status,400,JSON.stringify(result));assert.ok(result.data.fields['shopDjellaba.'+key]);}
   const foreign=f.seedFabric({idAdmin:otherOwner});let body=bodyFor(f);body.shopDjellaba.fabricId=String(foreign._id);body.shopDjellaba.colorIds=[String(foreign.colors[0]._id)];assert.equal((await request(pathFor(f),body)).status,409);
   for(const patch of [{category:'trousers'},{workType:'client'},{garmentType:'jabador'},{garmentType:'malakiya'}]) assert.throws(()=>validateWorkerWork({...bodyFor(f),...patch}),error=>error.fields.shopDjellaba==='invalidMaterialSection');
   assert.equal(f.records.length,0);assert.equal(f.stocks[0].quantity,20);assert.equal(JSON.stringify(f.fabrics.slice(0,1)),before);
@@ -77,7 +77,7 @@ test('sfifa style validation uses the selected style balance and the stock journ
 test('finishing and laundry retain selected color snapshots, piece barcodes, and the no-cloth-debit flag',async t=>{
   const f=setup(t),before=JSON.stringify(f.fabrics),machine=await assign(f),completed=await finish(f,machine,ids(f).slice(0,2));assert.equal(completed.status,201);
   let result=await request(pathFor(f),{category:'finishing',workType:'shop',garmentType:'djellaba',shopOriginId:machine._id,unitWage:5,requestId:randomUUID()});assert.equal(result.status,201,JSON.stringify(result));const finishing=result.data;assert.ok(finishing.shopFlow.materials.every(row=>row.fabricStockDeducted===false));assert.equal(shopPieceBarcode(finishing,1),shopPieceBarcode(machine,1));
-  result=await request(pathFor(f)+'/'+finishing._id+'/completions',{quantity:2,version:finishing.__v,requestId:randomUUID()});assert.equal(result.status,201);
+  result=await request(pathFor(f)+'/'+finishing._id+'/completions',{quantity:2,lineIds:finishing.shopFlow.lineIds,version:finishing.__v,requestId:randomUUID()});assert.equal(result.status,201);
   result=await request(pathFor(f),{category:'mesbanto',workType:'shop',garmentType:'djellaba',shopOriginId:machine._id,unitWage:3,requestId:randomUUID()});assert.equal(result.status,201,JSON.stringify(result));assert.ok(result.data.shopFlow.materials.every(row=>row.fabricStockDeducted===false));assert.equal(f.stocks[0].quantity,14);assert.equal(JSON.stringify(f.fabrics),before);
 });
 
@@ -89,4 +89,16 @@ test('model guards prevent reference-only fabric flags outside color-based djell
   const f=setup(t);await assign(f);const source=f.records[0].toObject();await new WorkerWork(source).validate();
   for(const modify of [row=>{row.shopDjellaba=undefined;},row=>{row.garmentType='jabador';},row=>{row.materialOperations[0].rows[0].fabricStockDeducted=undefined;},row=>{row.shopDjellaba.colorIds.pop();},row=>{row.materialOperations[0].rows[0].colorId='9'.repeat(24);}]){const input=JSON.parse(JSON.stringify(source));modify(input);await assert.rejects(new WorkerWork(input).validate());}
   assert.equal(workerMaterialRows(f.records[0]).length,2);
+});
+
+test('the selected djellaba number survives saving, editing, additions, completion and the finishing stage',async t=>{
+  const f=setup(t),body=bodyFor(f);body.shopDjellaba.modelNumber='3';const work=await assign(f,body);
+  assert.equal(work.shopDjellaba.modelNumber,3);assert.ok(work.materials.every(row=>row.modelNumber===3));
+  const list=await request(pathFor(f)+'?category=machine');assert.equal(list.data.works[0].shopDjellaba.modelNumber,3);
+  const edited=await request(pathFor(f)+'/'+work._id,{...body,shopDjellaba:{...body.shopDjellaba,modelNumber:5},version:work.__v,requestId:randomUUID()},{id:owner,role:'admin'},'PUT');
+  assert.equal(edited.status,200,JSON.stringify(edited.data));assert.equal(edited.data.shopDjellaba.modelNumber,5);assert.ok(edited.data.materials.every(row=>row.modelNumber===5));assert.equal(edited.data.edits[0].beforeSnapshot.shopDjellaba.modelNumber,3);assert.equal(edited.data.edits[0].afterSnapshot.shopDjellaba.modelNumber,5);
+  const more=await request(pathFor(f)+'/'+work._id+'/increases',{shopDjellaba:{colorIds:[ids(f)[2]],unitWage:20,modelNumber:1},version:edited.data.__v,requestId:randomUUID()});assert.equal(more.status,201,JSON.stringify(more.data));assert.ok(more.data.materials.every(row=>row.modelNumber===5));
+  const done=await finish(f,more.data,ids(f));assert.equal(done.status,201,JSON.stringify(done.data));assert.equal(done.data.completions[0].earningAmount,50);assert.equal(f.stocks[0].quantity,11);
+  const finishing=await request(pathFor(f),{category:'finishing',workType:'shop',garmentType:'djellaba',shopOriginId:work._id,unitWage:5,requestId:randomUUID()});assert.equal(finishing.status,201,JSON.stringify(finishing.data));assert.ok(finishing.data.shopFlow.materials.every(row=>row.modelNumber===5));
+  const document=JSON.parse(JSON.stringify(f.records[0]));document.shopDjellaba.modelNumber=6;await assert.rejects(new WorkerWork(document).validate());
 });

@@ -181,8 +181,8 @@ test("a request ID cannot be reused for different concurrent combinations", asyn
 
 test("stock correction replaces the balance, permits zero and retains receipt retry identity", async t => {
   const f = setup(t), body = input(), stock = await add(body);
-  const corrected = await request({ suffix: `/${stock.parentId}/variants/${stock._id}`, method: "PUT", body: { quantity: 3.5, version: 0, width: "thick", family: "8080-8097", idAdmin: otherOwner } });
-  assert.equal(corrected.status, 200); const current = await corrected.json(); assert.equal(current.quantity, 3.5); assert.equal(current.width, "thin"); assert.equal(current.family, "01-30"); assert.equal(current.__v, 1);
+  const corrected = await request({ suffix: `/${stock.parentId}/variants/${stock._id}`, method: "PUT", body: { quantity: 3.5, version: 0, width: "thick", family: "8080-8097", code: 8081, idAdmin: otherOwner } });
+  assert.equal(corrected.status, 200); const current = await corrected.json(); assert.equal(current.quantity, 3.5); assert.equal(current.width, "thick"); assert.equal(current.family, "8080-8097"); assert.equal(current.code, 8081); assert.equal(current.__v, 1);
   const zero = await request({ suffix: `/${stock.parentId}/variants/${stock._id}`, method: "PUT", body: { quantity: 0, version: 1 } }); assert.equal(zero.status, 200); assert.equal((await zero.json()).quantity, 0);
   const retry = await request({ body }); assert.equal(retry.status, 200); assert.equal((await retry.json()).quantity, 0); assert.equal(f.records[0].receipts.length, 1);
 });

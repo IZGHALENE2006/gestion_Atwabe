@@ -17,7 +17,7 @@ export default function RowActionsMenu({ children, label, className = '', menuKe
   const name = label || t('clients.fields.actions');
   const close = useCallback((restoreFocus = false) => {
     panel.current?.hidePopover?.(); setPosition(null);
-    if (restoreFocus) trigger.current?.focus();
+    if (restoreFocus) trigger.current?.focus({ preventScroll: true });
   }, []);
   useLayoutEffect(() => {
     const node = panel.current;
@@ -42,14 +42,14 @@ export default function RowActionsMenu({ children, label, className = '', menuKe
     if (!position || !panel.current) return;
     panel.current.showPopover?.();
     const items = enabledControls(panel.current);
-    (focusEnd.current ? items.at(-1) : items[0])?.focus();
-    if (!items.length) panel.current.focus();
+    (focusEnd.current ? items.at(-1) : items[0])?.focus({ preventScroll: true });
+    if (!items.length) panel.current.focus({ preventScroll: true });
   }, [position]);
   useEffect(() => {
     if (!position) return;
     const dismiss = event => { if (!panel.current?.contains(event.target) && !trigger.current?.contains(event.target)) close(); };
     const escape = event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(true); } };
-    const scroll = event => { if (!panel.current?.contains(event.target)) close(); };
+    const scroll = event => { if (!(event.target instanceof Node) || !panel.current?.contains(event.target)) close(); };
     document.addEventListener('pointerdown', dismiss, true); document.addEventListener('keydown', escape, true);
     window.addEventListener('scroll', scroll, true); window.addEventListener('resize', scroll);
     return () => { document.removeEventListener('pointerdown', dismiss, true); document.removeEventListener('keydown', escape, true); window.removeEventListener('scroll', scroll, true); window.removeEventListener('resize', scroll); };

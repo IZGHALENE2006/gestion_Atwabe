@@ -1,3 +1,4 @@
+import { ownerDebtsFrench } from './ownerDebts.js';
 import { fabricInvoicesFrench } from './fabricInvoices.js';
 import { employeePayrollFrench } from './employeePayroll.js';
 import { productBatchesFrench } from "./productBatches.js";
@@ -14,6 +15,7 @@ import { sfifaStockFrench } from "./sfifaStock.js";
 
 import { globalSearchFrench } from './globalSearch.js';
 export default {
+  ownerDebts: ownerDebtsFrench,
   globalSearch: globalSearchFrench,
       fabricInvoices: fabricInvoicesFrench,
   employeePayroll: employeePayrollFrench,

@@ -6,7 +6,7 @@ export const loadSfifaStock = async (token, signal) => (await axios.get(api, { h
 export const saveSfifaStock = async (input, token, requestId, stock) => {
   if (!stock) return (await axios.post(api, { ...input, requestId }, { headers: headers(token) })).data;
   const path = stock.isUnassigned ? `${api}/${encodeURIComponent(stock.parentId)}` : `${api}/${encodeURIComponent(stock.parentId)}/variants/${encodeURIComponent(stock._id)}`;
-  return (await axios.put(path, { quantity: input.quantity, version: stock.__v, ...(stock.isUnassigned ? { code: input.code } : {}) }, { headers: headers(token) })).data;
+  return (await axios.put(path, { ...(stock.isUnassigned ? { quantity: input.quantity, code: input.code } : input), version: stock.__v }, { headers: headers(token) })).data;
 };
 
 const stockPath = stock => api + "/" + encodeURIComponent(stock.parentId) + (stock.isUnassigned ? "" : "/variants/" + encodeURIComponent(stock._id));

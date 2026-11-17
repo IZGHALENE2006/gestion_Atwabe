@@ -1,6 +1,6 @@
 import TailoringOrder from '../models/TailoringOrder.js';
 import WorkerWork from '../models/WorkerWork.js';
-import { SFIFA_METER_TYPES } from '../../shared/sfifaStock.js';
+import { SFIFA_METER_TYPES, sfifaReceiptMatches } from '../../shared/sfifaStock.js';
 import { emptySfifaStyles, normalizeSfifaStyles, sfifaStyleSummary } from '../../shared/sfifaStyleBalances.js';
 
 const same = (a, b) => String(a) === String(b);
@@ -41,7 +41,7 @@ export async function ensureSfifaStyleBalances(stock, session) {
   }
   for (const row of missing) {
     const totals = emptySfifaStyles();
-    for (const receipt of stock.receipts || []) if ((receipt.code ?? null) === (row.code ?? null)) for (const key of SFIFA_METER_TYPES) totals[key] += units(receipt.styleMeters?.[key]);
+    for (const receipt of stock.receipts || []) if (sfifaReceiptMatches(stock, receipt, row.target === stock ? undefined : row.target)) for (const key of SFIFA_METER_TYPES) totals[key] += units(receipt.styleMeters?.[key]);
     for (const entry of consumption) if (same(entry.variantId, row.id) && SFIFA_METER_TYPES.includes(entry.style)) totals[entry.style] -= units(entry.meters);
     row.target[row.field] = normalizeSfifaStyles(Object.fromEntries(Object.entries(totals).map(([key, value]) => [key, value / 1000])), row.quantity);
   }

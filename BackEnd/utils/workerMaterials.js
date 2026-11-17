@@ -5,7 +5,7 @@ import { trouserStockRows } from '../../shared/workerShopTrousers.js';
 import SfifaStock from '../models/SfifaStock.js';
 import WorkerWork from '../models/WorkerWork.js';
 import { FABRIC_LIMITS } from '../../shared/fabrics.js';
-import { SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, sfifaQuantityUnits, sfifaStockStyles } from '../../shared/sfifaStock.js';
+import { SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, sfifaQuantityUnits, sfifaStockStyles, sfifaVariantIdentity } from '../../shared/sfifaStock.js';
 import { usesWorkerMaterials, workerMaterialPending, workerMaterialRows, WORKER_SFIFA_METERS } from '../../shared/workerMaterials.js';
 import { tailoringGarmentType } from '../../shared/tailoring.js';
 
@@ -18,7 +18,7 @@ export function requireWorkerMaterialsReady(work) {
 }
 export function archiveWorkerAssignment(work, actor) {
   work.deletedAt = new Date(); work.deletedBy = actor;
-  if (work.shopFlow) work.shopFlowSlot = undefined;
+  if (work.shopFlow) { work.shopFlowSlot = undefined; work.shopFlowPieceSlots = undefined; }
   if (work.tailoring) {
     work.archivedTailoring = work.tailoring.toObject ? work.tailoring.toObject() : work.tailoring;
     work.tailoring = undefined;
@@ -35,21 +35,27 @@ function groupsFor(rows) {
   return [...groups.values()].sort((a, b) => `${a.kind}:${a.id}`.localeCompare(`${b.kind}:${b.id}`));
 }
 
-export async function resolveWorkerMaterials(input, details, idAdmin) {
+export async function resolveWorkerMaterials(input, details, idAdmin, creditRows = []) {
   if (!details || !usesWorkerMaterials(details.category, details.workType, details.tailoring ? tailoringGarmentType(details.tailoring) : details.garmentType)) throw fail('invalidMaterialSection', 400);
   const fabrics = new Map(), sfifas = new Map();
-  await Promise.all([...new Set(input.map(row => row.fabricId))].map(async id => fabrics.set(id, await Fabric.findOne({ _id: id, idAdmin }))));
-  await Promise.all([...new Set(input.map(row => row.sfifaId))].map(async id => sfifas.set(id, await SfifaStock.findOne({ _id: id, idAdmin }))));
+  await Promise.all([...new Set([...input, ...creditRows].map(row => String(row.fabricId)))].map(async id => fabrics.set(id, await Fabric.findOne({ _id: id, idAdmin }))));
+  await Promise.all([...new Set([...input, ...creditRows].map(row => String(row.sfifaId)))].map(async id => sfifas.set(id, await SfifaStock.findOne({ _id: id, idAdmin }))));
   const result = input.map((row, index) => {
     const fabric = fabrics.get(row.fabricId), color = fabric?.colors.find(color => same(color._id, row.colorId)), piece = color?.pieces.find(piece => same(piece._id, row.pieceId));
     const sfifa = sfifas.get(row.sfifaId), variant = sfifa?.variants?.find(variant => same(variant._id, row.variantId));
     const fabricOnlyReference = row.fabricStockDeducted === false && details.shopDjellaba && details.category === 'machine' && details.workType === 'shop' && details.garmentType === 'djellaba';
     if (row.fabricStockDeducted === false && !fabricOnlyReference) throw fail('invalidMaterialSection', 400);
     if (!color || (!fabricOnlyReference && !piece) || (!variant && !same(sfifa?._id, row.variantId))) throw fail('materialStockUnavailable');
-    const styles = sfifaStockStyles(sfifa, variant?.code);
+    const styles = sfifaStockStyles(sfifa, variant?.code, { variantId: variant?._id });
     if (styles.length ? !styles.includes(row.sfifaStyle) : row.sfifaStyle !== undefined) throw Object.assign(fail('invalidWork', 400), { fields: { [details.shopDjellaba ? 'shopDjellaba.sfifaStyle' : `materials.${index}.sfifaStyle`]: 'chooseSfifaStyle' } });
-    return { ...row, sfifaMeters: WORKER_SFIFA_METERS, fabricType: fabric.type, fabricColor: color.name, fabricReference: fabric.reference || '', ...(piece ? { pieceBarcode: piece.barcode } : {}), sfifaWidth: sfifa.width, sfifaFamily: sfifa.family, ...(variant ? { sfifaCode: variant.code } : {}) };
+    return { ...row, sfifaMeters: WORKER_SFIFA_METERS, fabricType: fabric.type, fabricColor: color.name, fabricReference: fabric.reference || '', ...(piece ? { pieceBarcode: piece.barcode } : {}), sfifaWidth: sfifaVariantIdentity(sfifa, variant).width, sfifaFamily: sfifaVariantIdentity(sfifa, variant).family, ...(variant ? { sfifaCode: variant.code } : {}) };
   });
+  for (const group of groupsFor(creditRows)) {
+    const document = group.kind === 'fabric' ? fabrics.get(String(group.id)) : sfifas.get(String(group.id));
+    if (!document) throw fail('materialStockUnavailable');
+    if (group.kind === 'sfifa') await ensureSfifaStyleBalances(document);
+    checkAndChange(group, document, true);
+  }
   for (const group of groupsFor(result)) {
     const document = group.kind === 'fabric' ? fabrics.get(String(group.id)) : sfifas.get(String(group.id));
     if (group.kind === 'sfifa') await ensureSfifaStyleBalances(document);
@@ -105,6 +111,28 @@ async function changeGroup(group, work, operation, release) {
 export function makeWorkerMaterialOperation(kind, requestId, rows, createdBy) {
   return { kind, requestId, rows, createdBy, date: new Date(), state: 'reserving' };
 }
+async function changeEditedMaterials(work, operation) {
+  const beforeGroups = groupsFor(operation.previousRows || []), afterGroups = groupsFor(operation.rows);
+  const keys = [...new Set([...beforeGroups, ...afterGroups].map(group => `${group.kind}:${group.id}`))].sort();
+  for (const key of keys) for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const before = beforeGroups.find(group => `${group.kind}:${group.id}` === key), after = afterGroups.find(group => `${group.kind}:${group.id}` === key), group = after || before;
+      const Model = group.kind === 'fabric' ? Fabric : SfifaStock;
+      const document = await Model.findOne({ _id: group.id, idAdmin: work.idAdmin });
+      if (!document) throw fail('materialStockUnavailable');
+      const operationId = `${work._id}:${operation.requestId}`;
+      if (document.workerMaterialDebits?.some(entry => entry.operationId === operationId)) break;
+      if (group.kind === 'sfifa') await ensureSfifaStyleBalances(document);
+      if (before) checkAndChange(before, document, true);
+      if (after) checkAndChange(after, document, false);
+      for (const debit of document.workerMaterialDebits || []) if (!debit.returnedAt && operation.previousRequests.some(request => debit.operationId === `${work._id}:${request}`)) debit.returnedAt = new Date();
+      document.workerMaterialDebits ||= [];
+      document.workerMaterialDebits.push({ operationId, workId: work._id, date: new Date() });
+      // The net correction and all old/new allocation markers share one write.
+      await document.save(); break;
+    } catch (error) { if (!retryable(error) || attempt === 4) throw error; }
+  }
+}
 function undoMaterialAddition(work, operation) {
   const lineIds = new Set(operation.rows.map(row => row.lineId));
   const event = work.additions.find(event => event.requestId === operation.requestId);
@@ -130,6 +158,11 @@ export async function resumeWorkerMaterials(work) {
     }
     const operation = work.materialOperations?.find(operation => ['reserving', 'rollingBack'].includes(operation.state));
     if (!operation) return work;
+    if (operation.kind === 'edit') {
+      // A durable edit intent resumes any groups not yet applied after an outage.
+      await changeEditedMaterials(work, operation);
+      operation.state = 'committed'; work.materialStatus = 'ready'; await work.save(); return work;
+    }
     if (operation.state === 'reserving') {
       try { for (const group of groupsFor(operation.rows)) await changeGroup(group, work, operation, false); }
       catch (error) {
@@ -146,7 +179,7 @@ export async function resumeWorkerMaterials(work) {
     operation.state = 'failed'; work.materialStatus = 'ready';
     await work.save(); throw fail(operation.failureCode);
   } catch (error) {
-    if (error.status) throw error;
+    if (error.status && !work.materialOperations?.some(operation => operation.kind === 'edit' && operation.state === 'reserving')) throw error;
     throw fail('materialsPending', 503);
   }
 }
@@ -155,6 +188,6 @@ export async function protectWorkerMaterialDeletion(document, removedIds, kind) 
   const debits = (document.workerMaterialDebits || []).filter(entry => !entry.returnedAt);
   if (!debits.length) return;
   const works = await WorkerWork.find({ idAdmin: document.idAdmin, _id: { $in: debits.map(entry => entry.workId) } }).lean();
-  const protectedWork = works.some(work => !work.deletedAt && [...workerMaterialRows(work), ...(kind === 'fabric' ? trouserStockRows(work).map(row => ({ ...row, fabricId: work.shopTrouser.fabricId })) : [])].some(row => same(row[kind === 'fabric' ? 'fabricId' : 'sfifaId'], document._id) && (!removedIds || removedIds.has(String(row[kind === 'fabric' ? 'pieceId' : 'variantId'])))));
+  const protectedWork = works.some(work => !work.deletedAt && [...workerMaterialRows(work), ...(work.materialOperations || []).filter(operation => operation.kind === 'edit' && operation.state === 'reserving').flatMap(operation => operation.previousRows), ...(kind === 'fabric' ? [...trouserStockRows(work), ...(work.trouserStockOperations || []).filter(operation => operation.kind === 'edit' && operation.state === 'reserving').flatMap(operation => operation.previousRows.map(row => ({ ...row, fabricId: operation.previousFabricId })))] : [])].some(row => same(row[kind === 'fabric' ? 'fabricId' : 'sfifaId'], document._id) && (!removedIds || removedIds.has(String(row[kind === 'fabric' ? 'pieceId' : 'variantId'])))));
   if (protectedWork) throw fail('workerMaterialsInUse');
 }
