@@ -196,6 +196,8 @@
 .fesla-tracking-summary { display: flex; flex-wrap: wrap; gap: 7px; font-size: 12px; line-height: 1.8; }
 .fesla-tracking-stage { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 7px 10px; border-radius: 9px; font-size: 12px; font-weight: 700; line-height: 1.7; }
 .fesla-tracking-stage svg { flex-shrink: 0; }
+.fesla-tracking-stage-text { min-width: 0; overflow-wrap: anywhere; }
+.fesla-tracking-worker { font-weight: 600; }
 .fesla-tracking-stage.is-active { color: #9a5c0a; background: #fff3d1; }
 .fesla-tracking-stage.is-done { color: #08794f; background: #e4f8ee; }
 .fesla-tracking-empty { color: #64748b; font-size: 13px; line-height: 1.9; }

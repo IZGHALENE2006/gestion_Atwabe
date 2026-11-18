@@ -14,9 +14,18 @@ export default function TailoringOrderTracking({ order, tracking, compact = fals
   const date = value => new Date(value).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" });
   const stageLabel = (category, done) => t(done ? "fesla.tracking.sectionDone" : "fesla.tracking.atSection", { section: t(`workers.categories.${category}`) });
   const feedback = loading ? <p role="status">{t("common.loading")}</p> : error ? <p role="alert" className="fesla-tracking-error">{t(`fesla.errors.${error}`)}</p> : !assignments.length ? <p className="fesla-tracking-empty" data-order-unassigned>{t("fesla.tracking.unassigned")}</p> : null;
-  if (compact) return <div className="fesla-tracking-summary" data-order-tracking={order._id}>{feedback || WORKER_CATEGORIES.filter(category => assignments.some(work => work.category === category)).map(category => {
-    const done = assignments.filter(work => work.category === category).every(work => work.remainingQuantity === 0);
-    return <span key={category} className={`fesla-tracking-stage is-${done ? "done" : "active"}`} data-order-stage={category} data-stage-done={done}>{done ? <IoCheckmarkCircleOutline size={16} /> : <IoTimeOutline size={16} />}{stageLabel(category, done)}</span>;
+  if (compact) return <div className="fesla-tracking-summary" data-order-tracking={order._id}>{feedback || WORKER_CATEGORIES.flatMap(category => {
+    const workers = new Map();
+    assignments.filter(work => work.category === category).forEach(work => {
+      const key = String(work.workerId || work.workId);
+      if (!workers.has(key)) workers.set(key, []);
+      workers.get(key).push(work);
+    });
+    return [...workers].map(([workerId, works]) => {
+      const done = works.every(work => work.remainingQuantity === 0);
+      const name = works.find(work => work.workerName)?.workerName || t("fesla.tracking.workerUnavailable");
+      return <span key={`${category}-${workerId}`} className={`fesla-tracking-stage is-${done ? "done" : "active"}`} data-order-stage={category} data-stage-done={done}>{done ? <IoCheckmarkCircleOutline size={16} aria-hidden="true" /> : <IoTimeOutline size={16} aria-hidden="true" />}<span className="fesla-tracking-stage-text">{stageLabel(category, done)} · <bdi className="fesla-tracking-worker" dir="auto" data-order-stage-worker={workerId}>{name}</bdi></span></span>;
+    });
   })}</div>;
   const items = tailoringOrderItems(order);
   return <section className="fesla-tracking-panel" aria-labelledby="fesla-tracking-title" data-order-work-details>
