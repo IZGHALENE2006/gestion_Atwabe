@@ -18,3 +18,6 @@ export const employeePermissionsFrench = {
   denied: "Vous n’avez pas accès à cette section", deniedHint: "L’administrateur peut modifier vos autorisations depuis la gestion des employés.", availableSections: "Voir les sections accessibles", sessionFailed: "Impossible de vérifier le compte et les autorisations. Vérifiez la connexion ou l’état du compte.", retry: "Réessayer", signOut: "Se déconnecter",
   orderCreator: "Commande ajoutée par", unrecorded: "Nom non enregistré", admin: "Administrateur", employee: "Employé",
 };
+
+employeePermissionsArabic.operationLabels.creditDelivery = "تسليم طلب فصالة مع تسجيل الدين";
+employeePermissionsFrench.operationLabels.creditDelivery = "Livrer une commande de couture à crédit";

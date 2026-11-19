@@ -1,0 +1,19 @@
+.tailoring-client-picker { min-width: 0; margin-bottom: 16px; }
+.tailoring-client-picker label { display: grid; gap: 8px; font-size: 13px; font-weight: 700; }
+.tailoring-client-picker select, .tailoring-credit-filter { min-width: 0; width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; color: #172e50; font-size: 13px; }
+.tailoring-client-picker p { margin-top: 8px; font-size: 12px; line-height: 1.8; color: #b45309; }
+.tailoring-client-warning { padding: 10px 12px; border: 1px solid #f6d18c; border-radius: 10px; background: #fff8e6; }
+.tailoring-credit-choice { margin: 14px 0; padding: 14px; border: 1px solid #b8d5ff; border-radius: 12px; background: #f1f7ff; color: #224984; }
+.tailoring-credit-choice label { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.tailoring-credit-choice input { width: 18px; height: 18px; flex-shrink: 0; accent-color: #2563eb; }
+.tailoring-credit-choice p, .tailoring-credit-choice > div { margin-top: 8px; font-size: 12px; line-height: 1.9; }
+.tailoring-credit-choice button, .tailoring-client-picker button { margin-inline-start: 8px; color: #2563eb; font-weight: 700; text-decoration: underline; }
+.tailoring-credit-status { display: block; margin-top: 7px; padding: 6px 9px; border-radius: 9px; font-size: 11px; background: #fff0df; color: #a34d08; }
+.tailoring-credit-status.is-settled { background: #e2f6ee; color: #087750; }
+.tailoring-credit-filter-label { display: grid; gap: 6px; margin-top: 14px; max-width: 320px; color: #526984; font-size: 12px; font-weight: 700; }
+.dark .tailoring-client-picker select, .dark .tailoring-credit-filter { border-color: #3b4f6b; background: #18263c; color: #dfebff; }
+.dark .tailoring-client-warning { border-color: #735728; background: #342b1d; color: #f9d594; }
+.dark .tailoring-credit-choice { border-color: #365a86; background: #172a43; color: #c2dcff; }
+.dark .tailoring-credit-status { background: #432e16; color: #ffd393; }
+.dark .tailoring-credit-status.is-settled { background: #153b30; color: #98e9c3; }
+.dark .tailoring-credit-filter-label { color: #b7c8df; }

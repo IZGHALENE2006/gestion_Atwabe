@@ -1,3 +1,4 @@
+import ClientDebt from "./ClientDebt.jsx";
 import RowActionsMenu from '../shared/RowActionsMenu.jsx';
 import useSearchTarget from "../../hooks/useSearchTarget.js";
 import { useEffect, useState } from "react";
@@ -47,7 +48,7 @@ export default function Clients() {
   const retry = () => { setResult((current) => ({ ...current, loading: true, error: "" })); setAttempt((value) => value + 1); };
   const edit = (client) => { setEditor({ client, token }); setStatus(""); };
   const saved = (client) => {
-    setResult((current) => ({ ...current, clients: [...current.clients.filter((entry) => entry._id !== client._id), client].sort((a, b) => a.name.localeCompare(b.name, i18n.language)) }));
+    setResult((current) => ({ ...current, clients: [...current.clients.filter((entry) => entry._id !== client._id), {...current.clients.find(entry => entry._id === client._id), ...client}].sort((a, b) => a.name.localeCompare(b.name, i18n.language)) }));
     setStatus(editor.client ? "updated" : "added");
     setEditor(null);
     setSearch("");
@@ -79,7 +80,7 @@ export default function Clients() {
               <caption className="sr-only">{t("clients.title")}</caption>
               <thead className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"><tr>{["name", "contact", "address", "cin", "website", "actions"].map((key) => <th key={key} scope="col" className="px-5 py-4 text-start font-semibold">{t(`clients.fields.${key}`)}</th>)}</tr></thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">{visible.map((client) => <tr key={client._id} data-client-id={client._id} className="align-top">
-                <td className="max-w-56 px-5 py-4"><p dir="auto" className="mb-2 break-words font-bold">{client.name}</p><ClientType type={client.type} /></td>
+                <td className="max-w-56 px-5 py-4"><p dir="auto" className="mb-2 break-words font-bold">{client.name}</p><ClientType type={client.type} /><ClientDebt client={client} /></td>
                 <td className="px-5 py-4"><p className="whitespace-nowrap"><bdi dir="ltr">{client.phone}</bdi></p>{client.fax && <p className="mt-2 text-xs text-slate-500">{t("clients.fields.fax")}: <bdi dir="ltr">{client.fax}</bdi></p>}</td>
                 <td className="max-w-64 whitespace-pre-line break-words px-5 py-4"><bdi>{client.address}</bdi></td>
                 <td className="max-w-40 break-words px-5 py-4"><bdi dir="ltr">{client.cin || "—"}</bdi></td>
@@ -89,7 +90,7 @@ export default function Clients() {
             </table>
           </div>
           <div className="grid gap-4 md:hidden">{visible.map((client) => <article key={client._id} data-client-id={client._id} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-            <h2 dir="auto" className="mb-2 break-words text-lg font-bold">{client.name}</h2><ClientType type={client.type} />
+            <h2 dir="auto" className="mb-2 break-words text-lg font-bold">{client.name}</h2><ClientType type={client.type} /><ClientDebt client={client} />
             <dl className="my-4 space-y-3 text-sm">{["address", "phone", "fax", "cin", "website"].map((key) => <div key={key}><dt className="mb-1 text-xs text-slate-500 dark:text-slate-400">{t(`clients.fields.${key}`)}</dt><dd className="whitespace-pre-line break-words">{key === "website" ? <Website value={client.website} /> : <bdi dir={key === "address" ? "auto" : "ltr"}>{client[key] || "—"}</bdi>}</dd></div>)}</dl>
             <RowActionsMenu menuKey="ClientCard">{editButton(client)}</RowActionsMenu>
           </article>)}</div>

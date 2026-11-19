@@ -1,3 +1,4 @@
+import UserCredit from "../BackEnd/models/userCidit.js";
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import process from "node:process";
@@ -33,6 +34,7 @@ const request = (method = "GET", body, auth = claims, suffix = "") => fetch(base
 });
 const query = (fn) => ({ select() { return this; }, sort() { return this; }, lean() { return this; }, then(resolve, reject) { return Promise.resolve().then(fn).then(resolve, reject); } });
 function setup(t) {
+  t.mock.method(UserCredit,"find",()=>query(()=>[]));
   const actors = new Map([[owner, { _id: owner }], [otherOwner, { _id: otherOwner }]]);
   const staff = { _id: employee, idAdmin: owner, isActive: true, action: { add: true, update: true } };
   const records = new Map();

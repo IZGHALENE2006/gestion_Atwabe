@@ -4,7 +4,7 @@ export const EMPLOYEE_MODULE_LABELS = { cashier: "nav.cashier", credit: "nav.cre
 export const EMPLOYEE_OPERATIONS = {
   cashier: ["history", "sell", "creditSale", "discount", "wholesale", "print"],
   credit: ["ownerDebts", "addOwnerDebt", "payOwnerDebt", "ownerDebtHistory", "add", "details", "addDebt", "payment", "deleteDebt", "delete", "history", "print", "share"],
-  tailoring: ["assign", "add", "update", "discount", "details", "payment", "deliver", "cancel", "settings", "profits", "tracking", "print", "share", "labels"],
+  tailoring: ["creditDelivery", "assign", "add", "update", "discount", "details", "payment", "deliver", "cancel", "settings", "profits", "tracking", "print", "share", "labels"],
   sfifa: ["details", "add", "update", "restock", "delete", "history", "labels"],
   fabrics: ["invoiceHistory", "addInvoice", "invoicePayment", "invoicePrint", "creditSale", "details", "add", "update", "addColor", "addPiece", "delete", "deleteColor", "deletePiece", "sell", "discount", "wholesale", "reduce", "history", "profits", "labels", "catalog"],
   workers: ["add", "update", "delete", "assign", "editWork", "complete", "increase", "deleteWork", "cancelWork", "resume", "details", "financials", "payroll", "pay", "advance", "download", "labels"],
@@ -18,6 +18,7 @@ export function employeeModules(user) {
 }
 export function hasModuleAccess(role, user, module) { return role === "admin" || role === "Employe" && employeeModules(user).includes(module); }
 function legacyOperation(user, module, operation) {
+  if (module === "tailoring" && operation === "creditDelivery") return false;
   if (module === "workers" && operation === "financials") return false;
   if (module === 'workers' && operation === 'editWork') return false;
   if (module === "fabrics" && ["discount", "wholesale"].includes(operation)) return user?.action?.update === true;

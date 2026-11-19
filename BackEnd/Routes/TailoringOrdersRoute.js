@@ -1,4 +1,5 @@
 import { listOrderAssignmentWorkers, listOrderAssignmentOptions, assignOrderWork } from "../controlles/TailoringAssignments.js";
+import { listTailoringClientOptions } from '../controlles/TailoringOrders.js';
 import express from "express";
 import { auth } from "../middleware/auth.js";
 import { uploadTailoringImages } from "../middleware/tailoringUpload.js";
@@ -10,6 +11,7 @@ import { listTailoringTracking } from "../controlles/TailoringTracking.js";
 const router = express.Router();
 router.use(auth);
 router.get("/", listTailoringOrders);
+router.get('/client-options', listTailoringClientOptions);
 router.get("/sfifa-options", listTailoringSfifaOptions);
 router.get("/work-status", listTailoringTracking);
 router.get("/cost-settings", getDjellabaCostSettings);

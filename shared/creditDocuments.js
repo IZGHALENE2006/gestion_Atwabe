@@ -4,7 +4,7 @@ export const creditRound = value => {
 };
 export const creditCustomer = user => ({ name: user.name || "", phone: user.phone || "", cin: user.cin || "" });
 export const creditPaymentReference = (userId, payment, index) => payment.reference || (payment.id ? `RC-${payment.id.toUpperCase()}` : `RC-${String(userId).toUpperCase()}-${String(index + 1).padStart(4, "0")}`);
-export const creditInvoiceReference = invoice => `${invoice.origin === 'fabric' ? 'FI' : 'CI'}-${invoice.id.toUpperCase()}`;
+export const creditInvoiceReference = invoice => `${invoice.origin === 'fabric' ? 'FI' : invoice.origin === 'tailoring' ? 'FS' : 'CI'}-${invoice.id.toUpperCase()}`;
 
 export function creditDocument(user, selection = {}) {
   const customer = creditCustomer(user);
@@ -16,7 +16,7 @@ export function creditDocument(user, selection = {}) {
   }
   if (selection.kind === "invoice") {
     const invoice = user.creditInvoices?.find(entry => (selection.reference && entry.reference === selection.reference) || (selection.line?.invoiceId && entry.id === selection.line.invoiceId));
-    if (invoice) return { kind: "invoice", actor: invoice.actor, reference: invoice.reference || creditInvoiceReference(invoice), date: invoice.Date, customer: invoice.customer, lines: invoice.lines || [invoice.line], total: invoice.total, paid: invoice.paid, remaining: invoice.remaining };
+    if (invoice) return { ...(invoice.cancelledAt ? { cancelledAt: invoice.cancelledAt } : {}), kind: "invoice", actor: invoice.actor, reference: invoice.reference || creditInvoiceReference(invoice), date: invoice.Date, customer: invoice.customer, lines: invoice.lines || [invoice.line], total: invoice.total, paid: invoice.paid, remaining: invoice.remaining };
     if (selection.line) {
       const line = selection.line, total = creditRound(line.lineTotal ?? line.prix * line.Quantite), paid = creditRound(line.Paiement);
       return { kind: "invoice", actor: line.actor, reference: `CI-${String(user._id).toUpperCase()}-${line.id}`, date: line.Date, customer, lines: [line], total, paid, remaining: creditRound(Math.max(total - paid, 0)) };

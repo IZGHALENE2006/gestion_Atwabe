@@ -105,6 +105,13 @@ const schema = new mongoose.Schema({
   measurements: { type: measurementsSchema },
   measurementNotes: measurementNotesField(),
   clientName: { type: String, required: true, maxlength: 160 },
+  clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
+  creditDelivery: { type: new mongoose.Schema({
+    accountId: { type: mongoose.Schema.Types.ObjectId, required: true }, clientId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    state: { type: String, enum: ['prepared', 'complete', 'cancelled'], required: true },
+    total: { ...costMoney }, initialPaid: { ...costMoney }, preparedAt: { type: Date, required: true }, actor: { type: actorSchema, required: true },
+    customer: { type: new mongoose.Schema({ name: String, phone: String, cin: String }, { _id: false }), required: true },
+  }, { _id: false }) },
   phone: { type: String, required: true, maxlength: 40 },
   orderDate: { type: String, required: true, validate: validTailoringDate },
   readyDate: { type: String, required: true, validate: validTailoringDate },
@@ -134,6 +141,10 @@ const schema = new mongoose.Schema({
   deliveryFabricItems: { type: [itemSchema], default: undefined },
 }, { timestamps: true, optimisticConcurrency: true });
 schema.pre("validate", function () {
+  if (this.creditDelivery) {
+    const plan = this.creditDelivery;
+    if (String(plan.clientId) !== String(this.clientId) || tailoringMoneyCents(plan.total) !== tailoringMoneyCents(this.totalPrice) || tailoringMoneyCents(plan.initialPaid) !== tailoringMoneyCents(this.paidAmount) || !(plan.initialPaid < plan.total) || (plan.state !== 'prepared' && !this.deliveredAt) || (plan.state === 'cancelled' && !this.cancelledAt)) this.invalidate('creditDelivery', 'Invalid credit delivery snapshot');
+  }
   if (this.adjustments) {
     try {
       if (!tailoringAllowsFourFille(this.garmentType) && (this.adjustments.fourFilleUnitPrice !== 0 || this.items?.some(item => item.pricing?.fourFille))) throw new Error("4fille is unavailable for this garment");

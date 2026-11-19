@@ -1,3 +1,4 @@
+import { tailoringCreditArabic } from './tailoringCredit.js';
 import { ownerDebtsArabic } from './ownerDebts.js';
 import { fabricInvoicesArabic } from './fabricInvoices.js';
 import { employeePayrollArabic } from './employeePayroll.js';
@@ -33,7 +34,8 @@ const resources = {
       sideExpenses: sideExpensesArabic,
       productBatches: productBatchesArabic,
       fabrics: fabricsArabic,
-      fesla: feslaArabic,
+      tailoringCredit: tailoringCreditArabic,
+      fesla: { ...feslaArabic, errors: { ...feslaArabic.errors, ...tailoringCreditArabic.errors } },
       workers: workersArabic,
       sfifaStock: sfifaStockArabic,
       documentClient: {

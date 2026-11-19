@@ -1,3 +1,4 @@
+import { tailoringCreditFrench } from './tailoringCredit.js';
 import { ownerDebtsFrench } from './ownerDebts.js';
 import { fabricInvoicesFrench } from './fabricInvoices.js';
 import { employeePayrollFrench } from './employeePayroll.js';
@@ -27,7 +28,8 @@ export default {
   sideExpenses: sideExpensesFrench,
       productBatches: productBatchesFrench,
   fabrics: fabricsFrench,
-  fesla: feslaFrench,
+  tailoringCredit: tailoringCreditFrench,
+      fesla: { ...feslaFrench, errors: { ...feslaFrench.errors, ...tailoringCreditFrench.errors } },
   workers: workersFrench,
   sfifaStock: sfifaStockFrench,
   documentClient: {

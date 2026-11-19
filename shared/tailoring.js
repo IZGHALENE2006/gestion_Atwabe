@@ -1,3 +1,4 @@
+import { tailoringCreditInput } from "./tailoringCredit.js";
 import { validateTailoringAdjustmentInput, validateTailoringDiscount, quoteTailoringAdjustments } from "./tailoringAdjustments.js";
 import { validateTailoringSfifaSelection } from "./tailoringSfifa.js";
 import { validateTailoringMeasurements, validateTailoringMeasurementNotes } from "./tailoringMeasurements.js";
@@ -136,6 +137,7 @@ export function tailoringItemsTotal(items) {
   return total <= 99999999999 ? total / 100 : null;
 }
 export function validateTailoringOrder(input) {
+  const credit = tailoringCreditInput(input);
   const rawStock = input?.deductFabricStock;
   if (![undefined, true, false, "true", "false"].includes(rawStock)) throw Object.assign(new Error("invalidOrder"), { fields: { items: "chooseFabricPiece" } });
   const deductFabricStock = rawStock === true || rawStock === "true";
@@ -160,7 +162,7 @@ export function validateTailoringOrder(input) {
   const automaticCosting = rawMode === true || rawMode === "true";
   if (automaticCosting && (!tailoringUsesSfifa(input) || input?.items === undefined)) throw Object.assign(new Error("invalidOrder"), { fields: { items: "itemsRequired" } });
   if (input?.items === undefined && input?.adjustments !== undefined) throw Object.assign(new Error("invalidOrder"), { fields: { items: "itemsRequired" } });
-  if (input?.items === undefined) { const value = validateSingleTailoringOrder(input); if (value.sfifa?.stock) throw Object.assign(new Error("invalidOrder"), { fields: { items: "itemsRequired" } }); return value; }
+  if (input?.items === undefined) { const value = validateSingleTailoringOrder(input); if (value.sfifa?.stock) throw Object.assign(new Error("invalidOrder"), { fields: { items: "itemsRequired" } }); return { ...value, ...credit }; }
   const fields = {}, seen = new Set();
   let rawItems = input.items;
   if (typeof rawItems === "string") { try { rawItems = JSON.parse(rawItems); } catch { rawItems = null; } }
@@ -214,7 +216,7 @@ export function validateTailoringOrder(input) {
   else if (totalPrice !== null && paid > tailoringMoneyCents(totalPrice)) fields.paidAmount = "paidExceedsPrice";
   if (Object.keys(fields).length) throw Object.assign(new Error("invalidOrder"), { fields });
   const first = items[0];
-  return { ...(adjustments ? { adjustments } : {}), clientName: input.clientName.trim(), phone: input.phone.trim(), orderDate: input.orderDate.trim(), readyDate: input.readyDate.trim(), totalPrice, paidAmount: paid / 100, fabricSource: first.fabricSource, fabricType: first.fabricType, fabricColor: first.fabricColor, fabricId: first.fabricId, colorId: first.colorId, ...(input.garmentType === undefined ? {} : { garmentType: input.garmentType }), ...(trousers ? { trouserType: first.trouserType, expenseAmount: expenses / 100 } : input.garmentType === "shirts" ? { shirtType: first.shirtType, expenseAmount: expenses / 100 } : { sfifa: first.sfifa }), items, ...(deductFabricStock ? { deductFabricStock: true } : {}), ...(automaticCosting ? { automaticCosting: true, costSettingsVersion, ...(salePricingVersion ? { salePricingVersion } : {}) } : {}), ...(fabricCosting ? { fabricCosting: true, ...(recordFabricSales ? { recordFabricSales: true } : {}) } : {}), ...(laborCosting ? { laborCosting: true, costSettingsVersion } : {}) };
+  return { ...credit, ...(adjustments ? { adjustments } : {}), clientName: input.clientName.trim(), phone: input.phone.trim(), orderDate: input.orderDate.trim(), readyDate: input.readyDate.trim(), totalPrice, paidAmount: paid / 100, fabricSource: first.fabricSource, fabricType: first.fabricType, fabricColor: first.fabricColor, fabricId: first.fabricId, colorId: first.colorId, ...(input.garmentType === undefined ? {} : { garmentType: input.garmentType }), ...(trousers ? { trouserType: first.trouserType, expenseAmount: expenses / 100 } : input.garmentType === "shirts" ? { shirtType: first.shirtType, expenseAmount: expenses / 100 } : { sfifa: first.sfifa }), items, ...(deductFabricStock ? { deductFabricStock: true } : {}), ...(automaticCosting ? { automaticCosting: true, costSettingsVersion, ...(salePricingVersion ? { salePricingVersion } : {}) } : {}), ...(fabricCosting ? { fabricCosting: true, ...(recordFabricSales ? { recordFabricSales: true } : {}) } : {}), ...(laborCosting ? { laborCosting: true, costSettingsVersion } : {}) };
 }
 
 const searchable = (value) => String(value || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();

@@ -1,4 +1,4 @@
-import { WORKER_DJELLABA_NUMBERS } from '../../../shared/workerMaterials.js';
+import { WORKER_DJELLABA_NUMBERS, workerMaterialRows } from '../../../shared/workerMaterials.js';
 import useSearchTarget from "../../hooks/useSearchTarget.js";
 import { shopPieceNumber } from '../../../shared/workerShopFlow.js';
 import { workerSfifaNumberLabel } from './workerSfifaLabels.js';
@@ -22,6 +22,8 @@ import TrouserSummary from "./TrouserSummary.jsx";
 import "./workerWork.css";
 
 const searchable = value => String(value || "").normalize("NFKC").toLocaleLowerCase();
+const colorLabel = value => String(value || "").trim().replace(/\s+/g, " ");
+const workColors = work => work.category === "trousers" ? (work.shopTrouser?.colors || []).map(color => color.name) : workerMaterialRows(work).map(row => row.fabricColor);
 export default function WorkerWorkPage() {
   const { category, workerId } = useParams();
   const [params, setParams] = useSearchParams();
@@ -36,7 +38,8 @@ export default function WorkerWorkPage() {
   const scope = `${workerId}:${category}`, workScope = `${scope}:${workType}:${garmentType}`;
   const validCategory = WORK_TRACKING_CATEGORIES.includes(category), isSfifa = category === "sfifa", isTrousers = category === "trousers";
   const state = result?.token === token && result.scope === scope && result.attempt === attempt ? result : { worker: null, works: [], permissions: {}, loading: true, error: "" };
-  const filterDjellabaNumbers = workType === 'shop' && garmentType === 'djellaba';
+  const filterShopDjellaba = workType === 'shop' && garmentType === 'djellaba';
+  const filterShopColors = filterShopDjellaba || workType === 'shop' && isTrousers;
   const filters = view?.scope === workScope ? view : { status: "all", query: "" };
   useEffect(() => {
     if (!token || !validCategory) return;
@@ -64,12 +67,19 @@ export default function WorkerWorkPage() {
   const totals = workerWorkTotals(works, category);
   const number = value => new Intl.NumberFormat(i18n.language === "ar" ? "ar-MA" : "fr-MA", { maximumFractionDigits: 3 }).format(value);
   const counts = { all: works.length, inProgress: works.filter(work => work.remainingQuantity > 0).length, done: works.filter(work => work.remainingQuantity === 0).length };
+  const colors = new Map();
+  if (filterShopColors) works.forEach(work => workColors(work).forEach(color => {
+    const label = colorLabel(color);
+    if (label && !colors.has(searchable(label))) colors.set(searchable(label), label);
+  }));
+  const colorOptions = [...colors].sort(([, a], [, b]) => a.localeCompare(b, i18n.language, { numeric: true }));
   const visible = works.filter(matchesSearchTarget).filter(work => {
     const statusMatches = filters.status === "all" || (filters.status === "done" ? work.remainingQuantity === 0 : work.remainingQuantity > 0);
     const title = work.category === "sfifa" ? `${t(`sfifaStock.widths.${work.sfifa.width}`)} ${workerSfifaNumberLabel(work.sfifa, t)} ${work.sfifa.code ?? ""}` : [work.productName, work.trouserType ? t(`workers.work.trousers.styles.${work.trouserType}`) : "", work.shopTrouser?.fabricType, work.shopTrouser?.fabricReference, work.shopTrouser?.size, work.shopTrouser?.length, ...(work.shopTrouser?.colors || []).flatMap(color => [color.name, color.number]), work.shopBarcode, work.tailoring?.barcode, work.tailoring?.phone, ...(work.tailoring?.items || []).flatMap(item => [item.fabricType, item.fabricColor])].join(" ");
     const modelNumber = work.shopDjellaba?.modelNumber ?? work.materials?.[0]?.modelNumber ?? work.shopFlow?.materials?.[0]?.modelNumber;
-    const numberMatches = !filterDjellabaNumbers || !filters.modelNumber || String(modelNumber) === filters.modelNumber;
-    return statusMatches && numberMatches && (searchable(title).includes(searchable(filters.query.trim())) || shopPieceNumber(work, filters.query) !== null);
+    const numberMatches = !filterShopDjellaba || !filters.modelNumber || String(modelNumber) === filters.modelNumber;
+    const colorMatches = !filterShopColors || !filters.color || workColors(work).some(color => searchable(colorLabel(color)) === filters.color);
+    return statusMatches && numberMatches && colorMatches && (searchable(title).includes(searchable(filters.query.trim())) || shopPieceNumber(work, filters.query) !== null);
   });
   const patchView = value => setView({ ...filters, ...value, scope: workScope });
   return <main dir={i18n.dir()} className="work-page"><div className="work-container">
@@ -86,7 +96,12 @@ export default function WorkerWorkPage() {
       {state.worker?.deletedAt && <p role="status" className="worker-removal-note" data-deleted-worker-note>{t("workers.removal.accountHint")}</p>}{isSfifa && <p className="work-stock-note"><IoCheckmarkCircleOutline aria-hidden="true" />{t(`workers.work.sfifa.${workType === "client" ? "clientSubtitle" : "subtitle"}`)}</p>}
       {status?.token === token && status.scope === workScope && <p role="status" className="work-feedback work-feedback-success"><IoCheckmarkCircleOutline aria-hidden="true" />{t(`workers.work.${status.key}`)}</p>}
       {!isTrousers || workType === "shop" ? <dl className="worker-summary">{["quantity", "completedQuantity", "remainingQuantity"].map(key => <div key={key}><dt>{t(`workers.work.design.${key}`)}</dt><dd data-work-total={key} data-value={totals[key]} className={`worker-amount-${key}`}><bdi>{number(totals[key])}</bdi>{isSfifa && <small>{t("sfifaStock.unit")}</small>}</dd></div>)}</dl> : null}
-      <section className="work-list-section" aria-labelledby="work-list-title"><div className="work-list-heading"><div><p className="work-eyebrow">{typeLabel(workType)}</p><h2 id="work-list-title">{t("workers.work.design.workList")} <span>{number(counts.all)}</span></h2></div><div className="work-list-controls">{filterDjellabaNumbers && <label className="work-number-filter"><span>{t('workers.work.shopDjellaba.modelNumber')}</span><select className="work-input" data-filter-djellaba-number value={filters.modelNumber || ''} onChange={event => patchView({ modelNumber: event.target.value })}><option value="">{t('workers.work.shopDjellaba.allNumbers')}</option>{WORKER_DJELLABA_NUMBERS.map(value => <option key={value} value={value}>{value}</option>)}</select></label>}<label className="work-search"><IoSearchOutline aria-hidden="true" /><span className="sr-only">{t("workers.work.design.search")}</span><input type="search" data-search-work value={filters.query} onChange={event => patchView({ query: event.target.value })} placeholder={t("workers.work.design.search")} /></label></div></div>
+      <section className="work-list-section" aria-labelledby="work-list-title"><div className="work-list-heading"><div><p className="work-eyebrow">{typeLabel(workType)}</p><h2 id="work-list-title">{t("workers.work.design.workList")} <span>{number(counts.all)}</span></h2></div><div className="work-list-controls">
+        {filterShopDjellaba &&
+          <label className="work-number-filter"><span>{t('workers.work.shopDjellaba.modelNumber')}</span><select className="work-input" data-filter-djellaba-number value={filters.modelNumber || ''} onChange={event => patchView({ modelNumber: event.target.value })}><option value="">{t('workers.work.shopDjellaba.allNumbers')}</option>{WORKER_DJELLABA_NUMBERS.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+        }
+        {filterShopColors && <label className="work-number-filter work-color-filter"><span>{t('workers.work.shopDjellaba.color')}</span><select className="work-input" data-filter-work-color data-filter-djellaba-color={filterShopDjellaba ? '' : undefined} value={filters.color || ''} onChange={event => patchView({ color: event.target.value })}><option value="">{t('workers.work.shopDjellaba.allColors')}</option>{colorOptions.map(([value, label]) => <option key={value} value={value} dir="auto">{label}</option>)}</select></label>}
+        <label className="work-search"><IoSearchOutline aria-hidden="true" /><span className="sr-only">{t("workers.work.design.search")}</span><input type="search" data-search-work value={filters.query} onChange={event => patchView({ query: event.target.value })} placeholder={t("workers.work.design.search")} /></label></div></div>
         <div className="work-filter-tabs" aria-label={t("workers.work.design.statusFilter")}>{["all", "inProgress", "done"].map(key => <button key={key} type="button" data-work-filter={key} aria-pressed={filters.status === key} onClick={() => patchView({ status: key })}>{key === "all" ? <IoBriefcaseOutline aria-hidden="true" /> : key === "done" ? <IoCheckmarkDoneOutline aria-hidden="true" /> : <IoTimeOutline aria-hidden="true" />}{t(key === "all" ? "workers.work.design.allWorks" : `workers.work.${key}`)}<span>{number(counts[key])}</span></button>)}</div>
         {visible.length ? <WorkerWorkTable works={visible} worker={state.worker} category={category} canEditWork={state.permissions.editWork && state.canAssign} onEditWork={work => edit(work, 'edit')} canComplete={state.permissions.complete} canIncrease={state.permissions.increase && state.canAssign} canDelete={state.permissions.deleteWork || state.permissions.cancelWork} canResume={state.permissions.resume} onComplete={edit} onIncrease={work => edit(work, "increase")} onDelete={work => edit(work, "delete")} onCancel={work => edit(work, 'cancel')} onResume={work => edit(work, 'resume')} /> : <div className="work-empty"><IoBriefcaseOutline aria-hidden="true" /><h3>{t(works.length ? "workers.work.design.noResults" : "workers.work.empty")}</h3>{works.length ? <button type="button" className="work-text-button" onClick={() => setView(null)}>{t("workers.work.design.clearFilters")}</button> : state.permissions.assign && state.canAssign && <p>{t(isSfifa ? "workers.work.sfifa.emptyHint" : isTrousers && workType === "client" ? "workers.work.trousers.emptyHint" : category === "brim" ? "workers.work.brimEmptyHint" : workType === "client" ? "workers.work.clientEmptyHint" : "workers.work.emptyHint")}</p>}</div>}
       </section>

@@ -1,0 +1,19 @@
+export const tailoringCreditArabic = {
+  select: 'زبون مسجّل', manual: 'إدخال اسم الزبون يدويًا', loading: 'تحميل الزبائن…', retry: 'إعادة تحميل الزبائن', depositTitle: 'تسبيق اختياري: 50٪ من الإجمالي',
+  previousDebt: 'تنبيه: على هذا الزبون دين سابق قدره {{amount}} درهم.',
+  choice: 'تسليم مع تسجيل المتبقي دينًا', hint: 'يُسجَّل الطلب مسلّمًا، ويُضاف المتبقي إلى حساب دين الزبون دون تكرار التسبيق.',
+  selectFirst: 'اختر زبونًا مسجّلًا لتسجيل المتبقي في حسابه.', minimum: 'يمكن التسليم بأي تسبيق أو دونه. 50% من المجموع تساوي {{amount}} درهم (اختياري).', useMinimum: 'تعبئة 50%',
+  deliveredWithDebt: 'مسلّم مع دين', settled: 'مسلّم · سُدّد الدين', pending: 'جارٍ تسجيل الدين', remaining: 'الدين المتبقي',
+  filter: 'نوع الطلب', all: 'جميع الطلبات', credit: 'طلبات التسليم بالدين', open: 'مسلّمة بدين متبقٍ', paid: 'طلبات الدين المسدّدة', regular: 'الطلبات العادية',
+  clientBalance: 'عليه دين: {{amount}} درهم', noDebt: 'لا توجد ديون', source: 'طلب فصالة', cancelHint: 'يُلغى المتبقي من الدين. تبقى الدفعات السابقة في السجل؛ لا يُسجَّل ردّ مال تلقائيًا.',
+  errors: { chooseCreditClient: 'اختر زبونًا مسجّلًا من القائمة.', invalidCreditDelivery: 'راجع خيار التسليم بالدين.', creditDepositRequired: 'راجع المبلغ المدفوع. يمكن أن يكون صفرًا، ويجب أن يبقى مبلغ غير مدفوع لتسجيله دينًا.', creditCustomerAmbiguous: 'توجد عدة حسابات دين تطابق هذا الزبون. راجع حساباته قبل تسجيل الدين.', creditClientsFailed: 'تعذر تحميل الزبائن. حاول مجددًا، أو أدخل الاسم يدويًا للطلب العادي.', creditAccountUnavailable: 'تعذر الوصول إلى حساب الدين. أعد تحميل الطلب.', creditOrderLocked: 'هذا الطلب مرتبط بحساب دين. سجّل الدفعات من الطلب أو قسم الديون؛ تبقى بياناته المالية محفوظة.', tailoringOrderLinked: 'هذا الدين مرتبط بطلب فصالة. استعمل عمليات الطلب لتعديله أو إلغائه.' },
+};
+export const tailoringCreditFrench = {
+  select: 'Client enregistré', manual: 'Saisir le client manuellement', loading: 'Chargement des clients…', retry: 'Recharger les clients', depositTitle: 'Acompte facultatif : 50 % du total',
+  previousDebt: 'Rappel : ce client doit déjà {{amount}} DH.', choice: 'Livrer et enregistrer le solde à crédit', hint: 'La commande sera livrée et son solde ajouté au compte du client, sans compter deux fois son acompte.',
+  selectFirst: 'Choisissez un client enregistré pour rattacher sa dette.', minimum: 'Tout acompte est accepté, même zéro. À titre indicatif, 50 % représentent {{amount}} DH.', useMinimum: 'Renseigner 50 %',
+  deliveredWithDebt: 'Livrée à crédit', settled: 'Livrée · crédit réglé', pending: 'Enregistrement du crédit', remaining: 'Crédit restant',
+  filter: 'Type de commande', all: 'Toutes les commandes', credit: 'Livraisons à crédit', open: 'Livrées avec un solde dû', paid: 'Crédits réglés', regular: 'Commandes ordinaires',
+  clientBalance: 'Doit : {{amount}} DH', noDebt: 'Aucune dette', source: 'Commande de couture', cancelHint: 'Le solde dû sera annulé. Les versements restent dans le journal ; aucun remboursement automatique ne sera enregistré.',
+  errors: { chooseCreditClient: 'Choisissez un client enregistré.', invalidCreditDelivery: 'Vérifiez la livraison à crédit.', creditDepositRequired: 'L’acompte peut être nul. Vérifiez le montant payé et le solde restant à enregistrer.', creditCustomerAmbiguous: 'Plusieurs comptes de crédit correspondent à ce client. Vérifiez ses comptes.', creditClientsFailed: 'Impossible de charger les clients. Réessayez, ou saisissez un nom pour une commande ordinaire.', creditAccountUnavailable: 'Compte de crédit indisponible. Rechargez la commande.', creditOrderLocked: 'Cette commande est liée à un compte de crédit. Enregistrez les paiements depuis la commande ou le crédit ; ses données financières restent conservées.', tailoringOrderLinked: 'Ce crédit est lié à une commande de couture. Utilisez les actions de la commande pour l’annuler.' },
+};

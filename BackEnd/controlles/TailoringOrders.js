@@ -1,3 +1,6 @@
+import Client from '../models/Client.js';
+import { resolveTailoringClient, prepareTailoringCredit, finishTailoringCredit, publicTailoringCreditOrder, payTailoringCredit, clientCreditSummaries } from "../utils/tailoringCredit.js";
+import { tailoringCreditInput } from "../../shared/tailoringCredit.js";
 import { currentSfifaViews } from "../utils/sfifaIdentity.js";
 import { ensureSfifaStyleBalances } from "../utils/sfifaStyleBalances.js";
 import SfifaStock from '../models/SfifaStock.js';
@@ -20,13 +23,14 @@ import { createTailoringReceipt, publicTailoringReceipt, tailoringPaymentReferen
 import { saveTailoringPhoto, deleteTailoringPhoto, tailoringPhotoPath } from "../utils/tailoringPhotos.js";
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
+const readyTailoringOrder = async order => finishTailoringCredit(await resumeTailoringFabricStock(order));
 const publicPayment = (order, receipt, index) => ({ amount: receipt.amount, paidAt: receipt.paidAt, reference: tailoringPaymentReference(order, index), ...(receipt.actor ? { actor: receipt.actor } : {}), ...(receipt.document ? { document: publicTailoringReceipt(receipt.document) } : {}) });
-const publicOrder = (document) => {
+const publicOrder = async (document) => {
   const { stockOperation: _stockOperation, photo, items: _items, requestId: _requestId, requestFingerprint: _fingerprint, paymentReceipts = [], deliveryFabricItems: _deliveryFabricItems, deliveredBy: _deliveredBy, ...order } = typeof document.toObject === "function" ? document.toObject() : document;
   const totalPrice = order.totalPrice ?? 0, paidAmount = order.paidAmount ?? 0;
   const items = tailoringOrderItems({ ...order, items: _items, photo }).map(raw => { const { photo: itemPhoto, fabricSale: _fabricSale, ...item } = raw; return { ...item, hasPhoto: Boolean(itemPhoto) }; });
   const garmentType = tailoringGarmentType(order);
-  return { ...order, ...(order.customerReceipt ? { customerReceipt: publicTailoringReceipt(order.customerReceipt) } : {}), garmentType, ...((tailoringHasExpenses(order) || order.costing) ? { profitAmount: tailoringProfitAmount(totalPrice, order.expenseAmount) } : {}), items, deliveredAt: order.deliveredAt ?? null, addedPayments: paymentReceipts.map((receipt, index) => publicPayment(order, receipt, index)), barcode: tailoringOrderBarcode(order), totalPrice, paidAmount, remainingAmount: tailoringRemainingAmount(totalPrice, paidAmount), hasPhoto: Boolean(photo) };
+  return publicTailoringCreditOrder({ ...order, ...(order.customerReceipt ? { customerReceipt: publicTailoringReceipt(order.customerReceipt) } : {}), garmentType, ...((tailoringHasExpenses(order) || order.costing) ? { profitAmount: tailoringProfitAmount(totalPrice, order.expenseAmount) } : {}), items, deliveredAt: order.deliveredAt ?? null, addedPayments: paymentReceipts.map((receipt, index) => publicPayment(order, receipt, index)), barcode: tailoringOrderBarcode(order), totalPrice, paidAmount, remainingAmount: tailoringRemainingAmount(totalPrice, paidAmount), hasPhoto: Boolean(photo) }, document);
 };
 const sendError = (res, error, fallback) => {
   if (error.message === "invalidOrder") return res.status(400).json({ message: "invalidOrder", fields: error.fields });
@@ -67,7 +71,7 @@ function checkImageMapping(req, value) {
   if (indices.length !== images.length || new Set(indices).size !== indices.length || indices.some(index => index >= images.length)) throw fail("imageUploadInvalid", 400);
 }
 async function orderInput(req, idAdmin, current) {
-  const value = validateTailoringOrder(req.body);
+  const value = await resolveTailoringClient(validateTailoringOrder(req.body), idAdmin, current);
   if (current && tailoringGarmentType(value) !== tailoringGarmentType(current)) throw Object.assign(fail("invalidOrder", 400), { fields: { garmentType: "garmentTypeLocked" } });
   checkImageMapping(req, value);
   if (!value.items) {
@@ -105,13 +109,21 @@ export async function listTailoringSfifaOptions(req, res) {
     res.json({ items });
   } catch (error) { sendError(res, error, 'sfifaStockUnavailable'); }
 }
+export async function listTailoringClientOptions(req, res) {
+  try {
+    const { idAdmin, permissions } = await accessFor(req, ['add', 'update', 'deliver']);
+    const rows = await Client.find({ idAdmin }).sort({ name: 1 }).lean();
+    const clients = permissions.creditDelivery ? await clientCreditSummaries(rows, idAdmin) : rows;
+    res.json({ clients: clients.map(row => ({ _id: row._id, name: row.name, phone: row.phone, ...(permissions.creditDelivery ? { creditRemainingAmount: row.creditRemainingAmount, creditAmbiguous: row.creditAmbiguous } : {}) })) });
+  } catch (error) { sendError(res, error, 'creditClientsFailed'); }
+}
 export async function listTailoringOrders(req, res) {
   try {
     const { idAdmin, permissions } = await accessFor(req);
     const orders = await TailoringOrder.find({ idAdmin }).sort({ orderDate: -1, createdAt: -1, _id: -1 }).lean();
     const ready = [];
-    for (const row of orders) ready.push(row.stockOperation ? await resumeTailoringFabricStock(await TailoringOrder.findOne({ _id: row._id, idAdmin })) : row);
-    res.json({ orders: await currentSfifaViews(idAdmin, ready.filter(Boolean).map(publicOrder)), permissions });
+    for (const row of orders) ready.push((row.stockOperation || row.creditDelivery) ? await readyTailoringOrder(await TailoringOrder.findOne({ _id: row._id, idAdmin })) : row);
+    res.json({ orders: await currentSfifaViews(idAdmin, await Promise.all(ready.filter(Boolean).map(publicOrder))), permissions });
   } catch (error) { sendError(res, error, "loadFailed"); }
 }
 
@@ -133,20 +145,21 @@ export async function addTailoringOrder(req, res) {
     const existing = await TailoringOrder.findOne({ idAdmin, requestId });
     if (existing) {
       if (existing.requestFingerprint !== requestFingerprint) throw fail("requestConflict", 409);
-      return res.json(publicOrder(await resumeTailoringFabricStock(existing)));
+      return res.json(await publicOrder(await readyTailoringOrder(existing)));
     }
     const input = await attachPhotos(req, await orderInput(req, idAdmin), null, createdPhotos);
     const document = { ...input, _id: new mongoose.Types.ObjectId(), idAdmin, createdBy, creator, requestId, requestFingerprint };
+    if (input.deliverOnCredit) document.creditDelivery = await prepareTailoringCredit(document, req.tailoringAccess);
     document.customerReceipt = createTailoringReceipt(document, { issuedAt: new Date() });
     const order = (input.deductFabricStock || hasTailoringSfifa(input)) ? await saveTailoringFabricStock(document, { create: true }) : await TailoringOrder.create(document);
     committed = true;
-    res.status(201).json(publicOrder(order));
+    res.status(201).json(await publicOrder(await finishTailoringCredit(order)));
   } catch (error) {
     if (!committed && !error.tailoringStockPersisted) await Promise.all(createdPhotos.map(deleteTailoringPhoto));
     if (error.code === 11000 && requestId) {
       try {
         const existing = await TailoringOrder.findOne({ idAdmin: req.tailoringAccess.idAdmin, requestId });
-        if (existing?.requestFingerprint === requestFingerprint) return res.json(publicOrder(await resumeTailoringFabricStock(existing)));
+        if (existing?.requestFingerprint === requestFingerprint) return res.json(await publicOrder(await readyTailoringOrder(existing)));
         if (existing) return res.status(409).json({ message: "requestConflict" });
       } catch { /* Return the stable save error below. */ }
     }
@@ -161,9 +174,10 @@ export async function updateTailoringOrder(req, res) {
     if (!mongoose.isObjectIdOrHexString(req.params.id)) throw fail("notFound", 404);
     let order = await TailoringOrder.findOne({ _id: req.params.id, idAdmin });
     if (!order) throw fail("notFound", 404);
-    order = await resumeTailoringFabricStock(order);
+    order = await readyTailoringOrder(order);
     checkActionVersion(req, order);
     if (order.cancelledAt) throw fail("orderCancelled", 409);
+    if (order.creditDelivery || req.body.deliverOnCredit === true || req.body.deliverOnCredit === "true") throw fail("creditOrderLocked", 409);
     if (![undefined, false, true, "false", "true"].includes(req.body.removeImage)) throw fail("invalidOrder", 400);
     const previous = orderPhotos(order);
     const input = await attachPhotos(req, await orderInput(req, idAdmin, order), order, createdPhotos);
@@ -180,7 +194,7 @@ export async function updateTailoringOrder(req, res) {
     committed = true;
     const retained = orderPhotos(savedOrder);
     await Promise.all([...previous].filter(photo => !retained.has(photo)).map(deleteTailoringPhoto));
-    res.json(publicOrder(savedOrder));
+    res.json(await publicOrder(savedOrder));
   } catch (error) { if (!committed && !error.tailoringStockPersisted) await Promise.all(createdPhotos.map(deleteTailoringPhoto)); sendError(res, error, "saveFailed"); }
 }
 export async function getTailoringPhoto(req, res) {
@@ -201,7 +215,7 @@ async function actionOrder(req) {
   if (!mongoose.isObjectIdOrHexString(req.params.id)) throw fail("notFound", 404);
   const order = await TailoringOrder.findOne({ _id: req.params.id, idAdmin });
   if (!order) throw fail("notFound", 404);
-  return resumeTailoringFabricStock(order);
+  return readyTailoringOrder(order);
 }
 function checkActionVersion(req, order) {
   const raw = req.body?.version;
@@ -219,7 +233,12 @@ export async function addTailoringPayment(req, res) {
     // A retry after a lost response must never add the same payment again.
     if (receipt) {
       if (tailoringMoneyCents(receipt.amount) !== amount) throw fail("requestConflict", 409);
-      return res.json({ ...publicOrder(order), paymentReceipt: publicPayment(order, receipt, order.paymentReceipts.indexOf(receipt)) });
+      return res.json({ ...await publicOrder(order), paymentReceipt: publicPayment(order, receipt, order.paymentReceipts.indexOf(receipt)) });
+    }
+    if (order.creditDelivery) {
+      const paymentId = await payTailoringCredit(order, amount, requestId, req.tailoringAccess.creator);
+      const output = await publicOrder(order);
+      return res.json({ ...output, paymentReceipt: output.addedPayments.find(payment => payment.creditPaymentId === paymentId) });
     }
     if (order.cancelledAt) throw fail("orderCancelled", 409);
     checkActionVersion(req, order);
@@ -232,21 +251,28 @@ export async function addTailoringPayment(req, res) {
     order.paymentReceipts.push({ requestId, amount: amount / 100, paidAt, createdBy: req.tailoringAccess.createdBy, actor: req.tailoringAccess.creator, document });
     // Money and its receipt commit together using the order's optimistic version.
     await order.save();
-    res.json({ ...publicOrder(order), paymentReceipt: publicPayment(order, order.paymentReceipts.at(-1), order.paymentReceipts.length - 1) });
+    res.json({ ...await publicOrder(order), paymentReceipt: publicPayment(order, order.paymentReceipts.at(-1), order.paymentReceipts.length - 1) });
   } catch (error) { sendError(res, error, "saveFailed"); }
 }
 export async function deliverTailoringOrder(req, res) {
   try {
     const order = await actionOrder(req);
     if (order.cancelledAt) throw fail("orderCancelled", 409);
-    if (order.deliveredAt) return res.json(publicOrder(order));
+    if (order.deliveredAt) return res.json(await publicOrder(order));
     checkActionVersion(req, order);
+    const credit = tailoringCreditInput({ clientId: req.body.clientId || order.clientId, deliverOnCredit: req.body.deliverOnCredit });
+    if (credit.deliverOnCredit) {
+      order.set(await resolveTailoringClient({ clientId: credit.clientId }, order.idAdmin, order));
+      order.creditDelivery = await prepareTailoringCredit(order, req.tailoringAccess);
+      await order.save();
+      return res.json(await publicOrder(await finishTailoringCredit(order)));
+    }
     if (order.costing?.pricingVersion >= 2 || order.fabricSalesVersion === 1) order.deliveryFabricItems = order.items.map(item => item.toObject());
     order.deliveryFinancials = createTailoringDeliveryFinancials(order);
     order.deliveredAt = new Date();
     order.deliveredBy = req.tailoringAccess.createdBy;
     await order.save();
-    res.json(publicOrder(order));
+    res.json(await publicOrder(order));
   } catch (error) { sendError(res, error, "saveFailed"); }
 }
 
@@ -254,7 +280,7 @@ export async function cancelTailoringOrder(req, res) {
   try {
     const order = await actionOrder(req);
     // A lost response or repeated click must not replace the original audit entry.
-    if (order.cancelledAt) return res.json(publicOrder(order));
+    if (order.cancelledAt) return res.json(await publicOrder(order));
     checkActionVersion(req, order);
     if (!order.deliveredAt && !order.fabricStock && !order.sfifaStock) throw fail("orderNotDelivered", 409);
     if (order.deliveredAt) order.deliveryFinancials ||= createTailoringDeliveryFinancials(order);
@@ -262,7 +288,7 @@ export async function cancelTailoringOrder(req, res) {
     order.cancelledBy = req.tailoringAccess.creator;
     // Return reserved materials only when cancellation occurs before delivery.
     const savedOrder = (order.fabricStock || order.sfifaStock) ? await saveTailoringFabricStock(order) : await order.save();
-    res.json(publicOrder(savedOrder));
+    res.json(await publicOrder(await finishTailoringCredit(savedOrder)));
   } catch (error) { sendError(res, error, "saveFailed"); }
 }
 

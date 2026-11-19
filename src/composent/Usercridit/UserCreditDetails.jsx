@@ -255,7 +255,7 @@ export default function UserCreditDetails() {
     const invoice = invoices.get(String(line.invoiceId));
     // Manual credit also has printable invoice snapshots. Distinguish the
     // original sale source, including older sales stored with a lines array.
-    const isInvoice = Boolean(line.fabricInvoiceId || invoice && (['cashier', 'fabric'].includes(invoice.origin) || !invoice.origin && Array.isArray(invoice.lines)));
+    const isInvoice = Boolean(line.fabricInvoiceId || invoice && (['cashier', 'fabric', 'tailoring'].includes(invoice.origin) || !invoice.origin && Array.isArray(invoice.lines)));
     const reference = isInvoice ? invoice ? invoice.reference || creditInvoiceReference(invoice) : 'FI-' + String(line.fabricInvoiceId).toUpperCase() : '';
     return { line, source: isInvoice ? 'invoices' : 'regular', reference };
   });
@@ -396,7 +396,7 @@ export default function UserCreditDetails() {
                   <td className="px-6 py-4" data-row-actions-cell><RowActionsMenu menuKey="UserCreditDetails">
                     <div className="flex justify-center gap-2">
                       <EmployeeOperation module="credit" operation="print"><button type="button" data-credit-line-invoice={line.id} onClick={() => openDocument(selectedUser, { kind: "invoice", line })} className="credit-document-icon" title={t("creditDocuments.printInvoice")} aria-label={t("creditDocuments.printInvoice")}><IoDocumentTextOutline size={18} /></button></EmployeeOperation>
-                      {canDelete && <button
+                      {canDelete && !line.fabricInvoiceId && !line.tailoringOrderId && <button
                         disabled={actionLoading}
                         onClick={() => handleDeleteLine(line.id)}
                         className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-rose-500 hover:text-white transition-all disabled:opacity-50"

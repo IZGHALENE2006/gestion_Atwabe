@@ -18,6 +18,7 @@ const CreditProductSchema = new mongoose.Schema(
     batchId: String, batchNumber: Number,
     unit: { type: String, enum: ['piece', 'meter'] },
     fabricInvoiceId: mongoose.Schema.Types.ObjectId,
+    tailoringOrderId: mongoose.Schema.Types.ObjectId,
     productId: { type: mongoose.Schema.Types.ObjectId, default: undefined },
     lineTotal: { type: Number, min: 0, default: undefined },
     discountAmount: { type: Number, min: 0, default: undefined },
@@ -80,12 +81,13 @@ PaymentSchema.pre("validate", function () {
   const b = this.balanceSnapshot;
   if (b && (creditRound(b.paidBefore + this.amount) !== creditRound(b.paidAfter) || creditRound(Math.max(b.total - b.paidBefore, 0)) !== creditRound(b.remainingBefore) || creditRound(Math.max(b.total - b.paidAfter, 0)) !== creditRound(b.remainingAfter))) this.invalidate("balanceSnapshot", "Inconsistent payment receipt");
 });
-const invoiceSchema = new mongoose.Schema({ id: { type: String, required: true }, ...requestFields, actor: { type: creditActorSchema, default: undefined }, origin: { type: String, enum: ["manual", "cashier", "fabric"], default: undefined }, Date: { type: Date, required: true }, customer: { type: customerSchema, required: true }, line: { type: CreditProductSchema, default: undefined }, lines: { type: [CreditProductSchema], default: undefined }, total: moneyField, paid: moneyField, remaining: moneyField }, { _id: false });
+const invoiceSchema = new mongoose.Schema({ id: { type: String, required: true }, ...requestFields, actor: { type: creditActorSchema, default: undefined }, origin: { type: String, enum: ["manual", "cashier", "fabric", "tailoring"], default: undefined }, Date: { type: Date, required: true }, customer: { type: customerSchema, required: true }, line: { type: CreditProductSchema, default: undefined }, lines: { type: [CreditProductSchema], default: undefined }, total: moneyField, paid: moneyField, remaining: moneyField, cancelledAt: Date, cancelledBy: { type: creditActorSchema }, cancelledPaid: Number }, { _id: false });
 invoiceSchema.pre("validate", function () { if (!this.line && !this.lines?.length) this.invalidate("lines", "Invoice purchases are required"); });
 
 const UserCriditShema = new mongoose.Schema(
   {
     createdBy: { type: creditActorSchema, default: undefined },
+    clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
     idUser: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",
@@ -144,5 +146,6 @@ const UserCriditShema = new mongoose.Schema(
   { timestamps: true, optimisticConcurrency: true }
 );
 
+UserCriditShema.index({ idUser: 1, clientId: 1 }, { unique: true, partialFilterExpression: { clientId: { $type: "objectId" } } });
 const UserCriditModele = mongoose.model("UserCridit", UserCriditShema);
 export default UserCriditModele;

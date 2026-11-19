@@ -1,4 +1,5 @@
 import { moduleOperationPermissions } from "../../shared/employeePermissions.js";
+import { clientCreditSummaries } from '../utils/tailoringCredit.js';
 import mongoose from "mongoose";
 import AdminModel from "../models/AdminModel.js";
 import EmployeModel from "../models/EmployeModele.js";
@@ -27,7 +28,7 @@ export async function listClients(req, res) {
   try {
     const { idAdmin, permissions } = await accessFor(req);
     const clients = await Client.find({ idAdmin }).sort({ name: 1, _id: 1 }).lean();
-    res.json({ clients, permissions });
+    res.json({ clients: await clientCreditSummaries(clients, idAdmin), permissions });
   } catch (error) { sendError(res, error, "loadFailed"); }
 }
 

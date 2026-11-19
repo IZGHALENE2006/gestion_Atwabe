@@ -6,7 +6,7 @@ export const loadTailoringOrders = async (token, signal) => (await axios.get(api
 export const loadTailoringPhoto = async (order, token, signal, lineId) => (await axios.get(`${api}/${encodeURIComponent(order._id)}${lineId ? `/items/${encodeURIComponent(lineId)}` : ""}/photo`, { headers: headers(token), responseType: "blob", signal })).data;
 export const addTailoringPayment = async (order, amount, requestId, token) => (await axios.post(`${api}/${encodeURIComponent(order._id)}/payments`, { amount, requestId, version: order.__v }, { headers: headers(token) })).data;
 export const cancelTailoringOrder = async (order, token) => (await axios.post(`${api}/${encodeURIComponent(order._id)}/cancel`, { version: order.__v }, { headers: headers(token) })).data;
-export const deliverTailoringOrder = async (order, token) => (await axios.post(`${api}/${encodeURIComponent(order._id)}/deliver`, { version: order.__v }, { headers: headers(token) })).data;
+export const deliverTailoringOrder = async (order, token, options = {}) => (await axios.post(`${api}/${encodeURIComponent(order._id)}/deliver`, { ...options, version: order.__v }, { headers: headers(token) })).data;
 export const saveTailoringOrder = async (input, selection, removeImage, token, order, requestId) => {
   const body = new FormData();
   const images = [];
@@ -28,3 +28,5 @@ export const loadDjellabaCostSettings = async (token, signal, garmentType = "dje
 export const saveDjellabaCostSettings = async (rates, version, token, garmentType = "djellaba", fourFillePrice) => (await axios.put(api + "/cost-settings", { rates, version, ...(fourFillePrice === undefined ? {} : { fourFillePrice }) }, { headers: headers(token), params: { ...(garmentType !== "djellaba" ? { garment: garmentType } : {}), ...(garmentType !== "trousers" ? { pricingVersion: 3 } : {}) } })).data;
 
 export const loadTailoringSfifaOptions = async (token, signal) => (await axios.get(api + "/sfifa-options", { headers: headers(token), signal })).data;
+
+export const loadTailoringClients = async (token, signal) => (await axios.get(api + "/client-options", { headers: headers(token), signal })).data;
