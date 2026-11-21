@@ -1,3 +1,7 @@
+import { clientTailoringArabic } from './clientTailoring.js';
+import { workerClientBatchArabic } from './workerClientBatch.js';
+import { allProfitsArabic } from './allProfits.js';
+import { documentSharingArabic } from './documentSharing.js';
 import { tailoringCreditArabic } from './tailoringCredit.js';
 import { ownerDebtsArabic } from './ownerDebts.js';
 import { fabricInvoicesArabic } from './fabricInvoices.js';
@@ -34,6 +38,10 @@ const resources = {
       sideExpenses: sideExpensesArabic,
       productBatches: productBatchesArabic,
       fabrics: fabricsArabic,
+      clientTailoring: clientTailoringArabic,
+      workerClientBatch: workerClientBatchArabic,
+      allProfits: allProfitsArabic,
+      documentSharing: documentSharingArabic,
       tailoringCredit: tailoringCreditArabic,
       fesla: { ...feslaArabic, errors: { ...feslaArabic.errors, ...tailoringCreditArabic.errors } },
       workers: workersArabic,

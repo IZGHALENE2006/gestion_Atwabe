@@ -18,11 +18,11 @@ export async function resolveTailoringClient(value, owner, current) {
   if (!client) throw fail('chooseCreditClient', 404);
   return { ...value, clientId: client._id, clientName: client.name, phone: client.phone };
 }
-export async function prepareTailoringCredit(order, access) {
+export async function prepareTailoringCredit(order, access, registeringClient) {
   if (!access.permissions.creditDelivery || !access.permissions.deliver) throw fail('forbidden', 403);
   if (!order.clientId) throw fail('chooseCreditClient', 400);
   if (!creditDeliveryDepositValid(order.totalPrice, order.paidAmount)) throw fail('creditDepositRequired', 400);
-  const client = await Client.findOne({ _id: order.clientId, idAdmin: access.idAdmin });
+  const client = await Client.findOne({ _id: order.clientId, idAdmin: access.idAdmin }) || registeringClient;
   if (!client) throw fail('chooseCreditClient', 404);
   const accounts = await UserCredit.find({ idUser: access.idAdmin });
   const matches = matchingClientCredits(client, accounts);

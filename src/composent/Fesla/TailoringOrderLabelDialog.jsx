@@ -1,15 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { IoCloseOutline, IoPrintOutline } from "react-icons/io5";
+import { IoCloseOutline, IoPrintOutline, IoShareSocialOutline } from "react-icons/io5";
 import { useReactToPrint } from "react-to-print";
 import { tailoringOrderItems, tailoringGarmentType } from "../../../shared/tailoring.js";
 import TailoringOrderBarcode from "./TailoringOrderBarcode.jsx";
 import { tailoringMeasurementText } from "./tailoringMeasurementText.js";
+import { tailoringOrderBarcode } from '../../../shared/tailoringBarcode.js';
+import { documentShareFilename, tailoringLabelShareMessage } from '../../../shared/documentSharing.js';
+import useEmployeeOperations from '../../hooks/useEmployeeOperations.js';
+import DocumentShareDialog from '../shared/DocumentShareDialog.jsx';
+import { createTailoringLabelPDF } from './tailoringLabelPDF.js';
 
 export default function TailoringOrderLabelDialog({ order, onClose }) {
   const { t, i18n } = useTranslation();
   const dialogRef = useRef(null), printRef = useRef(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState(false), [sharing, setSharing] = useState(false);
+  const operations = useEmployeeOperations('tailoring'), rtl = i18n.dir() === 'rtl', locale = i18n.language === 'ar' ? 'ar-MA' : 'fr-MA';
+  const createDocument = useCallback(() => createTailoringLabelPDF(order, { t, rtl, locale }), [order, t, rtl, locale]);
   const print = useReactToPrint({
     contentRef: printRef,
     documentTitle: `Fesla - ${order.clientName}`,
@@ -25,7 +32,7 @@ export default function TailoringOrderLabelDialog({ order, onClose }) {
   const items = tailoringOrderItems(order);
   const measurements = items.map((item, index) => ({ index, text: tailoringMeasurementText(item, t) })).filter(item => item.text.trim());
   const readyDate = new Date(`${order.readyDate}T12:00:00`).toLocaleDateString(i18n.language === "ar" ? "ar-MA" : "fr-MA");
-  return <dialog ref={dialogRef} dir={i18n.dir()} aria-labelledby="tailoring-label-title" onCancel={event => { event.preventDefault(); onClose(); }} className="fesla-label-dialog">
+  return <><dialog ref={dialogRef} dir={i18n.dir()} aria-labelledby="tailoring-label-title" onCancel={event => { event.preventDefault(); onClose(); }} className="fesla-label-dialog">
     <header><div><h2 id="tailoring-label-title">{t("fesla.labelTitle")}</h2><p>{t("fesla.labelHint")}</p></div><button type="button" onClick={onClose} aria-label={t("dialog.close")}><IoCloseOutline size={23} /></button></header>
     <div className="fesla-label-preview">
       <div ref={printRef} data-tailoring-print-label dir={i18n.dir()} style={{ width: "100%", maxWidth: "90mm", boxSizing: "border-box", padding: "4mm", margin: "0 auto", fontFamily: "Tahoma, Arial, sans-serif", color: "#000", background: "#fff", textAlign: "center", border: "1px solid #ddd", breakInside: "auto", overflowWrap: "anywhere" }}>
@@ -44,6 +51,6 @@ export default function TailoringOrderLabelDialog({ order, onClose }) {
       </div>
     </div>
     {error && <p role="alert" className="fesla-print-error">{t("fesla.errors.printFailed")}</p>}
-    <footer><button type="button" onClick={onClose}>{t("dialog.close")}</button><button type="button" data-print-tailoring-label onClick={() => { setError(false); print(); }}><IoPrintOutline size={20} />{t("fesla.printBarcode")}</button></footer>
-  </dialog>;
+    <footer><button type="button" onClick={onClose}>{t("dialog.close")}</button>{operations.share && <button type="button" data-share-tailoring-label onClick={() => setSharing(true)}><IoShareSocialOutline size={20} />{t('documentSharing.action')}</button>}<button type="button" data-print-tailoring-label onClick={() => { setError(false); print(); }}><IoPrintOutline size={20} />{t("fesla.printBarcode")}</button></footer>
+  </dialog>{sharing && operations.share && <DocumentShareDialog key={i18n.language} title={t('documentSharing.labelTitle')} customer={{ name: order.clientName, phone: order.phone }} filename={documentShareFilename(tailoringOrderBarcode(order), 'tailoring_barcode')} initialMessage={tailoringLabelShareMessage(order, { t })} createDocument={createDocument} onClose={() => setSharing(false)} />}</>;
 }

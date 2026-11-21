@@ -6,6 +6,7 @@ import app from "../BackEnd/app.js";
 import jwt from "../BackEnd/node_modules/jsonwebtoken/index.js";
 import AdminModel from "../BackEnd/models/AdminModel.js";
 import EmployeModel from "../BackEnd/models/EmployeModele.js";
+import TailoringOrder from "../BackEnd/models/TailoringOrder.js";
 import Client from "../BackEnd/models/Client.js";
 import { validateClient, filterClients, normalizeClientWebsite } from "../shared/clients.js";
 
@@ -35,6 +36,7 @@ const request = (method = "GET", body, auth = claims, suffix = "") => fetch(base
 const query = (fn) => ({ select() { return this; }, sort() { return this; }, lean() { return this; }, then(resolve, reject) { return Promise.resolve().then(fn).then(resolve, reject); } });
 function setup(t) {
   t.mock.method(UserCredit,"find",()=>query(()=>[]));
+  t.mock.method(TailoringOrder,"find",()=>query(()=>[]));
   const actors = new Map([[owner, { _id: owner }], [otherOwner, { _id: otherOwner }]]);
   const staff = { _id: employee, idAdmin: owner, isActive: true, action: { add: true, update: true } };
   const records = new Map();
@@ -42,6 +44,7 @@ function setup(t) {
   t.mock.method(EmployeModel, "findById", (id) => query(() => String(id) === employee ? staff : null));
   const clone = (doc) => doc ? new Client(doc.toObject()) : null;
   t.mock.method(Client, "find", (scope) => query(() => [...records.values()].filter((doc) => String(doc.idAdmin) === String(scope.idAdmin)).map((doc) => doc.toObject())));
+  t.mock.method(Client, "findOne", scope => query(() => { const row = records.get(String(scope._id)); return row && String(row.idAdmin) === String(scope.idAdmin) ? clone(row) : null; }));
   const create = t.mock.method(Client, "create", async (data) => {
     const document = new Client(data);
     await document.validate();

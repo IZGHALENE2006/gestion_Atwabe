@@ -6,7 +6,7 @@ export const EMPLOYEE_OPERATIONS = {
   credit: ["ownerDebts", "addOwnerDebt", "payOwnerDebt", "ownerDebtHistory", "add", "details", "addDebt", "payment", "deleteDebt", "delete", "history", "print", "share"],
   tailoring: ["creditDelivery", "assign", "add", "update", "discount", "details", "payment", "deliver", "cancel", "settings", "profits", "tracking", "print", "share", "labels"],
   sfifa: ["details", "add", "update", "restock", "delete", "history", "labels"],
-  fabrics: ["invoiceHistory", "addInvoice", "invoicePayment", "invoicePrint", "creditSale", "details", "add", "update", "addColor", "addPiece", "delete", "deleteColor", "deletePiece", "sell", "discount", "wholesale", "reduce", "history", "profits", "labels", "catalog"],
+  fabrics: ["invoiceHistory", "addInvoice", "invoicePayment", "invoicePrint", "invoiceShare", "creditSale", "details", "add", "update", "addColor", "addPiece", "delete", "deleteColor", "deletePiece", "sell", "discount", "wholesale", "reduce", "history", "profits", "labels", "catalog"],
   workers: ["add", "update", "delete", "assign", "editWork", "complete", "increase", "deleteWork", "cancelWork", "resume", "details", "financials", "payroll", "pay", "advance", "download", "labels"],
   products: ["add", "update", "restock", "delete", "details", "labels"],
   categories: ["add", "update", "delete"], clients: ["add", "update"],

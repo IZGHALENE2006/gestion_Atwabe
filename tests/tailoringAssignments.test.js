@@ -6,6 +6,7 @@ import { workerMaterialsFixture } from './helpers/workerMaterialsFixture.js';
 import { owner, otherOwner, employee } from './helpers/djellabaCostsFixture.js';
 import { WORKER_CATEGORIES } from '../shared/workers.js';
 import { employeeCanRequest } from '../shared/employeePermissions.js';
+import { seedClientPrerequisites } from './helpers/clientWorkerFlowFixture.js';
 
 process.env.JWT_SECRET = 'isolated-order-assignment';
 const { default: app } = await import('../BackEnd/app.js');
@@ -34,8 +35,9 @@ test('worker and piece selectors expose only active compatible workers and the r
   assert.equal((await request(path(order)+'/assignment-options?workerId='+f.worker._id+'&category=machine')).status,400);
 });
 
-for(const [category,garment]of [['machine','djellaba'],['machine','jabador'],['machine','malakiya'],['finishing','djellaba'],['sfifa','djellaba'],['brim','jabador'],['trousers','trousers'],['shirts','shirts'],['mesbanto','trousers'],['mesbanto','shirts'],['mesbanto','malakiya']])test(category+' / '+garment+': order assignment is the same durable worker job, with exact retries, normal completions and tracking',async t=>{
+for(const [category,garment]of [['machine','djellaba'],['machine','jabador'],['machine','malakiya'],['finishing','djellaba'],['sfifa','djellaba'],['brim','jabador'],['trousers','trousers'],['shirts','shirts'],['mesbanto','shirts'],['mesbanto','malakiya']])test(category+' / '+garment+': order assignment is the same durable worker job, with exact retries, normal completions and tracking',async t=>{
   const f=fixture(t),order=f.seedGarmentOrder(garment),body=input(f,order,category),beforeStock=f.stocks.reduce((sum,row)=>sum+row.quantity,0);
+  await seedClientPrerequisites(f, order, category); const predecessorCount = f.records.length;
   let r=await request(path(order)+'/assignments',body);assert.equal(r.status,201,JSON.stringify(r.data));const work=r.data;
   assert.equal(work.workType,'client');assert.equal(work.tailoring.orderId,String(order._id));assert.equal(work.category,category);assert.deepEqual(work.tailoring.lineIds,[...body.lineIds].sort());assert.equal(work.unitWage,3.25);
   const normal=(await request('/tailoring-workers/'+f.worker._id+'/work?category='+category)).data.works;assert.equal(normal.length,1);assert.equal(normal[0]._id,work._id);
@@ -44,7 +46,7 @@ for(const [category,garment]of [['machine','djellaba'],['machine','jabador'],['m
   const quantity=category==='sfifa'?6.125:body.lineIds.length;
   r=await request('/tailoring-workers/'+f.worker._id+'/work/'+work._id+'/completions',{quantity,version:work.__v,requestId:randomUUID()});assert.equal(r.status,201,JSON.stringify(r.data));assert.equal(r.data.remainingQuantity,0);assert.equal(r.data.completions[0].earningAmount,category==='sfifa'?19.91:6.5);
   assert.equal(f.stocks.reduce((sum,row)=>sum+row.quantity,0),beforeStock,'Client assignments and completions must not deduct or credit shop material stock');
-  const tracked=(await request('/tailoring-orders/work-status')).data.orders.find(row=>row.orderId===String(order._id));assert.equal(tracked.assignments.length,1);assert.equal(tracked.assignments[0].workId,work._id);assert.equal(tracked.assignments[0].remainingQuantity,0);
+  const tracked=(await request('/tailoring-orders/work-status')).data.orders.find(row=>row.orderId===String(order._id));assert.equal(tracked.assignments.length,predecessorCount+1);assert.equal(tracked.assignments.find(row=>row.workId===work._id).remainingQuantity,0);
 });
 
 test('tailoring-only staff can assign this order but cannot read wages or bypass their grant through worker endpoints',async t=>{
@@ -71,7 +73,7 @@ test('new order actions share section blockers and assignment locks with the exi
   const f=fixture(t),order=f.seedGarmentOrder('djellaba'),lineIds=[order.items[0].lineId];
   const assigned=await request(path(order)+'/assignments',input(f,order,'machine',{lineIds}));assert.equal(assigned.status,201);const work=assigned.data;
   let r=await request(path(order)+'/assignments',input(f,order,'finishing',{lineIds}));assert.equal(r.status,409);assert.equal(r.data.message,'garmentInProgress');assert.equal(r.data.blockers[0].category,'machine');
-  r=await request(path(order)+'/assignment-options?workerId='+f.worker._id+'&category=finishing');assert.equal(r.status,200);assert.equal(r.data.orders[0].items[0].available,false);assert.equal(r.data.orders[0].items[1].available,true);
+  r=await request(path(order)+'/assignment-options?workerId='+f.worker._id+'&category=finishing');assert.equal(r.status,200);assert.deepEqual(r.data.orders,[]);
   assert.equal((await request('/tailoring-workers/'+f.worker._id+'/work/'+work._id+'/completions',{quantity:1,version:work.__v,requestId:randomUUID()})).status,201);
   r=await request(path(order)+'/assignments',input(f,order,'finishing',{lineIds}));assert.equal(r.status,201,JSON.stringify(r.data));
   const secondOrder=f.seedGarmentOrder('djellaba'),body=input(f,secondOrder);

@@ -1,5 +1,6 @@
 import { moduleOperationPermissions } from "../../shared/employeePermissions.js";
 import { clientCreditSummaries } from '../utils/tailoringCredit.js';
+import { clientTailoringSummaries } from '../utils/tailoringClients.js';
 import mongoose from "mongoose";
 import AdminModel from "../models/AdminModel.js";
 import EmployeModel from "../models/EmployeModele.js";
@@ -28,7 +29,7 @@ export async function listClients(req, res) {
   try {
     const { idAdmin, permissions } = await accessFor(req);
     const clients = await Client.find({ idAdmin }).sort({ name: 1, _id: 1 }).lean();
-    res.json({ clients: await clientCreditSummaries(clients, idAdmin), permissions });
+    res.json({ clients: await clientTailoringSummaries(await clientCreditSummaries(clients, idAdmin), idAdmin), permissions });
   } catch (error) { sendError(res, error, "loadFailed"); }
 }
 
@@ -45,8 +46,12 @@ export async function updateClient(req, res) {
   try {
     const { idAdmin } = await accessFor(req, "update");
     if (!mongoose.isObjectIdOrHexString(req.params.id)) throw fail("notFound", 404);
-    const input = validateClient(req.body);
-    const client = await Client.findOneAndUpdate({ _id: req.params.id, idAdmin }, { $set: input }, { new: true, runValidators: true });
+    const existing = await Client.findOne({ _id: req.params.id, idAdmin });
+    if (!existing) throw fail("notFound", 404);
+    const input = validateClient(req.body, { allowMissingAddress: Boolean(existing.createdFromTailoringOrderId) });
+    let client;
+    if (existing.createdFromTailoringOrderId) { existing.set(input); client = await existing.save(); }
+    else client = await Client.findOneAndUpdate({ _id: req.params.id, idAdmin }, { $set: input }, { new: true, runValidators: true });
     if (!client) throw fail("notFound", 404);
     res.json(client);
   } catch (error) { sendError(res, error, "saveFailed"); }

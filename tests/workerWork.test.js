@@ -416,7 +416,7 @@ test("trouser orders cannot enter djellaba worker selectors or sfifa assignments
   const trousers = f.seedOrder(owner, { garmentType: "trousers", trouserType: "regular", expenseAmount: 20, sfifa: undefined, items: djellaba.items.map(item => ({ ...item.toObject(), sfifa: undefined, trouserType: "regular" })) });
   for (const category of ["machine", "finishing", "brim", "sfifa"]) {
     const response = await request(f.worker, { category, suffix: "/orders" }); assert.equal(response.status, 200);
-    const { orders } = await response.json(); assert.deepEqual(orders.map(order => order._id), [String(djellaba._id)]);
+    const { orders } = await response.json(); assert.deepEqual(orders.map(order => order._id), category === "finishing" ? [] : [String(djellaba._id)]);
     const body = clientInput(trousers, { category, ...(category === "sfifa" ? { quantity: 2, sfifa: { width: "thin", family: "01-30", code: 1 } } : {}) });
     const rejected = await request(f.worker, { body }); assert.equal(rejected.status, 404); assert.equal((await rejected.json()).message, "orderNotFound");
   }
@@ -427,7 +427,7 @@ test("shirt orders stay out of djellaba worker options and sfifa work", async t 
   const f=setup(t),djellaba=f.seedOrder();
   const shirts=f.seedOrder(owner,{garmentType:"shirts",shirtType:"قميص رجالي",expenseAmount:20,sfifa:undefined,items:djellaba.items.map(item=>({...item.toObject(),sfifa:undefined,shirtType:"قميص رجالي"}))});
   for(const category of ["machine","finishing","brim","sfifa"]){
-    const response=await request(f.worker,{category,suffix:"/orders"});assert.equal(response.status,200);assert.deepEqual((await response.json()).orders.map(order=>order._id),[String(djellaba._id)]);
+    const response=await request(f.worker,{category,suffix:"/orders"});assert.equal(response.status,200);assert.deepEqual((await response.json()).orders.map(order=>order._id),category === "finishing" ? [] : [String(djellaba._id)]);
     const body=clientInput(shirts,{category,...(category==="sfifa"?{quantity:2,sfifa:{width:"thin",family:"01-30",code:1}}:{})});
     const rejected=await request(f.worker,{body});assert.equal(rejected.status,404);assert.equal((await rejected.json()).message,"orderNotFound");
   }

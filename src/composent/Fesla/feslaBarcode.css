@@ -318,3 +318,5 @@
 .dark .fesla-sfifa-margin, .dark .fesla-cost-breakdown .fesla-sfifa-profit { color: #86efb6; background: #123e31; }
 .dark .fesla-sfifa-margin.is-loss, .dark .fesla-cost-breakdown .fesla-sfifa-profit.is-loss { color: #fda4af; background: #4c1b2c; }
 @media (max-width: 420px) { .fesla-sfifa-price-fields { grid-template-columns: 1fr; } .fesla-sfifa-price-group { padding: 13px; } }
+
+.fesla-label-dialog [data-share-tailoring-label]{background:#078b60;border-color:#078b60;color:#fff}

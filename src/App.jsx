@@ -24,6 +24,7 @@ import WorkerWorkPage from './composent/Khadama/WorkerWorkPage'
 import SfifaStock from './composent/SfifaStock/SfifaStock'
 import SideExpenses from './composent/SideExpenses/SideExpenses'
 import Profite from './composent/Ventes/Profit'
+import AllProfits from './composent/Ventes/AllProfits.jsx'
 import Ventes from './composent/Ventes/Ventes'
 import Invoices from './composent/Facture/Invoices'
 import InvoiceSettings from './composent/Facture/InvoiceSettings'
@@ -121,6 +122,7 @@ const toggleLanguage = () => {
         <Route path='profit/Facture' element={<Navigate to='/Home/Facture/caisse' replace/>}/>
         <Route path='profit/Facture/new' element={<Navigate to='/Home/Facture/new' replace/>}/>
         <Route path="profit" element={<Profite/>}>
+            <Route path='All' element={<AllProfits/>}/>
             <Route path='Ventes' element={<Ventes/>}/>
             <Route path='Hestorique' element={<HestoriqueProfit/>}/>
         </Route>

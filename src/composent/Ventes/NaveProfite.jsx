@@ -2,16 +2,19 @@ import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import { NavLink } from "react-router-dom";
 import { IoPeopleOutline, IoBarChartOutline } from "react-icons/io5";
 import { useTranslation } from "react-i18next";
+import { useSelector } from "react-redux";
 
 export default function NaveProfite() {
   const { t, i18n } = useTranslation();
+  const role = useSelector(state => state.LoginAdmin.role);
   const isRtl = i18n.dir() === "rtl";
 
   return (
     <div
       dir={i18n.dir()}
-      className={`flex justify-start gap-4 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-sm p-2 rounded-2xl mb-8 backdrop-blur-md transition-all ${isRtl ? "flex-row-reverse" : ""}`}
+      className={`flex flex-wrap justify-start gap-4 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-sm p-2 rounded-2xl mb-8 backdrop-blur-md transition-all ${isRtl ? "flex-row-reverse" : ""}`}
     >
+      {role === 'admin' && <NavLink to="/Home/Profit/All" data-all-profits-nav className={({ isActive }) => `flex items-center gap-3 px-6 py-3 rounded-[1.2rem] text-xs font-black transition-all ${isActive ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'text-slate-500 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-600'}`}><IoBarChartOutline size={18} /><span>{t('allProfits.title')}</span></NavLink>}
       <NavLink
         to="/Home/Profit/Ventes"
         className={({ isActive }) => `

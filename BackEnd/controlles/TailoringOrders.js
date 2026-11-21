@@ -1,4 +1,5 @@
 import Client from '../models/Client.js';
+import { prepareTailoringClient, finishTailoringClient } from '../utils/tailoringClients.js';
 import { resolveTailoringClient, prepareTailoringCredit, finishTailoringCredit, publicTailoringCreditOrder, payTailoringCredit, clientCreditSummaries } from "../utils/tailoringCredit.js";
 import { tailoringCreditInput } from "../../shared/tailoringCredit.js";
 import { currentSfifaViews } from "../utils/sfifaIdentity.js";
@@ -23,10 +24,10 @@ import { createTailoringReceipt, publicTailoringReceipt, tailoringPaymentReferen
 import { saveTailoringPhoto, deleteTailoringPhoto, tailoringPhotoPath } from "../utils/tailoringPhotos.js";
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
-const readyTailoringOrder = async order => finishTailoringCredit(await resumeTailoringFabricStock(order));
+const readyTailoringOrder = async order => finishTailoringCredit(await finishTailoringClient(await resumeTailoringFabricStock(order)));
 const publicPayment = (order, receipt, index) => ({ amount: receipt.amount, paidAt: receipt.paidAt, reference: tailoringPaymentReference(order, index), ...(receipt.actor ? { actor: receipt.actor } : {}), ...(receipt.document ? { document: publicTailoringReceipt(receipt.document) } : {}) });
 const publicOrder = async (document) => {
-  const { stockOperation: _stockOperation, photo, items: _items, requestId: _requestId, requestFingerprint: _fingerprint, paymentReceipts = [], deliveryFabricItems: _deliveryFabricItems, deliveredBy: _deliveredBy, ...order } = typeof document.toObject === "function" ? document.toObject() : document;
+  const { stockOperation: _stockOperation, clientRegistration: _clientRegistration, photo, items: _items, requestId: _requestId, requestFingerprint: _fingerprint, paymentReceipts = [], deliveryFabricItems: _deliveryFabricItems, deliveredBy: _deliveredBy, ...order } = typeof document.toObject === "function" ? document.toObject() : document;
   const totalPrice = order.totalPrice ?? 0, paidAmount = order.paidAmount ?? 0;
   const items = tailoringOrderItems({ ...order, items: _items, photo }).map(raw => { const { photo: itemPhoto, fabricSale: _fabricSale, ...item } = raw; return { ...item, hasPhoto: Boolean(itemPhoto) }; });
   const garmentType = tailoringGarmentType(order);
@@ -46,7 +47,7 @@ export async function accessFor(req, action) {
   if (!mongoose.isObjectIdOrHexString(idAdmin)) throw fail("forbidden", 403);
   const permissions = moduleOperationPermissions(req.user.role, actor, 'tailoring');
   if (action && !(Array.isArray(action) ? action.some(key => permissions[key]) : permissions[action])) throw fail("forbidden", 403);
-  return { idAdmin, createdBy: actor._id, creator: { id: actor._id, name: actor.name || "", role: req.user.role }, permissions };
+  return { idAdmin, createdBy: actor._id, creator: { id: actor._id, name: actor.name || "", role: req.user.role }, permissions, canRegisterClient: moduleOperationPermissions(req.user.role, actor, 'clients').add };
 }
 // Check current account permissions before accepting an image upload.
 export const tailoringWriteAccess = (action) => async (req, res, next) => {
@@ -72,6 +73,7 @@ function checkImageMapping(req, value) {
 }
 async function orderInput(req, idAdmin, current) {
   const value = await resolveTailoringClient(validateTailoringOrder(req.body), idAdmin, current);
+  if (current && value.registerClient) throw Object.assign(fail('invalidOrder', 400), { fields: { registerClient: 'clientRegistrationNewOrderOnly' } });
   if (current && tailoringGarmentType(value) !== tailoringGarmentType(current)) throw Object.assign(fail("invalidOrder", 400), { fields: { garmentType: "garmentTypeLocked" } });
   checkImageMapping(req, value);
   if (!value.items) {
@@ -122,7 +124,7 @@ export async function listTailoringOrders(req, res) {
     const { idAdmin, permissions } = await accessFor(req);
     const orders = await TailoringOrder.find({ idAdmin }).sort({ orderDate: -1, createdAt: -1, _id: -1 }).lean();
     const ready = [];
-    for (const row of orders) ready.push((row.stockOperation || row.creditDelivery) ? await readyTailoringOrder(await TailoringOrder.findOne({ _id: row._id, idAdmin })) : row);
+    for (const row of orders) ready.push((row.stockOperation || row.creditDelivery || row.clientRegistration?.state === "prepared") ? await readyTailoringOrder(await TailoringOrder.findOne({ _id: row._id, idAdmin })) : row);
     res.json({ orders: await currentSfifaViews(idAdmin, await Promise.all(ready.filter(Boolean).map(publicOrder))), permissions });
   } catch (error) { sendError(res, error, "loadFailed"); }
 }
@@ -149,11 +151,13 @@ export async function addTailoringOrder(req, res) {
     }
     const input = await attachPhotos(req, await orderInput(req, idAdmin), null, createdPhotos);
     const document = { ...input, _id: new mongoose.Types.ObjectId(), idAdmin, createdBy, creator, requestId, requestFingerprint };
-    if (input.deliverOnCredit) document.creditDelivery = await prepareTailoringCredit(document, req.tailoringAccess);
+    const registeringClient = input.registerClient ? await prepareTailoringClient(document, req.tailoringAccess) : undefined;
+    delete document.registerClient;
+    if (input.deliverOnCredit) document.creditDelivery = await prepareTailoringCredit(document, req.tailoringAccess, registeringClient);
     document.customerReceipt = createTailoringReceipt(document, { issuedAt: new Date() });
     const order = (input.deductFabricStock || hasTailoringSfifa(input)) ? await saveTailoringFabricStock(document, { create: true }) : await TailoringOrder.create(document);
     committed = true;
-    res.status(201).json(await publicOrder(await finishTailoringCredit(order)));
+    res.status(201).json(await publicOrder(await finishTailoringCredit(await finishTailoringClient(order))));
   } catch (error) {
     if (!committed && !error.tailoringStockPersisted) await Promise.all(createdPhotos.map(deleteTailoringPhoto));
     if (error.code === 11000 && requestId) {

@@ -1,5 +1,6 @@
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { seedCompletedClientStage } from './helpers/clientWorkerFlowFixture.js';
 import { randomUUID } from 'node:crypto';
 import jwt from '../BackEnd/node_modules/jsonwebtoken/index.js';
 import app from '../BackEnd/app.js';
@@ -106,7 +107,7 @@ test('invalid section, garment, identifiers and wages are rejected; client and o
  const tooLarge = await request(url(f.finisher), selection(machine, 'finishing', { unitWage: 999999999.99 })); assert.equal(tooLarge.status, 400); assert.equal(tooLarge.data.fields.unitWage, 'invalidWage');
  assert.equal((await request(url(f.worker) + '/shop-options?category=machine&garmentType=djellaba')).status, 400);
  const legacy = await checked(url(f.finisher), { category: 'finishing', workType: 'shop', productName: 'عمل قديم', quantity: 2, unitWage: 4, requestId: randomUUID() }); assert.equal(legacy.shopFlow, undefined); assert.equal((await complete(f.finisher, legacy)).completions[0].earningAmount, 8);
- const order = f.seedGarmentOrder('shirts'); const client = await checked(url(f.laundry), { category: 'mesbanto', workType: 'client', orderId: String(order._id), lineIds: [order.items[0].lineId], unitWage: 3, requestId: randomUUID() }); assert.equal(client.shopBarcode, undefined); assert.equal(client.shopFlow, undefined); assert.equal(client.tailoring.clientName, order.clientName);
+ const order = f.seedGarmentOrder('shirts'); await seedCompletedClientStage(f, order, 'shirts'); const client = await checked(url(f.laundry), { category: 'mesbanto', workType: 'client', orderId: String(order._id), lineIds: [order.items[0].lineId], unitWage: 3, requestId: randomUUID() }); assert.equal(client.shopBarcode, undefined); assert.equal(client.shopFlow, undefined); assert.equal(client.tailoring.clientName, order.clientName);
 });
 
 test('stale material reservations and cancelled origin jobs cannot be transferred', async t => {

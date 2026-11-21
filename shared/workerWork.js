@@ -19,7 +19,12 @@ function shopTrouserColorSelection(input, excluded = []) {
   if (!colorIds.length || colorIds.length > WORK_QUANTITY_LIMIT || colorIds.some(id => !/^[a-f\d]{24}$/.test(id) || excluded.includes(id)) || new Set(colorIds).size !== colorIds.length) throw Object.assign(new Error('invalidWork'), { fields: { 'shopTrouser.colorIds': 'chooseTrouserColors' } });
   return colorIds.sort();
 }
-export const workerOrderGarmentTypes = category => category === "mesbanto" ? TAILORING_GARMENT_TYPES : category === "trousers" ? ["trousers"] : category === "shirts" ? ["shirts"] : TAILORING_SFIFA_GARMENT_TYPES;
+export const workerOrderGarmentTypes = category => category === "mesbanto" ? TAILORING_GARMENT_TYPES.filter(type => type !== "trousers") : category === "trousers" ? ["trousers"] : category === "shirts" ? ["shirts"] : TAILORING_SFIFA_GARMENT_TYPES;
+export function workerClientPreviousStage(category, garmentType) {
+  if (category === "finishing") return "machine";
+  if (category !== "mesbanto") return null;
+  return garmentType === "shirts" ? "shirts" : "finishing";
+}
 export const workerWorkGarmentType = work => work.tailoring ? tailoringGarmentType(work.tailoring) : work.garmentType || null;
 export const workerWorkType = work => work.workType || "shop";
 

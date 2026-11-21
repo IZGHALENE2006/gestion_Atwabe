@@ -1,3 +1,7 @@
+import { clientTailoringFrench } from './clientTailoring.js';
+import { workerClientBatchFrench } from './workerClientBatch.js';
+import { allProfitsFrench } from './allProfits.js';
+import { documentSharingFrench } from './documentSharing.js';
 import { tailoringCreditFrench } from './tailoringCredit.js';
 import { ownerDebtsFrench } from './ownerDebts.js';
 import { fabricInvoicesFrench } from './fabricInvoices.js';
@@ -28,6 +32,10 @@ export default {
   sideExpenses: sideExpensesFrench,
       productBatches: productBatchesFrench,
   fabrics: fabricsFrench,
+  clientTailoring: clientTailoringFrench,
+  workerClientBatch: workerClientBatchFrench,
+  allProfits: allProfitsFrench,
+  documentSharing: documentSharingFrench,
   tailoringCredit: tailoringCreditFrench,
       fesla: { ...feslaFrench, errors: { ...feslaFrench.errors, ...tailoringCreditFrench.errors } },
   workers: workersFrench,

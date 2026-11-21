@@ -4,9 +4,10 @@ import { CLIENT_TYPES, CLIENT_FIELD_LIMITS, CLIENT_REQUIRED_FIELDS } from "../..
 const clientSchema = new mongoose.Schema({
   idAdmin: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Admin" },
   createdBy: { type: mongoose.Schema.Types.ObjectId, required: true },
+  createdFromTailoringOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'TailoringOrder', immutable: true },
   type: { type: String, enum: CLIENT_TYPES, required: true },
   ...Object.fromEntries(Object.entries(CLIENT_FIELD_LIMITS).map(([key, maxlength]) => [key, {
-    type: String, trim: true, maxlength, required: CLIENT_REQUIRED_FIELDS.includes(key), default: "",
+    type: String, trim: true, maxlength, required: key === 'address' ? function () { return !this.createdFromTailoringOrderId; } : CLIENT_REQUIRED_FIELDS.includes(key), default: "",
   }])),
 }, { timestamps: true });
 

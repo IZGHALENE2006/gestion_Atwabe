@@ -35,7 +35,7 @@ export default function ClientForm({ client, onClose, onSaved }) {
     event.preventDefault();
     if (savingRef.current) return;
     let input;
-    try { input = validateClient(draft); } catch (validation) {
+    try { input = validateClient(draft, { allowMissingAddress: Boolean(client?.createdFromTailoringOrderId) }); } catch (validation) {
       showErrors(validation.fields || {});
       setError("invalidClient");
       return;
@@ -75,7 +75,7 @@ export default function ClientForm({ client, onClose, onSaved }) {
         </div>
         <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2">
           {Object.entries(CLIENT_FIELD_LIMITS).map(([key, limit]) => {
-            const required = CLIENT_REQUIRED_FIELDS.includes(key);
+            const required = CLIENT_REQUIRED_FIELDS.includes(key) && !(key === "address" && client?.createdFromTailoringOrderId);
             const label = key === "name" ? t(`clients.names.${draft.type}`) : t(`clients.fields.${key}`);
             const props = {
               id: `client-${key}`, name: key, value: draft[key], maxLength: limit, required,

@@ -1,7 +1,8 @@
 import WorkerWork from "../models/WorkerWork.js";
 import SfifaStock from "../models/SfifaStock.js";
 import TailoringWorker from "../models/TailoringWorker.js";
-import { remainingWorkQuantity } from "../../shared/workerWork.js";
+import { remainingWorkQuantity, workerClientPreviousStage, workerWorkCompleted } from "../../shared/workerWork.js";
+import { tailoringGarmentType } from "../../shared/tailoring.js";
 import { resumeSfifaTransfer } from './sfifaWorkTransfers.js';
 
 // Serialize linked assignments in this API process, including assignments saved
@@ -20,7 +21,7 @@ export async function withOrderAssignmentLock(idAdmin, orderId, commit) {
 
 export async function loadClientAssignments(idAdmin, orderId) {
   const [ordinary, loaded] = await Promise.all([
-    WorkerWork.find({ idAdmin, workType: "client", ...(orderId ? { "tailoring.orderId": orderId } : {}) }).select("idAdmin workType category workerId quantity completedQuantity tailoring.orderId tailoring.lineIds").lean(),
+    WorkerWork.find({ idAdmin, workType: "client", ...(orderId ? { "tailoring.orderId": orderId } : {}) }).select("idAdmin workType category workerId quantity completedQuantity deletedAt tailoring.orderId tailoring.lineIds").lean(),
     SfifaStock.find({ idAdmin }).select("production idAdmin").lean(),
   ]);
   let stocks = loaded;
@@ -33,6 +34,22 @@ export async function loadClientAssignments(idAdmin, orderId) {
 
 export function blockingAssignments(works, orderId, category, lineIds) {
   return works.filter(work => work.category !== category && (!orderId || String(work.tailoring.orderId) === String(orderId)) && remainingWorkQuantity({ ...work, completedQuantity: work.completedQuantity ?? 0 }) > 0 && (!lineIds || work.tailoring.lineIds.some(id => lineIds.includes(id))));
+}
+
+// A completed job unlocks only its own garments in the next customer stage.
+// Shirts use their dedicated sewing section before laundry.
+export function readyClientLineIds(works, order, category) {
+  const previous = workerClientPreviousStage(category, tailoringGarmentType(order));
+  if (!previous) return null;
+  return new Set(works.filter(work => work.category === previous && String(work.tailoring?.orderId) === String(order._id) && workerWorkCompleted(work)).flatMap(work => work.tailoring.lineIds));
+}
+
+export function requireClientPreviousStage(works, order, category, lineIds) {
+  const ready = readyClientLineIds(works, order, category);
+  if (ready && lineIds.some(id => !ready.has(id))) {
+    const previous = workerClientPreviousStage(category, tailoringGarmentType(order));
+    throw Object.assign(new Error({ machine: "clientMachineRequired", finishing: "clientFinishingRequired", shirts: "clientShirtsRequired" }[previous]), { status: 409 });
+  }
 }
 
 export async function describeBlockingAssignments(works, idAdmin) {

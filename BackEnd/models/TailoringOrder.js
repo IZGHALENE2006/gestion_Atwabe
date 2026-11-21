@@ -106,6 +106,12 @@ const schema = new mongoose.Schema({
   measurementNotes: measurementNotesField(),
   clientName: { type: String, required: true, maxlength: 160 },
   clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
+  clientRegistration: { type: new mongoose.Schema({
+    clientId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    name: { type: String, required: true, maxlength: 160 }, phone: { type: String, required: true, maxlength: 40 },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, required: true }, preparedAt: { type: Date, required: true },
+    state: { type: String, enum: ['prepared', 'complete'], required: true },
+  }, { _id: false }) },
   creditDelivery: { type: new mongoose.Schema({
     accountId: { type: mongoose.Schema.Types.ObjectId, required: true }, clientId: { type: mongoose.Schema.Types.ObjectId, required: true },
     state: { type: String, enum: ['prepared', 'complete', 'cancelled'], required: true },
@@ -141,6 +147,7 @@ const schema = new mongoose.Schema({
   deliveryFabricItems: { type: [itemSchema], default: undefined },
 }, { timestamps: true, optimisticConcurrency: true });
 schema.pre("validate", function () {
+  if (this.clientRegistration?.state === 'prepared' && (String(this.clientRegistration.clientId) !== String(this.clientId) || this.clientRegistration.name !== this.clientName || this.clientRegistration.phone !== this.phone)) this.invalidate('clientRegistration', 'Invalid client registration snapshot');
   if (this.creditDelivery) {
     const plan = this.creditDelivery;
     if (String(plan.clientId) !== String(this.clientId) || tailoringMoneyCents(plan.total) !== tailoringMoneyCents(this.totalPrice) || tailoringMoneyCents(plan.initialPaid) !== tailoringMoneyCents(this.paidAmount) || !(plan.initialPaid < plan.total) || (plan.state !== 'prepared' && !this.deliveredAt) || (plan.state === 'cancelled' && !this.cancelledAt)) this.invalidate('creditDelivery', 'Invalid credit delivery snapshot');

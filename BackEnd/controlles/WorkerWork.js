@@ -23,7 +23,7 @@ import { workerCategories } from "../../shared/workers.js";
 import { WORK_TRACKING_CATEGORIES, workerWorkCompleted, workerOrderGarmentTypes, applyWorkerIncrease, nextWorkSequence, workerWorkType, remainingWorkQuantity, validateWorkerCompletion, validateWorkerIncrease, validateWorkerWork } from "../../shared/workerWork.js";
 import { assignSfifaWork, changeSfifaWork, completeSfifaWork, findSfifaWork, listSfifaWork } from "../utils/sfifaProduction.js";
 
-import { loadClientAssignments, blockingAssignments, describeBlockingAssignments, withOrderAssignmentLock } from "../utils/workerAvailability.js";
+import { loadClientAssignments, blockingAssignments, describeBlockingAssignments, withOrderAssignmentLock, readyClientLineIds, requireClientPreviousStage } from "../utils/workerAvailability.js";
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
 const sameCompletion = (event, quantity, body) => event?.quantity === quantity && (event.lineIds === undefined || workerPieceSelectionKey(event.lineIds) === workerPieceSelectionKey(body?.lineIds)) && workerPieceSelectionKey(event?.shopTrouserColorIds) === workerPieceSelectionKey(body?.colorIds);
@@ -98,6 +98,7 @@ async function resolveClientWork(input, idAdmin) {
     const blockers = (await describeBlockingAssignments(pending, idAdmin)).map(({ category, workerName, lineIds }) => ({ category, workerName, lineIds }));
     throw Object.assign(fail("garmentInProgress", 409), { blockers });
   }
+  requireClientPreviousStage(works, order, input.category, input.lineIds);
   return { ...(input.unitWage !== undefined ? { unitWage: input.unitWage } : {}), workType: "client", category: input.category, ...(trouserType ? { trouserType } : {}), productName: input.category === "sfifa" ? "Sfifa" : order.clientName, quantity: input.category === "sfifa" ? input.quantity : items.length, ...(input.category === "sfifa" ? { sfifa: input.sfifa } : {}), tailoring: { garmentType: tailoringGarmentType(order), orderId: order._id, lineIds: input.lineIds, clientName: order.clientName, phone: order.phone, barcode: tailoringOrderBarcode(order), orderDate: order.orderDate, readyDate: order.readyDate, items: items.map(garmentSnapshot) } };
 }
 export async function listWorkerOrderOptions(req, res) {
@@ -116,10 +117,11 @@ export async function listWorkerOrderOptions(req, res) {
     const currentOrders = await currentSfifaViews(idAdmin, orders);
     res.json({ orders: currentOrders.filter(order => !order.cancelledAt && (!req.tailoringAssignmentAccess || String(order._id) === req.tailoringAssignmentAccess.orderId) && !order.deliveredAt && workerOrderGarmentTypes(category).includes(tailoringGarmentType(order)) && (!requestedType || tailoringGarmentType(order) === requestedType)).map(order => {
       const assigned = assignedLines(category === "sfifa" ? [] : works.filter(work => work.category === category), order._id);
+      const ready = readyClientLineIds(works, order, category);
       return { _id: order._id, garmentType: tailoringGarmentType(order), clientName: order.clientName, phone: order.phone, barcode: tailoringOrderBarcode(order), readyDate: order.readyDate, items: tailoringOrderItems(order).map((item, index) => {
         const blockedBy = assigned.has(item.lineId) ? [] : blockers.filter(blocker => blocker.orderId === String(order._id) && blocker.lineIds.includes(item.lineId)).map(({ category, workerName }) => ({ category, workerName }));
         return { ...garmentSnapshot(item), number: index + 1, available: !assigned.has(item.lineId) && !blockedBy.length, blockedBy };
-      }) };
+      }).filter(item => !ready || ready.has(item.lineId)) };
     }).filter(order => order.items.some(item => item.available || item.blockedBy.length)) });
   } catch (error) { sendError(res, error, "loadOrdersFailed"); }
 }

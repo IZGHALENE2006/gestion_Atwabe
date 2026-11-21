@@ -12,7 +12,7 @@ export function normalizeClientWebsite(value) {
   return url.href;
 }
 
-export function validateClient(input) {
+export function validateClient(input, { allowMissingAddress = false } = {}) {
   const fields = {};
   const value = { type: input?.type };
   if (!input || typeof input !== "object" || Array.isArray(input)) throw Object.assign(new Error("invalidClient"), { fields: { name: "required" } });
@@ -20,7 +20,7 @@ export function validateClient(input) {
   for (const [key, limit] of Object.entries(CLIENT_FIELD_LIMITS)) {
     if (input[key] !== undefined && typeof input[key] !== "string") { fields[key] = "invalidText"; continue; }
     value[key] = (input[key] || "").trim();
-    if (CLIENT_REQUIRED_FIELDS.includes(key) && !value[key]) fields[key] = "required";
+    if (CLIENT_REQUIRED_FIELDS.includes(key) && !(key === "address" && allowMissingAddress) && !value[key]) fields[key] = "required";
     else if (value[key].length > limit) fields[key] = "tooLong";
     else if ([...value[key]].some((char) => {
       const code = char.charCodeAt(0);

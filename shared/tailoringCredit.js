@@ -1,11 +1,14 @@
 export function tailoringCreditInput(input) {
-  const fields = {}, raw = input?.clientId, flag = input?.deliverOnCredit;
+  const fields = {}, raw = input?.clientId, flag = input?.deliverOnCredit, register = input?.registerClient;
   if (raw != null && raw !== '' && (typeof raw !== 'string' || !/^[a-f\d]{24}$/i.test(raw))) fields.clientId = 'chooseCreditClient';
   if (![undefined, false, true, 'false', 'true'].includes(flag)) fields.deliverOnCredit = 'invalidCreditDelivery';
   const deliverOnCredit = flag === true || flag === 'true';
-  if (deliverOnCredit && !raw) fields.clientId = 'chooseCreditClient';
+  if (![undefined, false, true, 'false', 'true'].includes(register)) fields.registerClient = 'invalidClientRegistration';
+  const registerClient = register === true || register === 'true';
+  if (registerClient && raw) fields.registerClient = 'chooseExistingClient';
+  if (deliverOnCredit && !raw && !registerClient) fields.clientId = 'chooseCreditClient';
   if (Object.keys(fields).length) throw Object.assign(new Error('invalidOrder'), { fields });
-  return { ...(raw ? { clientId: raw.toLowerCase() } : Object.hasOwn(input || {}, 'clientId') ? { clientId: null } : {}), ...(deliverOnCredit ? { deliverOnCredit: true } : {}) };
+  return { ...(raw ? { clientId: raw.toLowerCase() } : Object.hasOwn(input || {}, 'clientId') ? { clientId: null } : {}), ...(deliverOnCredit ? { deliverOnCredit: true } : {}), ...(registerClient ? { registerClient: true } : {}) };
 }
 export function creditDeliveryDepositValid(total, paid) {
   const cents = value => Math.round(Number(value) * 100);

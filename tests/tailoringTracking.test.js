@@ -180,11 +180,9 @@ const orderOptions = async (worker, category) => {
   const response=await request(workPath(worker)+"/orders?category="+category);assert.equal(response.status,200);return response.json();
 };
 
-test("a pending machine job warns in finishing choices and blocks a direct assignment until that job is completed",async t=>{
+test("a pending machine job stays out of finishing choices and blocks a direct assignment until that job is completed",async t=>{
   const f=setup(t),order=f.seedOrder(),worker=f.seedWorker(),machine=await assign(f.worker,orderWork(order,"machine",{lineIds:[order.items[0].lineId]}));
-  const options=await orderOptions(worker,"finishing"),item=options.orders.find(row=>row._id===String(order._id)).items[0];
-  assert.equal(item.available,false);assert.deepEqual(item.blockedBy,[{category:"machine",workerName:"أمينة"}]);
-  assert.equal(options.orders[0].items[1].available,true);
+  const options=await orderOptions(worker,"finishing"); assert.deepEqual(options.orders,[]);
   const body=orderWork(order,"finishing",{lineIds:[order.items[0].lineId]});
   const response=await request(workPath(worker),{body});assert.equal(response.status,409);const blocked=await response.json();
   assert.equal(blocked.message,"garmentInProgress");assert.equal(blocked.blockers[0].category,"machine");assert.equal(blocked.blockers[0].workerName,"أمينة");assert.equal(f.records.length,1);
@@ -197,17 +195,19 @@ test("partial completion keeps all garments in that assignment blocked, while an
   const f=setup(t),order=f.seedOrder(),other=f.seedOrder(),worker=f.seedWorker();
   const machine=await assign(f.worker,orderWork(order));const first=await complete(f.worker,machine,completionBody(machine,1));assert.equal(first.status,201);
   for(const item of order.items){const blocked=await request(workPath(worker),{body:orderWork(order,"finishing",{lineIds:[item.lineId]})});assert.equal(blocked.status,409);}
+  const otherMachine = await assign(f.worker,orderWork(other,"machine")); assert.equal((await complete(f.worker,otherMachine,completionBody(otherMachine,2))).status,201);
   await assign(worker,orderWork(other,"finishing"));
   const partial=await first.json();assert.equal((await complete(f.worker,partial,completionBody(partial,1))).status,201);
   await assign(worker,orderWork(order,"finishing"));
-  assert.equal(f.records.length,3);
+  assert.equal(f.records.length,4);
 });
 
 test("work on another garment in the same order can be assigned to a different section",async t=>{
   const f=setup(t),order=f.seedOrder();
   await assign(f.worker,orderWork(order,"machine",{lineIds:[order.items[0].lineId]}));
+  const ready = await assign(f.worker,orderWork(order,"machine",{lineIds:[order.items[1].lineId]})); assert.equal((await complete(f.worker,ready,completionBody(ready,1))).status,201);
   const other=await assign(f.worker,orderWork(order,"finishing",{lineIds:[order.items[1].lineId]}));assert.equal(other.quantity,1);
-  assert.equal(f.records.length,2);
+  assert.equal(f.records.length,3);
 });
 
 test("linked sfifa cannot receive a garment still at the machine, and incomplete sfifa blocks finishing without changing stock",async t=>{
@@ -227,7 +227,7 @@ test("simultaneous cross-section assignments cannot both commit for the same gar
     const order=f.seedOrder(),countBefore=f.records.length+f.stocks.flatMap(stock=>stock.production||[]).length;
     const results=await Promise.all(categories.map((category,index)=>request(workPath(index?other:f.worker),{body:orderWork(order,category,{lineIds:[order.items[0].lineId]})})));
     assert.deepEqual(results.map(response=>response.status).sort(),[201,409]);
-    const loser=results.find(response=>response.status===409);assert.equal((await loser.json()).message,"garmentInProgress");
+    const loser=results.find(response=>response.status===409);assert.ok(["garmentInProgress","clientMachineRequired"].includes((await loser.json()).message));
     assert.equal(f.records.length+f.stocks.flatMap(stock=>stock.production||[]).length,countBefore+1);
   }
 });

@@ -225,7 +225,9 @@ schema.pre("validate", function () {
   if (((trouserClient || shopTrouser) && !TROUSER_TYPES.includes(this.trouserType)) || (!trouserClient && !shopTrouser && this.trouserType !== undefined)) this.invalidate("trouserType", "Trouser type must match trouser work");
   if ((this.workType === "client" && !["sfifa", "trousers", "brim"].includes(this.category) && !linked && !this.deletedAt) || (linked && this.workType !== "client")) this.invalidate("tailoring", "Client work must reference a matching tailoring order");
   if (this.garmentType !== undefined && ((this.category !== "machine" && !this.shopFlow) || this.workType === "client")) this.invalidate("garmentType", "Shop garment type must belong to machine work");
-  if (linked && !workerOrderGarmentTypes(this.category).includes(tailoringGarmentType(this.tailoring))) this.invalidate("tailoring", "Order kind does not match worker section");
+  // Preserve saved laundry history from before trousers became exclusive to their section.
+  const historicalLaundryTrousers = !this.isNew && this.category === "mesbanto" && tailoringGarmentType(this.tailoring) === "trousers";
+  if (linked && !historicalLaundryTrousers && !workerOrderGarmentTypes(this.category).includes(tailoringGarmentType(this.tailoring))) this.invalidate("tailoring", "Order kind does not match worker section");
   if (linked && trouserClient && this.tailoring.items.some(item => item.trouserType !== this.trouserType)) this.invalidate("trouserType", "Assigned trousers must have one matching style");
   if (linked && this.tailoring && (!this.tailoring.lineIds.length || this.tailoring.lineIds.length > 50 || (this.category !== "sfifa" && this.tailoring.lineIds.length !== this.quantity) || new Set(this.tailoring.lineIds).size !== this.tailoring.lineIds.length || this.tailoring.items.length !== this.tailoring.lineIds.length || this.tailoring.items.some(item => !this.tailoring.lineIds.includes(item.lineId)))) this.invalidate("tailoring", "Garments must match the assigned quantity");
   if ((this.category === "sfifa") !== Boolean(this.sfifa)) this.invalidate("sfifa", "Sfifa details must match the work section");
