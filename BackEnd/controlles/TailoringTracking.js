@@ -12,10 +12,10 @@ export async function listTailoringTracking(req, res) {
     if (!orders.length) return res.json({ orders: [] });
     const ids = orders.map(order => order._id), owned = new Set(ids.map(String));
     const [ordinary, stocks] = await Promise.all([
-      WorkerWork.find({ idAdmin, workType: "client", "tailoring.orderId": { $in: ids } }).select("workerId category quantity completedQuantity completions.date tailoring createdAt updatedAt idAdmin workType").lean(),
+      WorkerWork.find({ idAdmin, workType: "client", "tailoring.orderId": { $in: ids } }).select("workerId category quantity completedQuantity completions.date tailoring createdAt updatedAt idAdmin workType deletedAt").lean(),
       SfifaStock.find({ idAdmin, "production.tailoring.orderId": { $in: ids } }).select("production").lean(),
     ]);
-    const works = [...ordinary, ...stocks.flatMap(stock => stock.production || [])].filter(work => !work.deletedAt && String(work.idAdmin) === String(idAdmin) && work.workType === "client" && owned.has(String(work.tailoring?.orderId)));
+    const works = [...ordinary, ...stocks.flatMap(stock => stock.production || [])].filter(work => !work.deletedAt && !work.relocatedAt && String(work.idAdmin) === String(idAdmin) && work.workType === "client" && owned.has(String(work.tailoring?.orderId)));
     const workerIds = [...new Set(works.map(work => String(work.workerId)))];
     const workers = workerIds.length ? await TailoringWorker.find({ idAdmin, _id: { $in: workerIds } }).select("_id name").lean() : [];
     const names = new Map(workers.map(worker => [String(worker._id), worker.name]));

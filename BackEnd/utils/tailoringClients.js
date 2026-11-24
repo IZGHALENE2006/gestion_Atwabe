@@ -7,21 +7,25 @@ import { clientPhoneKey } from '../../shared/tailoringCredit.js';
 import { clientNameKey, clientTailoringStatistics } from '../../shared/clientTailoringStats.js';
 
 const fail = (message, status = 409) => Object.assign(new Error(message), { status });
-export async function prepareTailoringClient(order, access) {
-  if (!access.canRegisterClient) throw fail('forbidden', 403);
+export async function prepareTailoringClient(order, access, { delivery = false } = {}) {
+  if (!delivery && !access.canRegisterClient) throw fail('forbidden', 403);
   const rows = await Client.find({ idAdmin: order.idAdmin }).select('_id name phone cin').lean();
   const phone = clientPhoneKey(order.phone), name = clientNameKey(order.clientName);
-  const connect = client => { order.clientId = client._id; order.clientName = client.name; order.phone = client.phone; return client; };
+  const connect = client => { order.clientId = client._id; if (!delivery) { order.clientName = client.name; order.phone = client.phone; } return client; };
   const matches = rows.filter(row => clientPhoneKey(row.phone) === phone && clientNameKey(row.name) === name);
-  if (matches.length > 1) throw fail('clientRegistrationAmbiguous');
+  if (matches.length > 1) throw fail(delivery ? 'creditOwnerAmbiguous' : 'clientRegistrationAmbiguous');
   if (matches.length === 1) return connect(matches[0]);
   const identity = createHash('sha256').update(JSON.stringify([String(order.idAdmin), phone, name])).digest('hex').slice(0, 24);
   const reserved = await Client.findOne({ _id: identity, idAdmin: order.idAdmin });
   if (reserved) {
-    if (clientPhoneKey(reserved.phone) !== phone || clientNameKey(reserved.name) !== name) throw fail('clientRegistrationAmbiguous');
+    if (clientPhoneKey(reserved.phone) !== phone || clientNameKey(reserved.name) !== name) throw fail(delivery ? 'creditOwnerAmbiguous' : 'clientRegistrationAmbiguous');
     return connect(reserved);
   }
-  const client = { ...validateClient({ type: 'person', name: order.clientName, phone: order.phone }, { allowMissingAddress: true }), _id: new mongoose.Types.ObjectId(identity) };
+  if (!access.canRegisterClient) throw fail('creditClientRegistrationForbidden', 403);
+  let value;
+  try { value = validateClient({ type: 'person', name: order.clientName, phone: order.phone }, { allowMissingAddress: true }); }
+  catch (error) { if (delivery) throw fail('creditClientRegistrationInvalid', 400); throw error; }
+  const client = { ...value, _id: new mongoose.Types.ObjectId(identity) };
   order.clientId = client._id;
   order.clientRegistration = { clientId: client._id, name: client.name, phone: client.phone, createdBy: access.createdBy, preparedAt: new Date(), state: 'prepared' };
   return client;

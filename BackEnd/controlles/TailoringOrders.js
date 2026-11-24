@@ -264,12 +264,17 @@ export async function deliverTailoringOrder(req, res) {
     if (order.cancelledAt) throw fail("orderCancelled", 409);
     if (order.deliveredAt) return res.json(await publicOrder(order));
     checkActionVersion(req, order);
-    const credit = tailoringCreditInput({ clientId: req.body.clientId || order.clientId, deliverOnCredit: req.body.deliverOnCredit });
+    const flag = req.body.deliverOnCredit;
+    const credit = tailoringCreditInput({ clientId: order.clientId ? String(order.clientId) : undefined, deliverOnCredit: flag, registerClient: !order.clientId && [true, 'true'].includes(flag) });
     if (credit.deliverOnCredit) {
-      order.set(await resolveTailoringClient({ clientId: credit.clientId }, order.idAdmin, order));
-      order.creditDelivery = await prepareTailoringCredit(order, req.tailoringAccess);
+      if (!req.tailoringAccess.permissions.creditDelivery) throw fail('forbidden', 403);
+      // Delivery always belongs to the original order owner; a request cannot
+      // redirect the balance to another client, including an unlinked order.
+      if (req.body.clientId != null && req.body.clientId !== '' && (typeof req.body.clientId !== 'string' || req.body.clientId.toLowerCase() !== String(order.clientId || '').toLowerCase())) throw fail('creditOwnerFixed', 409);
+      const registeringClient = order.clientId ? undefined : await prepareTailoringClient(order, req.tailoringAccess, { delivery: true });
+      order.creditDelivery = await prepareTailoringCredit(order, req.tailoringAccess, registeringClient);
       await order.save();
-      return res.json(await publicOrder(await finishTailoringCredit(order)));
+      return res.json(await publicOrder(await finishTailoringCredit(await finishTailoringClient(order))));
     }
     if (order.costing?.pricingVersion >= 2 || order.fabricSalesVersion === 1) order.deliveryFabricItems = order.items.map(item => item.toObject());
     order.deliveryFinancials = createTailoringDeliveryFinancials(order);

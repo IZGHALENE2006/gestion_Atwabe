@@ -12,6 +12,7 @@ import TailoringOrder from "../BackEnd/models/TailoringOrder.js";
 import { validateTailoringOrder } from "../shared/tailoring.js";
 import SfifaStock from "../BackEnd/models/SfifaStock.js";
 import { validateWorkerWork } from "../shared/workerWork.js";
+import { matchesTailoringWorkFilter } from '../shared/tailoringWorkFilters.js';
 
 const owner = "111111111111111111111111", otherOwner = "222222222222222222222222", employee = "333333333333333333333333";
 const admin = { id: owner, role: "admin" }, stranger = { id: otherOwner, role: "admin" }, staffClaims = { id: employee, role: "Employe", idAdmin: otherOwner, action: { add: true, update: true } };
@@ -51,7 +52,11 @@ function setup(t) {
   t.mock.method(TailoringOrder, "find", scope => query(() => orders.filter(row => matches(row,scope)).map(row => row.toObject())));
   t.mock.method(TailoringOrder, "findOne", scope => query(() => { const row=orders.find(row=>matches(row,scope));return row?new TailoringOrder(row.toObject()):null; }));
   t.mock.method(WorkerWork, "findOne", scope => query(() => { const row=records.find(row=>matches(row,scope));return row?new WorkerWork(row.toObject()):null; }));
-  t.mock.method(WorkerWork, "find", scope => query(() => records.filter(row=>matches(row,scope)).map(row=>row.toObject())));
+  t.mock.method(WorkerWork, "find", scope => {
+    const result = query(() => records.filter(row=>matches(row,scope)).map(row=>row.toObject()));
+    result.select = function (fields) { controls.workProjection = fields; return this; };
+    return result;
+  });
   t.mock.method(WorkerWork, "create", async value => {
     const row=new WorkerWork({...value,__v:0,createdAt:new Date(),updatedAt:new Date()});await row.validate();
     if(records.some(other=>same(other.idAdmin,row.idAdmin)&&(other.requestId===row.requestId || (row.tailoring && other.category===row.category && same(other.tailoring?.orderId,row.tailoring.orderId) && other.tailoring.lineIds.some(id=>row.tailoring.lineIds.includes(id)))))) throw Object.assign(new Error("duplicate"),{code:11000});
@@ -121,6 +126,29 @@ test("sfifa increase retries survive parent conflicts and failed deletes leave w
 });
 const tracking = actor => request("/tailoring-orders/work-status",actor===undefined?{}:{actor});
 const assignedFor = async order => (await (await tracking()).json()).orders.find(row=>row.orderId===String(order._id)).assignments;
+
+test('tracking excludes soft-deleted ordinary jobs using the real database projection', async t => {
+  const f = setup(t), order = f.seedOrder();
+  await assign(f.worker, orderWork(order));
+  f.records[0].deletedAt = new Date();
+  assert.deepEqual(await assignedFor(order), []);
+  assert.ok(f.controls.workProjection.split(' ').includes('deletedAt'));
+});
+
+test('order work filters follow real assignments and only finish after every laundry piece is completed', async t => {
+  const f = setup(t), worker = f.seedWorker(owner, ['machine', 'finishing', 'mesbanto']), order = f.seedOrder();
+  const status = async () => ({ loading: false, error: '', byOrder: { [String(order._id)]: await assignedFor(order) } });
+  assert.equal(matchesTailoringWorkFilter(order, 'unassigned', await status()), true);
+  for (const category of ['machine', 'finishing', 'mesbanto']) {
+    let job = await assign(worker, orderWork(order, category));
+    assert.equal(matchesTailoringWorkFilter(order, 'unassigned', await status()), false);
+    assert.equal(matchesTailoringWorkFilter(order, 'completedUndelivered', await status()), false);
+    job = await (await complete(worker, job, completionBody(job, 1))).json();
+    assert.equal(matchesTailoringWorkFilter(order, 'completedUndelivered', await status()), false);
+    assert.equal((await complete(worker, job, completionBody(job, 1))).status, 201);
+    assert.equal(matchesTailoringWorkFilter(order, 'completedUndelivered', await status()), category === 'mesbanto');
+  }
+});
 
 test("an order reports only its actual linked workers and sections, across different garments",async t=>{
   const f=setup(t),order=f.seedOrder(),other=f.seedOrder();

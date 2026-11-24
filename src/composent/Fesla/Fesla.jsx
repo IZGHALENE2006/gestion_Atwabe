@@ -8,6 +8,7 @@ import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { IoAddOutline, IoBarcodeOutline, IoCutOutline, IoSearchOutline, IoSettingsOutline, IoTrendingUpOutline, IoBarChartOutline } from "react-icons/io5";
 import { filterTailoringOrders, tailoringGarmentType, TAILORING_GARMENT_TYPES } from "../../../shared/tailoring.js";
+import { matchesTailoringWorkFilter, TAILORING_WORK_FILTERS } from "../../../shared/tailoringWorkFilters.js";
 import { loadTailoringOrders, loadTailoringTracking } from "./feslaApi.js";
 import DjellabaSettingsDialog from "./DjellabaSettingsDialog.jsx";
 import TailoringProfits from "./TailoringProfits.jsx";
@@ -38,6 +39,10 @@ export default function Fesla() {
   const tracking = trackingResult?.token === token && trackingResult.attempt === trackingAttempt ? trackingResult : { byOrder: {}, loading: true, error: "" };
   const [attempt, setAttempt] = useState(0);
   const [creditFilter, setCreditFilter] = useState("all");
+  const activeFilter = !operations.tracking && TAILORING_WORK_FILTERS.includes(creditFilter) ? "all" : creditFilter;
+  const workFilter = TAILORING_WORK_FILTERS.includes(activeFilter);
+  const workFilterLoading = workFilter && tracking.loading;
+  const workFilterError = workFilter && tracking.error;
   const [search, setSearch] = useState("");
   const [searchMode, setSearchMode] = useState("general");
   const [label, setLabel] = useState(null);
@@ -53,10 +58,11 @@ export default function Fesla() {
   const state = result?.token === token && result.attempt === attempt ? result : { orders: [], permissions: {}, loading: true, error: "" };
   const sectionOrders = state.orders.filter(matchesSearchTarget).filter(order => tailoringGarmentType(order) === garmentType);
   const visible = filterTailoringOrders(sectionOrders, search, { barcodeOnly: searchMode === "barcode" }).filter(order => {
-    if (creditFilter === 'all') return true;
-    if (creditFilter === 'regular') return !order.creditDelivery;
-    if (creditFilter === 'credit') return Boolean(order.creditDelivery);
-    return !order.cancelledAt && order.creditDelivery && (creditFilter === 'open' ? order.creditDelivery.remainingAmount > 0 : order.creditDelivery.remainingAmount === 0);
+    if (workFilter) return matchesTailoringWorkFilter(order, activeFilter, tracking);
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'regular') return !order.creditDelivery;
+    if (activeFilter === 'credit') return Boolean(order.creditDelivery);
+    return !order.cancelledAt && order.creditDelivery && (activeFilter === 'open' ? order.creditDelivery.remainingAmount > 0 : order.creditDelivery.remainingAmount === 0);
   });
   const selectedOrder = details?.token === token ? state.orders.find(order => order._id === details.id) : null;
   const assignmentOrder = assignment?.token === token ? state.orders.find(order => order._id === assignment.id) : null;
@@ -71,10 +77,10 @@ export default function Fesla() {
     return () => controller.abort();
   }, [token, attempt]);
   useEffect(() => {
-    if (!token) return;
+    if (!token || !operations.tracking) return;
     const controller = new AbortController();
     loadTailoringTracking(token, controller.signal).then(data => {
-      if (!Array.isArray(data.orders)) throw new Error("Invalid work tracking response");
+      if (!Array.isArray(data.orders) || data.orders.some(entry => typeof entry.orderId !== "string" || !Array.isArray(entry.assignments))) throw new Error("Invalid work tracking response");
       if (!controller.signal.aborted) setTrackingResult({ token, attempt: trackingAttempt, byOrder: Object.fromEntries(data.orders.map(entry => [entry.orderId, entry.assignments])), loading: false, error: "" });
     }).catch(error => { if (!controller.signal.aborted) setTrackingResult({ token, attempt: trackingAttempt, byOrder: {}, loading: false, error: error.response?.status === 403 ? "forbidden" : "loadTrackingFailed" }); });
     return () => controller.abort();
@@ -100,6 +106,7 @@ export default function Fesla() {
   const reloaded = data => { if (Array.isArray(data.orders)) setResult({ ...data, token, attempt, loading: false, error: "" }); };
   const changeSearchMode = mode => { setSearchMode(mode); setSearch(""); searchRef.current?.focus(); };
   const saved = (order) => {
+    refreshTracking();
     setResult((current) => ({ ...current, orders: [order, ...current.orders.filter((entry) => entry._id !== order._id)].sort((a, b) => b.orderDate.localeCompare(a.orderDate) || new Date(b.createdAt) - new Date(a.createdAt)) }));
     setStatus({ token, key: editor.order ? "updated" : "added" });
     if (!editor.order) printReceipt(order);
@@ -116,11 +123,14 @@ export default function Fesla() {
       <div className="fesla-search-modes">{[["general", "generalSearch"], ["barcode", "barcodeSearch"]].map(([mode, text]) => <button key={mode} type="button" data-fesla-search-mode={mode} aria-pressed={searchMode === mode} onClick={() => changeSearchMode(mode)}>{mode === "barcode" ? <IoBarcodeOutline size={19} aria-hidden="true" /> : <IoSearchOutline size={18} aria-hidden="true" />}{t(`fesla.${text}`)}</button>)}</div>
       <label className="fesla-search-input">{searchMode === "barcode" ? <IoBarcodeOutline aria-hidden="true" /> : <IoSearchOutline aria-hidden="true" />}<span className="sr-only">{t(searchMode === "barcode" ? "fesla.barcodeSearch" : "fesla.search")}</span><input ref={searchRef} id="fesla-search" data-fesla-search type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder={t(searchMode === "barcode" ? "fesla.scanBarcode" : "fesla.search")} dir={searchMode === "barcode" ? "ltr" : undefined} autoComplete="off" spellCheck={false} /></label>
       {searchMode === "barcode" && <p className="fesla-search-hint">{t("fesla.barcodeHint")}</p>}
-      <label className="tailoring-credit-filter-label">{t("tailoringCredit.filter")}<select data-tailoring-credit-filter className="tailoring-credit-filter" value={creditFilter} onChange={event => setCreditFilter(event.target.value)}>{["all", "credit", "open", "paid", "regular"].map(key => <option key={key} value={key}>{t("tailoringCredit."+key)}</option>)}</select></label>
+      <label className="tailoring-credit-filter-label">{t("tailoringCredit.filter")}<select data-tailoring-credit-filter className="tailoring-credit-filter" value={activeFilter} onChange={event => setCreditFilter(event.target.value)}>{["all", ...(operations.tracking ? TAILORING_WORK_FILTERS : []), "credit", "open", "paid", "regular"].map(key => <option key={key} value={key}>{t("tailoringCredit."+key)}</option>)}</select></label>
+      {workFilter && <div className="tailoring-work-filter-hint"><p>{t("tailoringCredit." + activeFilter + "Hint")}</p><button type="button" data-refresh-tailoring-work-filter disabled={tracking.loading} onClick={refreshTracking}>{t("fesla.tracking.refresh")}</button></div>}
     </section>
+    {workFilterLoading && !state.loading && !state.error && <p role="status" data-tailoring-work-filter-state="loading" className="p-8 text-center text-sm text-slate-500">{t("common.loading")}</p>}
+    {workFilterError && !state.loading && !state.error && <div role="alert" data-tailoring-work-filter-state="error" className="rounded-xl bg-rose-50 p-5 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"><p>{t("fesla.errors." + workFilterError)}</p><button type="button" onClick={refreshTracking} className="mt-3 font-bold underline">{t("fesla.retry")}</button></div>}
     {state.loading && <p role="status" className="p-8 text-center text-sm text-slate-500">{t("common.loading")}</p>}
     {state.error && <div role="alert" className="rounded-xl bg-rose-50 p-5 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"><p>{t(`fesla.errors.${state.error}`)}</p><button type="button" onClick={() => setAttempt((value) => value + 1)} className="mt-3 font-bold underline">{t("fesla.retry")}</button></div>}
-    {!state.loading && !state.error && (visible.length ? <TailoringOrdersTable onAssign={operations.assign && state.permissions.assign ? assign : undefined} onShareReceipt={operations.share ? shareReceipt : undefined} onNotify={operations.share ? notifyCustomer : undefined} onEdit={edit} onLabel={printOrder} onReceipt={operations.print ? printReceipt : undefined} orders={visible} tracking={tracking} canEdit={state.permissions.update} onAction={openAction} onDetails={order => { setDetails({ token, id: order._id }); refreshTracking(); }} /> : <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700"><IoCutOutline size={38} className="mx-auto mb-4 text-slate-400" /><p className="font-semibold">{t(sectionOrders.length ? "fesla.noResults" : "fesla.empty")}</p>{!sectionOrders.length && <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t("fesla.emptyHint")}</p>}</div>)}
+    {!state.loading && !state.error && !workFilterLoading && !workFilterError && (visible.length ? <TailoringOrdersTable onAssign={operations.assign && state.permissions.assign ? assign : undefined} onShareReceipt={operations.share ? shareReceipt : undefined} onNotify={operations.share ? notifyCustomer : undefined} onEdit={edit} onLabel={printOrder} onReceipt={operations.print ? printReceipt : undefined} orders={visible} tracking={tracking} canEdit={state.permissions.update} onAction={openAction} onDetails={order => { setDetails({ token, id: order._id }); refreshTracking(); }} /> : <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700"><IoCutOutline size={38} className="mx-auto mb-4 text-slate-400" /><p className="font-semibold">{t(sectionOrders.length ? "fesla.noResults" : "fesla.empty")}</p>{!sectionOrders.length && <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t("fesla.emptyHint")}</p>}</div>)}
     </>}
   </div>{assignmentOrder && operations.assign && <TailoringAssignmentDialog key={token + assignmentOrder._id} order={assignmentOrder} token={token} onClose={() => setAssignment(null)} onSaved={assignmentSaved} />}{receipt?.token === token && <TailoringReceiptDialog onShare={operations.share ? () => shareDocument(receipt.order, receipt.document) : undefined} document={receipt.document} onClose={() => setReceipt(null)} />}{whatsapp?.token === token && operations.share && <TailoringWhatsAppDialog key={whatsapp.order._id + (whatsapp.document?.reference || "notice") + i18n.language} order={whatsapp.order} document={whatsapp.document} onClose={() => setWhatsapp(null)} />}{selectedOrder && <EmployeeOperation module="tailoring" operation="details"><TailoringOrderDetailsDialog onAssign={operations.assign && state.permissions.assign ? assign : undefined} onShareReceipt={operations.share ? shareReceipt : undefined} onNotify={operations.share ? notifyCustomer : undefined} onReceipt={operations.print ? printReceipt : undefined} order={selectedOrder} tracking={tracking} onRefreshTracking={refreshTracking} token={token} canEdit={state.permissions.update && !selectedOrder.creditDelivery} onClose={() => setDetails(null)} onEdit={edit} onPrint={printOrder} onAction={openAction} /></EmployeeOperation>}{actionOrder && (state.permissions[action.mode === "payment" ? "payment" : action.mode === "cancel" ? "cancel" : "deliver"]) && <TailoringOrderActionDialog key={`${action.id}-${action.mode}`} order={actionOrder} mode={action.mode} token={token} onClose={() => setAction(null)} onSaved={actionSaved} onReload={reloaded} />}{editor?.token === token && <TailoringOrderForm key={editor.order?._id || garmentType} garmentType={garmentType} order={editor.order} token={token} onClose={() => setEditor(null)} onSaved={saved} />}{label?.token === token && <TailoringOrderLabelDialog order={label.order} onClose={() => setLabel(null)} />}{priceEditor?.token === token && <DjellabaSettingsDialog garmentType={garmentType} token={token} onClose={() => setPriceEditor(null)} onSaved={() => { setPriceEditor(null); setStatus({ token, key: garmentType === "shirts" ? "adjustments.shirtsSettingsSaved" : garmentType === "djellaba" ? "costs.settingsSaved" : garmentType + ".costs.settingsSaved" }); }} />}</main>;
 }

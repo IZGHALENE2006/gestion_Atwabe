@@ -10,10 +10,17 @@
 .tailoring-credit-choice button, .tailoring-client-picker button { margin-inline-start: 8px; color: #2563eb; font-weight: 700; text-decoration: underline; }
 .tailoring-credit-status { display: block; margin-top: 7px; padding: 6px 9px; border-radius: 9px; font-size: 11px; background: #fff0df; color: #a34d08; }
 .tailoring-credit-status.is-settled { background: #e2f6ee; color: #087750; }
-.tailoring-credit-filter-label { display: grid; gap: 6px; margin-top: 14px; max-width: 320px; color: #526984; font-size: 12px; font-weight: 700; }
+.tailoring-credit-filter-label { display: grid; gap: 6px; margin-top: 14px; max-width: 400px; color: #526984; font-size: 12px; font-weight: 700; }
+.tailoring-work-filter-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 10px; color: #526984; font-size: 12px; line-height: 1.8; }
+.tailoring-work-filter-hint button { color: #2563eb; font-weight: 700; text-decoration: underline; }
+.tailoring-work-filter-hint button:disabled { opacity: .5; cursor: wait; }
+.dark .tailoring-work-filter-hint { color: #b7c8df; }
+.dark .tailoring-work-filter-hint button { color: #93c5fd; }
 .dark .tailoring-client-picker select, .dark .tailoring-credit-filter { border-color: #3b4f6b; background: #18263c; color: #dfebff; }
 .dark .tailoring-client-warning { border-color: #735728; background: #342b1d; color: #f9d594; }
 .dark .tailoring-credit-choice { border-color: #365a86; background: #172a43; color: #c2dcff; }
 .dark .tailoring-credit-status { background: #432e16; color: #ffd393; }
 .dark .tailoring-credit-status.is-settled { background: #153b30; color: #98e9c3; }
 .dark .tailoring-credit-filter-label { color: #b7c8df; }
+
+.tailoring-delivery-owner{display:grid;gap:7px;padding:14px 16px;margin-bottom:16px;border:1px solid #d9e5f4;border-radius:12px;background:#f7faff}.tailoring-delivery-owner .fesla-action-client{margin:0}.tailoring-delivery-owner>bdi{font-size:13px;color:#355478;justify-self:start}.tailoring-delivery-owner>small{font-size:11px;color:#6b7f99}.tailoring-delivery-debt{padding:10px 12px;background:#e5f7ef;border:1px solid #b8e7d2;border-radius:9px;color:#087553;font-weight:800}.dark .tailoring-delivery-owner{background:#192b43;border-color:#36516f}.dark .tailoring-delivery-owner>bdi{color:#b2ccef}.dark .tailoring-delivery-owner>small{color:#9bb1ce}.dark .tailoring-delivery-debt{background:#163b2e;border-color:#2a6650;color:#95e5be}

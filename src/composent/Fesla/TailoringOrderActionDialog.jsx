@@ -1,4 +1,3 @@
-import TailoringClientPicker from "./TailoringClientPicker.jsx";
 import TailoringCreditChoice from "./TailoringCreditChoice.jsx";
 import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import { creditDeliveryDepositValid } from "../../../shared/tailoringCredit.js";
@@ -10,7 +9,7 @@ import { addTailoringPayment, deliverTailoringOrder, cancelTailoringOrder, loadT
 
 export default function TailoringOrderActionDialog({ order, mode, token, onClose, onSaved, onReload }) {
   const operations = useEmployeeOperations("tailoring");
-  const [clientId, setClientId] = useState(order.clientId || ""), [deliverOnCredit, setDeliverOnCredit] = useState(false);
+  const [deliverOnCredit, setDeliverOnCredit] = useState(false);
   const { t, i18n } = useTranslation();
   const dialogRef = useRef(null), busyRef = useRef(false), submissionRef = useRef(null);
   const [amount, setAmount] = useState("");
@@ -43,25 +42,26 @@ export default function TailoringOrderActionDialog({ order, mode, token, onClose
     if (payment && submissionRef.current?.cents !== cents) submissionRef.current = { cents, requestId: crypto.randomUUID() };
     busyRef.current = true; setBusy(true); setError("");
     try {
-      const updated = payment ? await addTailoringPayment(order, amount, submissionRef.current.requestId, token) : cancelling ? await cancelTailoringOrder(order, token) : await deliverTailoringOrder(order, token, { clientId, deliverOnCredit });
+      const updated = payment ? await addTailoringPayment(order, amount, submissionRef.current.requestId, token) : cancelling ? await cancelTailoringOrder(order, token) : await deliverTailoringOrder(order, token, { deliverOnCredit });
       if (dialogRef.current?.open) { dialogRef.current.close(); onSaved(updated); }
     } catch (failure) {
       if (dialogRef.current?.open) {
-        const code = failure.response?.data?.message;
-        setError(["creditDepositRequired", "chooseCreditClient", "creditCustomerAmbiguous", "creditAccountUnavailable", "invalidPayment", "paymentExceedsRemaining", "invalidRequest", "requestConflict", "notFound", "forbidden", "conflict", "orderCancelled", "orderNotDelivered", "fabricStockUnavailable", "fabricStockReturnLimit", "sfifaStockUnavailable", "sfifaStockReturnLimit"].includes(code) ? code : "saveFailed");
+        const message = failure.response?.data?.message;
+        const code = !payment && !cancelling && message === "chooseCreditClient" ? "creditClientUnavailable" : message;
+        setError(["creditOwnerFixed", "creditOwnerAmbiguous", "creditClientRegistrationForbidden", "creditClientRegistrationInvalid", "creditClientUnavailable", "creditDepositRequired", "chooseCreditClient", "creditCustomerAmbiguous", "creditAccountUnavailable", "invalidPayment", "paymentExceedsRemaining", "invalidRequest", "requestConflict", "notFound", "forbidden", "conflict", "orderCancelled", "orderNotDelivered", "fabricStockUnavailable", "fabricStockReturnLimit", "sfifaStockUnavailable", "sfifaStockReturnLimit"].includes(code) ? code : "saveFailed");
       }
     } finally { busyRef.current = false; if (dialogRef.current?.open) setBusy(false); }
   };
   return <dialog ref={dialogRef} dir={i18n.dir()} className="fesla-action-dialog" aria-labelledby="tailoring-action-title" onCancel={event => { event.preventDefault(); close(); }}>
     <header><h2 id="tailoring-action-title">{t(payment ? "fesla.addPayment" : cancelling ? "fesla.cancellation.action" : "fesla.completeAndDeliver")}</h2><button type="button" disabled={busy} onClick={close} aria-label={t("dialog.close")}><IoCloseOutline size={23} /></button></header>
     <form noValidate onSubmit={submit}>
-      <p dir="auto" className="fesla-action-client">{order.clientName}</p>
+      <div className="tailoring-delivery-owner" data-tailoring-order-owner><p dir="auto" className="fesla-action-client">{order.clientName}</p><bdi dir="ltr">{order.phone}</bdi>{!payment && !cancelling && <small>{t("tailoringCredit.orderOwnerLabel")}</small>}</div>
       <dl className="fesla-action-summary">{["totalPrice", "paidAmount", "remainingAmount"].map(key => <div key={key}><dt>{t(`fesla.${key}`)}</dt><dd><bdi>{money(key === "remainingAmount" ? remaining : order[key] ?? 0)} {t("fesla.currency")}</bdi></dd></div>)}</dl>
       {payment ? <div className="fesla-payment-input"><label htmlFor="fesla-payment-amount">{t("fesla.paymentAmount")} ({t("fesla.currency")})</label><input id="fesla-payment-amount" type="text" inputMode="decimal" dir="ltr" value={amount} onChange={event => { setAmount(event.target.value); setError(""); }} disabled={busy} maxLength={12} placeholder="0.00" required aria-invalid={Boolean(error)} aria-describedby={error ? "fesla-action-error" : undefined} /><p aria-live="polite">{t("fesla.remainingAfterPayment")}: <bdi>{money(afterPayment)} {t("fesla.currency")}</bdi></p></div> : <p className={cancelling ? "fesla-cancellation-notice" : "fesla-delivery-hint"}>{t(cancelling ? ((order.fabricStock || order.sfifaStock) ? order.deliveredAt ? "fesla.stockSfifa.cancelAfterDelivery" : "fesla.stockSfifa.cancelBeforeDelivery" : "fesla.cancellation.confirm") : "fesla.deliveryHint")}</p>}
-      {!payment && !cancelling && operations.creditDelivery && remaining > 0 && <><TailoringClientPicker token={token} value={clientId} disabled={busy} showDebt onChange={client => { setClientId(client?._id || ""); if (!client) setDeliverOnCredit(false); setError(""); }} /><TailoringCreditChoice checked={deliverOnCredit} disabled={busy} clientId={clientId} total={order.totalPrice} onChange={setDeliverOnCredit} /></>}
+      {!payment && !cancelling && operations.creditDelivery && remaining > 0 && <TailoringCreditChoice checked={deliverOnCredit} disabled={busy} useOrderClient debtAmount={remaining} onChange={value => { setDeliverOnCredit(value); setError(""); }} />}
       {cancelling && order.creditDelivery && <p className="fesla-cancellation-notice">{t("tailoringCredit.cancelHint")}</p>}
       {error && <div id="fesla-action-error" role="alert" className="fesla-action-error"><p>{t(`fesla.errors.${error}`)}</p>{["conflict", "loadFailed", "requestConflict"].includes(error) && <button type="button" disabled={busy} onClick={reload}>{t("fesla.reloadOrder")}</button>}</div>}
-      <footer><button type="button" disabled={busy} onClick={close}>{t("common.cancel")}</button><button type="submit" data-confirm-tailoring-action disabled={busy || (payment && remaining === 0)} className={payment ? "fesla-payment-button" : cancelling ? "fesla-cancel-button" : "fesla-deliver-button"}>{payment ? <IoCashOutline size={20} aria-hidden="true" /> : cancelling ? <IoBanOutline size={20} aria-hidden="true" /> : <IoCheckmarkCircleOutline size={20} aria-hidden="true" />}{t(busy ? "common.loading" : payment ? "fesla.recordPayment" : cancelling ? "fesla.cancellation.action" : "fesla.completeAndDeliver")}</button></footer>
+      <footer><button type="button" disabled={busy} onClick={close}>{t("common.cancel")}</button><button type="submit" data-confirm-tailoring-action disabled={busy || (payment && remaining === 0)} className={payment ? "fesla-payment-button" : cancelling ? "fesla-cancel-button" : "fesla-deliver-button"}>{payment ? <IoCashOutline size={20} aria-hidden="true" /> : cancelling ? <IoBanOutline size={20} aria-hidden="true" /> : <IoCheckmarkCircleOutline size={20} aria-hidden="true" />}{t(busy ? "common.loading" : payment ? "fesla.recordPayment" : cancelling ? "fesla.cancellation.action" : deliverOnCredit ? "tailoringCredit.confirmDelivery" : "fesla.completeAndDeliver")}</button></footer>
     </form>
   </dialog>;
 }
