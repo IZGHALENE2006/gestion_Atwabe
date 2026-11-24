@@ -2,6 +2,7 @@ import axios from "axios";
 
 const api = `${import.meta.env.VITE_API_URL || "http://localhost:7000"}/sfifa-stock`;
 const headers = token => ({ Authorization: `Bearer ${token}` });
+export const loadSfifaInventoryReport = async (token, includeUnavailable, signal) => (await axios.get(api + "/report", { headers: headers(token), signal, params: { includeUnavailable: includeUnavailable ? "1" : "0" } })).data;
 export const loadSfifaStock = async (token, signal) => (await axios.get(api, { headers: headers(token), signal })).data;
 export const saveSfifaStock = async (input, token, requestId, stock) => {
   if (!stock) return (await axios.post(api, { ...input, requestId }, { headers: headers(token) })).data;

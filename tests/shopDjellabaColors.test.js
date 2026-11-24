@@ -1,4 +1,4 @@
-import test, { before, after } from 'node:test';
+import nodeTest, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import jwt from '../BackEnd/node_modules/jsonwebtoken/index.js';
@@ -15,16 +15,18 @@ let server,base;const oldSecret=process.env.JWT_SECRET;
 before(async()=>{process.env.JWT_SECRET='isolated-djellaba-colors';server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));base='http://127.0.0.1:'+server.address().port;});
 after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));if(oldSecret===undefined)delete process.env.JWT_SECRET;else process.env.JWT_SECRET=oldSecret;});
 async function request(path,body,actor={id:owner,role:'admin'},method=body===undefined?'GET':'POST'){const response=await fetch(base+path,{method,headers:{Authorization:'Bearer '+jwt.sign(actor,process.env.JWT_SECRET),'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});return {status:response.status,data:await response.json()};}
+function registerGarmentTests(garmentType) {
+const test = (name, fn) => nodeTest(garmentType + ': ' + name, fn);
 function setup(t){const f=workerMaterialsFixture(t);f.worker.categories=['machine','finishing','mesbanto'];f.fabric.colors.push({name:'أحمر',number:'02',pieces:[{meters:8,barcode:generateFabricBarcode()}]},{name:'أخضر',number:'03',pieces:[{meters:0,barcode:generateFabricBarcode()}]});return f;}
 const ids=f=>f.fabric.colors.map(color=>String(color._id));
 const pathFor=f=>'/tailoring-workers/'+f.worker._id+'/work';
-const bodyFor=(f,colors=ids(f).slice(0,2))=>({category:'machine',workType:'shop',garmentType:'djellaba',quantity:999,shopDjellaba:{fabricId:String(f.fabric._id),colorIds:colors,size:'XL',meters:2.5,sfifaId:String(f.sfifa._id),variantId:String(f.sfifa.variants[0]._id),unitWage:15},requestId:randomUUID()});
+const bodyFor=(f,colors=ids(f).slice(0,2))=>({category:'machine',workType:'shop',garmentType,quantity:999,shopDjellaba:{fabricId:String(f.fabric._id),colorIds:colors,size:'XL',meters:2.5,sfifaId:String(f.sfifa._id),variantId:String(f.sfifa.variants[0]._id),unitWage:15},requestId:randomUUID()});
 async function assign(f,body=bodyFor(f)){const result=await request(pathFor(f),body);assert.equal(result.status,201,JSON.stringify(result));return result.data;}
 const finish=(f,work,lineIds)=>request(pathFor(f)+'/'+work._id+'/completions',{quantity:lineIds.length,lineIds,requestId:randomUUID(),version:work.__v});
 
 test('selecting djellaba colors creates one barcoded piece per color and deducts only 3m of sfifa per piece',async t=>{
   const f=setup(t),fabricBefore=JSON.stringify(f.fabrics),body=bodyFor(f,ids(f)),work=await assign(f,body);
-  assert.equal(work.quantity,3);assert.equal(work.materials.length,3);assert.equal(work.materialStatus,'ready');assert.equal(f.stocks[0].quantity,11);assert.equal(f.stocks[0].variants[0].quantity,11);assert.equal(JSON.stringify(f.fabrics),fabricBefore);
+  assert.equal(work.garmentType,garmentType);assert.equal(work.quantity,3);assert.equal(work.materials.length,3);assert.equal(work.materialStatus,'ready');assert.equal(f.stocks[0].quantity,11);assert.equal(f.stocks[0].variants[0].quantity,11);assert.equal(JSON.stringify(f.fabrics),fabricBefore);
   assert.deepEqual(work.materials.map(row=>row.colorId),ids(f).sort());assert.ok(work.materials.every(row=>row.fabricStockDeducted===false&&row.sfifaMeters===3&&row.meters===2.5&&row.size==='XL'&&row.unitWage===15&&row.pieceId===undefined));
   assert.equal(new Set([1,2,3].map(number=>shopPieceBarcode(work,number))).size,3);assert.equal((await request(pathFor(f),body)).status,200);assert.equal(f.stocks[0].quantity,11);assert.equal(JSON.stringify(f.fabrics),fabricBefore);
   const changed=await request(pathFor(f),{...body,shopDjellaba:{...body.shopDjellaba,colorIds:ids(f).slice(0,2)}});assert.equal(changed.status,409);
@@ -39,7 +41,7 @@ test('invalid, duplicate and foreign colors and mismatched sections never create
   const f=setup(t),before=JSON.stringify(f.fabrics);
   for(const [key,value] of [['colorIds',[]],['colorIds',[ids(f)[0],ids(f)[0]]],['fabricId','bad'],['variantId','bad'],['unitWage',-1],['size','4XL'],['meters','2.0001'],['sfifaStyle','bad'],['modelNumber',0],['modelNumber',6],['modelNumber',1.5],['modelNumber',[1]]]){const body=bodyFor(f);body.shopDjellaba[key]=value;const result=await request(pathFor(f),body);assert.equal(result.status,400,JSON.stringify(result));assert.ok(result.data.fields['shopDjellaba.'+key]);}
   const foreign=f.seedFabric({idAdmin:otherOwner});let body=bodyFor(f);body.shopDjellaba.fabricId=String(foreign._id);body.shopDjellaba.colorIds=[String(foreign.colors[0]._id)];assert.equal((await request(pathFor(f),body)).status,409);
-  for(const patch of [{category:'trousers'},{workType:'client'},{garmentType:'jabador'},{garmentType:'malakiya'}]) assert.throws(()=>validateWorkerWork({...bodyFor(f),...patch}),error=>error.fields.shopDjellaba==='invalidMaterialSection');
+  for(const patch of [{category:'trousers'},{workType:'client'},{garmentType:'shirts'},{garmentType:'trousers'}]) assert.throws(()=>validateWorkerWork({...bodyFor(f),...patch}),error=>error.fields.shopDjellaba==='invalidMaterialSection');
   assert.equal(f.records.length,0);assert.equal(f.stocks[0].quantity,20);assert.equal(JSON.stringify(f.fabrics.slice(0,1)),before);
 });
 
@@ -76,9 +78,9 @@ test('sfifa style validation uses the selected style balance and the stock journ
 
 test('finishing and laundry retain selected color snapshots, piece barcodes, and the no-cloth-debit flag',async t=>{
   const f=setup(t),before=JSON.stringify(f.fabrics),machine=await assign(f),completed=await finish(f,machine,ids(f).slice(0,2));assert.equal(completed.status,201);
-  let result=await request(pathFor(f),{category:'finishing',workType:'shop',garmentType:'djellaba',shopOriginId:machine._id,unitWage:5,requestId:randomUUID()});assert.equal(result.status,201,JSON.stringify(result));const finishing=result.data;assert.ok(finishing.shopFlow.materials.every(row=>row.fabricStockDeducted===false));assert.equal(shopPieceBarcode(finishing,1),shopPieceBarcode(machine,1));
+  let result=await request(pathFor(f),{category:'finishing',workType:'shop',garmentType,shopOriginId:machine._id,unitWage:5,requestId:randomUUID()});assert.equal(result.status,201,JSON.stringify(result));const finishing=result.data;assert.equal(finishing.garmentType,garmentType);assert.ok(finishing.shopFlow.materials.every(row=>row.fabricStockDeducted===false));assert.equal(shopPieceBarcode(finishing,1),shopPieceBarcode(machine,1));
   result=await request(pathFor(f)+'/'+finishing._id+'/completions',{quantity:2,lineIds:finishing.shopFlow.lineIds,version:finishing.__v,requestId:randomUUID()});assert.equal(result.status,201);
-  result=await request(pathFor(f),{category:'mesbanto',workType:'shop',garmentType:'djellaba',shopOriginId:machine._id,unitWage:3,requestId:randomUUID()});assert.equal(result.status,201,JSON.stringify(result));assert.ok(result.data.shopFlow.materials.every(row=>row.fabricStockDeducted===false));assert.equal(f.stocks[0].quantity,14);assert.equal(JSON.stringify(f.fabrics),before);
+  result=await request(pathFor(f),{category:'mesbanto',workType:'shop',garmentType,shopOriginId:machine._id,unitWage:3,requestId:randomUUID()});assert.equal(result.status,201,JSON.stringify(result));assert.equal(result.data.garmentType,garmentType);assert.ok(result.data.shopFlow.materials.every(row=>row.fabricStockDeducted===false));assert.equal(f.stocks[0].quantity,14);assert.equal(JSON.stringify(f.fabrics),before);
 });
 
 test('employee responses preserve color selection without exposing stored wages',async t=>{
@@ -87,7 +89,7 @@ test('employee responses preserve color selection without exposing stored wages'
 
 test('model guards prevent reference-only fabric flags outside color-based djellaba work',async t=>{
   const f=setup(t);await assign(f);const source=f.records[0].toObject();await new WorkerWork(source).validate();
-  for(const modify of [row=>{row.shopDjellaba=undefined;},row=>{row.garmentType='jabador';},row=>{row.materialOperations[0].rows[0].fabricStockDeducted=undefined;},row=>{row.shopDjellaba.colorIds.pop();},row=>{row.materialOperations[0].rows[0].colorId='9'.repeat(24);}]){const input=JSON.parse(JSON.stringify(source));modify(input);await assert.rejects(new WorkerWork(input).validate());}
+  for(const modify of [row=>{row.shopDjellaba=undefined;},row=>{row.garmentType='shirts';},row=>{row.materialOperations[0].rows[0].fabricStockDeducted=undefined;},row=>{row.shopDjellaba.colorIds.pop();},row=>{row.materialOperations[0].rows[0].colorId='9'.repeat(24);}]){const input=JSON.parse(JSON.stringify(source));modify(input);await assert.rejects(new WorkerWork(input).validate());}
   assert.equal(workerMaterialRows(f.records[0]).length,2);
 });
 
@@ -99,6 +101,9 @@ test('the selected djellaba number survives saving, editing, additions, completi
   assert.equal(edited.status,200,JSON.stringify(edited.data));assert.equal(edited.data.shopDjellaba.modelNumber,5);assert.ok(edited.data.materials.every(row=>row.modelNumber===5));assert.equal(edited.data.edits[0].beforeSnapshot.shopDjellaba.modelNumber,3);assert.equal(edited.data.edits[0].afterSnapshot.shopDjellaba.modelNumber,5);
   const more=await request(pathFor(f)+'/'+work._id+'/increases',{shopDjellaba:{colorIds:[ids(f)[2]],unitWage:20,modelNumber:1},version:edited.data.__v,requestId:randomUUID()});assert.equal(more.status,201,JSON.stringify(more.data));assert.ok(more.data.materials.every(row=>row.modelNumber===5));
   const done=await finish(f,more.data,ids(f));assert.equal(done.status,201,JSON.stringify(done.data));assert.equal(done.data.completions[0].earningAmount,50);assert.equal(f.stocks[0].quantity,11);
-  const finishing=await request(pathFor(f),{category:'finishing',workType:'shop',garmentType:'djellaba',shopOriginId:work._id,unitWage:5,requestId:randomUUID()});assert.equal(finishing.status,201,JSON.stringify(finishing.data));assert.ok(finishing.data.shopFlow.materials.every(row=>row.modelNumber===5));
+  const finishing=await request(pathFor(f),{category:'finishing',workType:'shop',garmentType,shopOriginId:work._id,unitWage:5,requestId:randomUUID()});assert.equal(finishing.status,201,JSON.stringify(finishing.data));assert.ok(finishing.data.shopFlow.materials.every(row=>row.modelNumber===5));
   const document=JSON.parse(JSON.stringify(f.records[0]));document.shopDjellaba.modelNumber=6;await assert.rejects(new WorkerWork(document).validate());
 });
+
+}
+for (const garmentType of ['djellaba', 'jabador', 'malakiya']) registerGarmentTests(garmentType);

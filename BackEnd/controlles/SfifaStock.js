@@ -10,6 +10,8 @@ import TailoringWorker from "../models/TailoringWorker.js";
 import { protectWorkerMaterialDeletion } from '../utils/workerMaterials.js';
 import { SFIFA_METER_TYPES, SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, SFIFA_STOCK_SCALE, sfifaQuantityUnits, sfifaStockBarcode, validateSfifaClassification, validateSfifaStock, validateSfifaStockCorrection, sfifaVariantIdentity, sfifaVariantMatches, sfifaReceiptMatches } from "../../shared/sfifaStock.js";
 
+import { buildSfifaInventoryReport } from "../../shared/sfifaInventoryReport.js";
+
 const fail = (message, status) => Object.assign(new Error(message), { status });
 const sameStyleMeters = (left, right) => left === undefined && right === undefined || Boolean(left && right && SFIFA_METER_TYPES.every(key => left[key] === right[key]));
 const groupUnits = quantity => sfifaQuantityUnits(quantity, { max: SFIFA_STOCK_GROUP_LIMIT });
@@ -56,6 +58,16 @@ export async function listSfifaStock(req, res) {
     for (const stock of items) await ensureSfifaStyleBalances(stock);
     res.json({ items: items.flatMap(publicRows), permissions });
   } catch (error) { sendError(res, error, "loadFailed"); }
+}
+export async function getSfifaInventoryReport(req, res) {
+  try {
+    const { idAdmin } = await accessFor(req, 'download');
+    if (req.query.includeUnavailable !== undefined && !['0', '1'].includes(req.query.includeUnavailable)) throw fail('invalidReportOptions', 400);
+    const stocks = await SfifaStock.find({ idAdmin }).sort({ width: 1, family: 1 }).lean();
+    for (const stock of stocks) await ensureSfifaStyleBalances(stock);
+    const report = buildSfifaInventoryReport(stocks.flatMap(publicRows), { includeUnavailable: req.query.includeUnavailable === '1' });
+    res.json({ report, issuedAt: new Date().toISOString() });
+  } catch (error) { sendError(res, error, 'loadReportFailed'); }
 }
 export async function getSfifaStockDetails(req, res) {
   try {

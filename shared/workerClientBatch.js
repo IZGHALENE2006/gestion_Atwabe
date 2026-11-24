@@ -29,26 +29,27 @@ export function validateWorkerClientBatch(data, category, ledger = new Map()) {
   return inputs;
 }
 
-export async function submitWorkerClientBatch(inputs, ledger, send, onProgress = () => {}, makeRequestId = () => crypto.randomUUID()) {
+export async function submitWorkerClientBatch(inputs, ledger, send, onProgress = () => {}, makeRequestId = () => crypto.randomUUID(), keyFor = input => input.orderId) {
   for (const input of inputs) {
-    let entry = ledger.get(input.orderId);
+    const key = keyFor(input);
+    let entry = ledger.get(key);
     if (entry?.status === 'saved') continue;
     const fingerprint = JSON.stringify(input);
     if (!entry || entry.fingerprint !== fingerprint) entry = { input, fingerprint, requestId: makeRequestId() };
-    ledger.set(input.orderId, { ...entry, status: 'saving' }); onProgress();
+    ledger.set(key, { ...entry, status: 'saving' }); onProgress();
     try {
       const work = await send(entry.input, entry.requestId);
       if (!work?._id) throw new Error('Invalid work response');
-      ledger.set(input.orderId, { ...entry, status: 'saved', work });
+      ledger.set(key, { ...entry, status: 'saved', work });
     } catch (error) {
       const status = error.response?.status, code = error.response?.data?.message || 'saveWorkFailed';
       const uncertain = !status || status >= 500 || /pending/i.test(code);
-      ledger.set(input.orderId, { ...entry, status: uncertain ? 'uncertain' : 'failed', code,
+      ledger.set(key, { ...entry, status: uncertain ? 'uncertain' : 'failed', code,
         fields: error.response?.data?.fields || {}, blockers: Array.isArray(error.response?.data?.blockers) ? error.response.data.blockers : [],
       });
     }
     onProgress();
   }
-  const entries = inputs.map(input => ledger.get(input.orderId));
+  const entries = inputs.map(input => ledger.get(keyFor(input)));
   return { complete: entries.every(row => row.status === 'saved'), works: entries.filter(row => row.status === 'saved').map(row => row.work) };
 }

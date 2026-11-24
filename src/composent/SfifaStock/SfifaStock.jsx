@@ -1,10 +1,11 @@
+import SfifaInventoryReportDialog from "./SfifaInventoryReportDialog.jsx";
 import SfifaStockDetailsDialog from "./SfifaStockDetailsDialog.jsx";
 import useSearchTarget from "../../hooks/useSearchTarget.js";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { IoAddOutline, IoColorPaletteOutline, IoLayersOutline, IoSearchOutline } from "react-icons/io5";
+import { IoAddOutline, IoDocumentTextOutline, IoColorPaletteOutline, IoLayersOutline, IoSearchOutline } from "react-icons/io5";
 import { SFIFA_STOCK_FAMILIES, SFIFA_STOCK_WIDTHS, filterSfifaStock, sfifaStockTotals } from "../../../shared/sfifaStock.js";
 import { loadSfifaStock } from "./sfifaStockApi.js";
 import SfifaStockForm from "./SfifaStockForm.jsx";
@@ -48,7 +49,7 @@ export default function SfifaStock() {
   const patchFilter = value => setFilters(current => ({ ...current, ...value }));
   const inputClass = "w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-primary-500 dark:border-slate-700 dark:bg-slate-800";
   return <main dir={i18n.dir()} className="sfifa-inventory min-h-screen bg-slate-50 p-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:p-8"><div className="mx-auto max-w-7xl space-y-6 pb-24">
-    <header className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-3xl font-bold">{t("sfifaStock.title")}</h1><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t("sfifaStock.subtitle")}</p></div>{state.permissions.add && <button type="button" data-add-sfifa onClick={() => edit()} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-3 text-sm font-bold text-white hover:bg-primary-700"><IoAddOutline size={21} />{t("sfifaStock.add")}</button>}</header>
+    <header className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-3xl font-bold">{t("sfifaStock.title")}</h1><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t("sfifaStock.subtitle")}</p></div><div className="flex flex-wrap items-center gap-3">{state.permissions.download && <button type="button" data-open-sfifa-report disabled={state.loading || Boolean(state.error)} onClick={() => setEditor({ token, mode: "report" })} className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-bold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200"><IoDocumentTextOutline size={21} />{t("sfifaInventoryReport.action")}</button>}{state.permissions.add && <button type="button" data-add-sfifa onClick={() => edit()} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-3 text-sm font-bold text-white hover:bg-primary-700"><IoAddOutline size={21} />{t("sfifaStock.add")}</button>}</div></header>
     {status?.token === token && <p role="status" className="rounded-xl border border-primary-200 bg-primary-50 p-4 text-sm text-primary-800 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300">{t(`sfifaStock.${status.key}`)}</p>}
     {state.loading && <p role="status" className="p-8 text-center text-sm text-slate-500">{t("common.loading")}</p>}
     {state.error && <div role="alert" className="rounded-xl bg-rose-50 p-5 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"><p>{t(`sfifaStock.errors.${state.error}`)}</p><button type="button" onClick={reload} className="mt-3 font-bold underline">{t("sfifaStock.retry")}</button></div>}
@@ -68,5 +69,5 @@ export default function SfifaStock() {
   {editor?.token === token && ["restock", "delete"].includes(editor.mode) && <SfifaStockActionDialog key={editor.mode + editor.stock._id} mode={editor.mode} stock={editor.stock} token={token} onClose={() => setEditor(null)} onSaved={saved} onReload={reload} />}
   {editor?.token === token && editor.mode === "details" && <SfifaStockDetailsDialog key={editor.stock._id} stock={editor.stock} token={token} onClose={() => setEditor(null)} />}
   {editor?.token === token && editor.mode === "history" && <SfifaStockHistoryDialog key={editor.stock._id} stock={editor.stock} token={token} onClose={() => setEditor(null)} />}
-  {editor?.token === token && editor.mode === "barcode" && <SfifaStockBarcodeDialog stock={editor.stock} onClose={() => setEditor(null)} />}</main>;
+  {editor?.token === token && editor.mode === "barcode" && <SfifaStockBarcodeDialog stock={editor.stock} onClose={() => setEditor(null)} />}{editor?.token === token && editor.mode === "report" && <SfifaInventoryReportDialog token={token} onClose={() => setEditor(null)} />}</main>;
 }

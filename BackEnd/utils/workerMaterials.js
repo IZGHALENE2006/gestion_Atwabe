@@ -8,6 +8,7 @@ import { FABRIC_LIMITS } from '../../shared/fabrics.js';
 import { SFIFA_STOCK_GROUP_LIMIT, SFIFA_STOCK_LIMIT, sfifaQuantityUnits, sfifaStockStyles, sfifaVariantIdentity } from '../../shared/sfifaStock.js';
 import { usesWorkerMaterials, workerMaterialPending, workerMaterialRows, WORKER_SFIFA_METERS } from '../../shared/workerMaterials.js';
 import { tailoringGarmentType } from '../../shared/tailoring.js';
+import { isShopGarmentBatch } from '../../shared/workerShopDjellaba.js';
 
 const fail = (message, status = 409) => Object.assign(new Error(message), { status });
 const same = (a, b) => String(a) === String(b);
@@ -43,7 +44,7 @@ export async function resolveWorkerMaterials(input, details, idAdmin, creditRows
   const result = input.map((row, index) => {
     const fabric = fabrics.get(row.fabricId), color = fabric?.colors.find(color => same(color._id, row.colorId)), piece = color?.pieces.find(piece => same(piece._id, row.pieceId));
     const sfifa = sfifas.get(row.sfifaId), variant = sfifa?.variants?.find(variant => same(variant._id, row.variantId));
-    const fabricOnlyReference = row.fabricStockDeducted === false && details.shopDjellaba && details.category === 'machine' && details.workType === 'shop' && details.garmentType === 'djellaba';
+    const fabricOnlyReference = row.fabricStockDeducted === false && isShopGarmentBatch(details);
     if (row.fabricStockDeducted === false && !fabricOnlyReference) throw fail('invalidMaterialSection', 400);
     if (!color || (!fabricOnlyReference && !piece) || (!variant && !same(sfifa?._id, row.variantId))) throw fail('materialStockUnavailable');
     const styles = sfifaStockStyles(sfifa, variant?.code, { variantId: variant?._id });

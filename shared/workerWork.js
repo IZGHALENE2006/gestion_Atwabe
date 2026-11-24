@@ -132,7 +132,7 @@ function orderSelection(input) {
 export function validateWorkerWork(input, { allowLegacyTrouserClient = false } = {}) {
   if (input?.shopDjellaba !== undefined) {
     if (!isShopDjellabaBatch(input)) throw Object.assign(new Error('invalidWork'), { fields: { shopDjellaba: 'invalidMaterialSection' } });
-    return { ...validateShopDjellabaBatch(input.shopDjellaba), productName: 'Djellaba', category: 'machine', workType: 'shop', garmentType: 'djellaba' };
+    return { ...validateShopDjellabaBatch(input.shopDjellaba), productName: { djellaba: 'Djellaba', jabador: 'Jabador', malakiya: 'Malakiya' }[input.garmentType], category: 'machine', workType: 'shop', garmentType: input.garmentType };
   }
   if (input?.shopTrouser !== undefined && (input.category !== 'trousers' || input.workType !== 'shop')) throw Object.assign(new Error('invalidWork'), { fields: { shopTrouser: 'invalidShopTrouser' } });
   if (input?.materials !== undefined && (input.category !== 'machine' || input.workType !== 'shop')) throw Object.assign(new Error('invalidWork'), { fields: { materials: 'invalidMaterialSection' } });

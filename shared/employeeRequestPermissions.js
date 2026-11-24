@@ -64,7 +64,7 @@ export function employeeCanRequest(user, method, rawPath, input) {
     return path === "/tailoring-workers" && method === "POST" ? can("workers", "add") : method === "PUT" && can("workers", "update");
   }
   if (path.startsWith("/sfifa-stock")) {
-    if (read) return path.endsWith("/details") ? can("sfifa", "details") : path.endsWith("/history") ? can("sfifa", "history") : allowed("sfifa", "workers");
+    if (read) return path === "/sfifa-stock/report" ? can("sfifa", "download") : path.endsWith("/details") ? can("sfifa", "details") : path.endsWith("/history") ? can("sfifa", "history") : allowed("sfifa", "workers");
     return method === "POST" ? can("sfifa", path.endsWith("/restock") ? "restock" : "add") : method === "PUT" ? can("sfifa", "update") : method === "DELETE" && can("sfifa", "delete");
   }
   if (path.startsWith("/fabrics")) {

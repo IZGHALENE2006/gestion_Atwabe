@@ -5,7 +5,7 @@ export const EMPLOYEE_OPERATIONS = {
   cashier: ["history", "sell", "creditSale", "discount", "wholesale", "print"],
   credit: ["ownerDebts", "addOwnerDebt", "payOwnerDebt", "ownerDebtHistory", "add", "details", "addDebt", "payment", "deleteDebt", "delete", "history", "print", "share"],
   tailoring: ["creditDelivery", "assign", "add", "update", "discount", "details", "payment", "deliver", "cancel", "settings", "profits", "tracking", "print", "share", "labels"],
-  sfifa: ["details", "add", "update", "restock", "delete", "history", "labels"],
+  sfifa: ["details", "add", "update", "restock", "delete", "history", "labels", "download"],
   fabrics: ["invoiceHistory", "addInvoice", "invoicePayment", "invoicePrint", "invoiceShare", "creditSale", "details", "add", "update", "addColor", "addPiece", "delete", "deleteColor", "deletePiece", "sell", "discount", "wholesale", "reduce", "history", "profits", "labels", "catalog"],
   workers: ["add", "update", "delete", "assign", "editWork", "complete", "increase", "deleteWork", "cancelWork", "resume", "details", "financials", "payroll", "pay", "advance", "download", "labels"],
   products: ["add", "update", "restock", "delete", "details", "labels"],

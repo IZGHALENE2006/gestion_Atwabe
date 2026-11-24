@@ -55,7 +55,7 @@ export function shopStageAvailability(origin, works, category) {
   if (category === 'mesbanto') {
     const previous = linked.find(work => work.category === 'finishing');
     if (!previous) return { available: false, reason: 'shopFinishingRequired' };
-    if (previous.quantity !== previous.completedQuantity) return { available: false, reason: 'shopFinishingPending' };
+    if (previous.quantity !== previous.completedQuantity || workerMaterialPending(previous)) return { available: false, reason: 'shopFinishingPending' };
   }
   return { available: true };
 }

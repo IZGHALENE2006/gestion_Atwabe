@@ -237,7 +237,7 @@ export const workersFrench = {
     errors: {
     ...{"chooseShopWork":"Choisissez un travail du magasin terminé à la machine.","invalidShopSection":"Cette section ne peut pas recevoir ce travail du magasin.","shopWorkNotFound":"Le travail de la machine n’est plus disponible. Actualisez la liste.","shopMachinePending":"Ce travail n’est pas encore terminé à la machine.","shopFinishingRequired":"Confiez d’abord le travail à la finition et terminez cette étape.","shopFinishingPending":"Ce travail n’est pas encore terminé à la finition.","shopAlreadyAssigned":"Ce travail est déjà confié dans cette section.","shopHasLaterStage":"Le travail a atteint une étape suivante. Retirez d’abord cette affectation.","shopFlowFixedQuantity":"La quantité provient du travail de la machine et ne peut pas être augmentée ici."},
       invalidShopTrouser: "Vérifiez le type, le tissu et la taille du pantalon.",
-      chooseDjellabaColors: "Sélectionnez les couleurs des djellabas, sans répéter une couleur déjà attribuée.",
+      chooseDjellabaColors: "Sélectionnez les couleurs des pièces, sans répéter une couleur déjà attribuée.",
       chooseCompletedTrouserColors: "Choisissez les couleurs exactes des pantalons reçus, sans répéter une couleur déjà réalisée.",
       invalidTrouserLength: "Choisissez ou saisissez une longueur supérieure à 0 et inférieure ou égale à 1 000 cm.",
       chooseTrouserColors: "Sélectionnez au moins une couleur, sans doublons ni couleurs déjà attribuées.",
@@ -584,7 +584,7 @@ export const workersArabic = {
     errors: {
     ...{"chooseShopWork":"اختر عملًا من أعمال المحل المنجزة في الآلة.","invalidShopSection":"هذا القسم لا يقبل إسناد عمل المحل المختار.","shopWorkNotFound":"لم يعد عمل الآلة متاحًا. حدّث القائمة.","shopMachinePending":"العمل لم يُنجز بعد في الآلة.","shopFinishingRequired":"يجب إسناد العمل إلى التصفية وإنجازه أولًا.","shopFinishingPending":"العمل لم يُنجز بعد في التصفية.","shopAlreadyAssigned":"هذا العمل مسند بالفعل في هذا القسم.","shopHasLaterStage":"انتقل العمل إلى مرحلة لاحقة. احذف إسناد المرحلة اللاحقة أولًا.","shopFlowFixedQuantity":"تُؤخذ الكمية من عمل الآلة ولا يمكن زيادتها في هذه المرحلة."},
       invalidShopTrouser: "تحقق من نوع السروال والثوب والمقاس.",
-      chooseDjellabaColors: "حدد ألوان الجلابيب دون تكرار لون سبق إضافته إلى العمل.",
+      chooseDjellabaColors: "حدد ألوان القطع دون تكرار لون سبق إضافته إلى العمل.",
       chooseCompletedTrouserColors: "حدد ألوان السراويل التي تسلمتها بالضبط، دون تكرار لون سبق إنجازه.",
       invalidTrouserLength: "اختر أو أدخل طولًا أكبر من صفر ولا يتجاوز 1000 سم.",
       chooseTrouserColors: "حدد لونًا واحدًا على الأقل، دون تكرار الألوان المضافة إلى العمل.",

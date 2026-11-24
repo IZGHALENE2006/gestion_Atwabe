@@ -1,5 +1,7 @@
 import { clientTailoringFrench } from './clientTailoring.js';
 import { workerClientBatchFrench } from './workerClientBatch.js';
+import { workerShopBatchFrench } from './workerShopBatch.js';
+import { workerShopGarmentsFrench } from './workerShopGarments.js';
 import { allProfitsFrench } from './allProfits.js';
 import { documentSharingFrench } from './documentSharing.js';
 import { tailoringCreditFrench } from './tailoringCredit.js';
@@ -16,6 +18,7 @@ import { employeePermissionsFrench } from "./employeePermissions.js";
 import { fabricsFrench } from "./fabrics.js";
 import { feslaFrench } from "./fesla.js";
 import { workersFrench } from "./workers.js";
+import { sfifaInventoryReportFrench } from "./sfifaInventoryReport.js";
 import { sfifaStockFrench } from "./sfifaStock.js";
 
 import { globalSearchFrench } from './globalSearch.js';
@@ -33,13 +36,13 @@ export default {
       productBatches: productBatchesFrench,
   fabrics: fabricsFrench,
   clientTailoring: clientTailoringFrench,
-  workerClientBatch: workerClientBatchFrench,
+  workerShopGarments: workerShopGarmentsFrench, workerShopBatch: workerShopBatchFrench, workerClientBatch: workerClientBatchFrench,
   allProfits: allProfitsFrench,
   documentSharing: documentSharingFrench,
   tailoringCredit: tailoringCreditFrench,
       fesla: { ...feslaFrench, errors: { ...feslaFrench.errors, ...tailoringCreditFrench.errors } },
   workers: workersFrench,
-  sfifaStock: sfifaStockFrench,
+  sfifaInventoryReport: sfifaInventoryReportFrench, sfifaStock: sfifaStockFrench,
   documentClient: {
     select: "Client enregistré (facultatif)",
     manual: "Saisie libre / Client non enregistré",

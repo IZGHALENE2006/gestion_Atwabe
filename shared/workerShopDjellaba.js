@@ -2,8 +2,11 @@ import { FABRIC_LIMITS } from './fabrics.js';
 import { WORKER_GARMENT_SIZES, WORKER_DJELLABA_NUMBERS } from './workerMaterials.js';
 import { sfifaQuantityUnits, SFIFA_METER_TYPES } from './sfifaStock.js';
 import { tailoringMoneyCents } from './tailoring.js';
+import { SHOP_FLOW_GARMENTS } from './workerShopFlow.js';
 
-export const isShopDjellabaBatch = work => work?.category === 'machine' && work.workType === 'shop' && work.garmentType === 'djellaba' && Boolean(work.shopDjellaba);
+// Keep the stored shopDjellaba field compatible with existing assignments.
+export const isShopGarmentBatch = work => work?.category === 'machine' && work.workType === 'shop' && SHOP_FLOW_GARMENTS.includes(work.garmentType) && Boolean(work.shopDjellaba);
+export const isShopDjellabaBatch = isShopGarmentBatch;
 export function validateShopDjellabaBatch(input, { excluded = [] } = {}) {
   const fields = {}, prefix = 'shopDjellaba.';
   const id = key => { const value = typeof input?.[key] === 'string' ? input[key].toLowerCase() : ''; if (!/^[a-f\d]{24}$/.test(value)) fields[prefix + key] = key === 'fabricId' ? 'chooseStockFabric' : 'chooseStockSfifa'; return value; };

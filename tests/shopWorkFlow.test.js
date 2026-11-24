@@ -55,7 +55,7 @@ test('all three shop garment types retain distinct per-piece barcodes and truste
 
 test('one completed piece advances through finishing and laundry while the other pieces remain at their previous stage', async t => {
  const f = fixture(t); let machine = await origin(f); const body = selection(machine);
- let result = await options(f.finisher, 'finishing'); assert.equal(result.data.works[0].available, false); assert.equal(result.data.works[0].reason, 'shopMachinePending');
+ let result = await options(f.finisher, 'finishing'); assert.deepEqual(result.data.works, []);
  assert.equal((await request(url(f.finisher), body)).data.message, 'shopMachinePending');
  machine = await complete(f.worker, machine, 1, [machine.materials[1].lineId]);
  result = await options(f.finisher, 'finishing'); assert.equal(result.data.works[0].availableQuantity, 1); assert.deepEqual(result.data.works[0].pieces.map(piece => piece.available), [false,true]);
@@ -76,7 +76,7 @@ test('assignments are retryable, reject duplicates and conflicting retries, and 
  const f = fixture(t), machine = await complete(f.worker, await origin(f)), body = selection(machine), other = f.seedWorker(owner, ['finishing']);
  const results = await Promise.all([request(url(f.finisher), body), request(url(other), { ...body, requestId: randomUUID() })]); assert.deepEqual(results.map(row => row.status).sort(), [201, 409]);
  const saved = results[0].data; assert.equal((await request(url(f.finisher), body)).status, 200); assert.equal((await request(url(f.finisher), { ...body, unitWage: 6 })).data.message, 'workRequestConflict');
- assert.equal(f.records.filter(row => row.shopFlow).length, 1); assert.equal((await options(f.finisher, 'finishing')).data.works[0].reason, 'shopAlreadyAssigned'); assert.equal(saved.shopBarcode, machine.shopBarcode);
+ assert.equal(f.records.filter(row => row.shopFlow).length, 1); assert.deepEqual((await options(f.finisher, 'finishing')).data.works, []); assert.equal(saved.shopBarcode, machine.shopBarcode);
 });
 
 test('later stages block source increases, deletion and material cancellation; downstream quantities are fixed and deleting an assignment releases its slot', async t => {

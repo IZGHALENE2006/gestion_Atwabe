@@ -133,7 +133,8 @@ export async function listWorkerShopOptions(req, res) {
     if (!['finishing', 'mesbanto'].includes(category) || !SHOP_FLOW_GARMENTS.includes(garmentType)) throw fail('invalidShopSection', 400);
     if (!workerCategories(worker).includes(category)) throw fail('workerSectionChanged', 409);
     const works = await currentSfifaViews(idAdmin, await loadShopFlowWorks(idAdmin), 'work'), names = await shopFlowNames(works, idAdmin);
-    res.json({ works: works.filter(work => !work.deletedAt && isShopFlowOrigin(work) && work.garmentType === garmentType).map(work => publicShopOption(work, works, names, category)) });
+    // Only completed pieces from the immediately preceding stage may be chosen.
+    res.json({ works: works.filter(work => !work.deletedAt && isShopFlowOrigin(work) && work.garmentType === garmentType).map(work => publicShopOption(work, works, names, category)).filter(work => work.available) });
   } catch (error) { sendError(res, error, 'loadShopWorkFailed'); }
 }
 export async function listWorkerWork(req, res) {

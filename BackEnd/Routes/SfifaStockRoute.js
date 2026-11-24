@@ -1,10 +1,11 @@
 import express from "express";
 import { auth } from "../middleware/auth.js";
-import { addSfifaStock, getSfifaStockDetails, deleteSfifaStock, listSfifaRestocks, listSfifaStock, restockSfifaVariant, updateSfifaStock, updateSfifaVariant } from "../controlles/SfifaStock.js";
+import { getSfifaInventoryReport, addSfifaStock, getSfifaStockDetails, deleteSfifaStock, listSfifaRestocks, listSfifaStock, restockSfifaVariant, updateSfifaStock, updateSfifaVariant } from "../controlles/SfifaStock.js";
 
 const router = express.Router();
 router.use(auth);
 router.get("/", listSfifaStock);
+router.get("/report", getSfifaInventoryReport);
 router.get("/:id/variants/:variantId/history", listSfifaRestocks);
 router.get("/:id/variants/:variantId/details", getSfifaStockDetails);
 router.get("/:id/details", getSfifaStockDetails);

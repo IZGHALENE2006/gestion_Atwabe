@@ -1,5 +1,7 @@
 import { clientTailoringArabic } from './clientTailoring.js';
 import { workerClientBatchArabic } from './workerClientBatch.js';
+import { workerShopBatchArabic } from './workerShopBatch.js';
+import { workerShopGarmentsArabic } from './workerShopGarments.js';
 import { allProfitsArabic } from './allProfits.js';
 import { documentSharingArabic } from './documentSharing.js';
 import { tailoringCreditArabic } from './tailoringCredit.js';
@@ -19,6 +21,7 @@ import french from "./fr.js";
 import { fabricsArabic } from "./fabrics.js";
 import { feslaArabic } from "./fesla.js";
 import { workersArabic } from "./workers.js";
+import { sfifaInventoryReportArabic } from "./sfifaInventoryReport.js";
 import { sfifaStockArabic } from "./sfifaStock.js";
 
 import { globalSearchArabic } from './globalSearch.js';
@@ -39,13 +42,13 @@ const resources = {
       productBatches: productBatchesArabic,
       fabrics: fabricsArabic,
       clientTailoring: clientTailoringArabic,
-      workerClientBatch: workerClientBatchArabic,
+      workerShopGarments: workerShopGarmentsArabic, workerShopBatch: workerShopBatchArabic, workerClientBatch: workerClientBatchArabic,
       allProfits: allProfitsArabic,
       documentSharing: documentSharingArabic,
       tailoringCredit: tailoringCreditArabic,
       fesla: { ...feslaArabic, errors: { ...feslaArabic.errors, ...tailoringCreditArabic.errors } },
       workers: workersArabic,
-      sfifaStock: sfifaStockArabic,
+      sfifaInventoryReport: sfifaInventoryReportArabic, sfifaStock: sfifaStockArabic,
       documentClient: {
         select: "زبون مسجّل (اختياري)",
         manual: "إدخال يدوي / زبون غير مسجّل",
