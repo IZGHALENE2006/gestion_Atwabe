@@ -1,22 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IoCartOutline, IoCloseOutline, IoRefreshOutline } from 'react-icons/io5';
+import { useSelector } from 'react-redux';
+import FabricSaleCheckoutDialog from './FabricSaleCheckoutDialog.jsx';
+import { readFabricSaleRecovery } from './fabricSaleRecovery.js';
 import { calculateFabricReduction } from '../../../shared/fabrics.js';
-import { calculateFabricSale, fabricSaleFingerprint, validateFabricSaleInput } from '../../../shared/fabricSales.js';
-import { loadFabrics, loadFabricSaleClients, sellFabricPiece } from './fabricsApi.js';
+import { calculateFabricSale, validateFabricSaleInput } from '../../../shared/fabricSales.js';
+import { loadFabrics, loadFabricSaleClients } from './fabricsApi.js';
 
 const inputClass = 'w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800';
 const errorCodes = ['forbidden', 'notFound', 'conflict', 'requestConflict', 'invalidReduction', 'insufficientMeters', 'invalidSalePrice', 'salePriceUnavailable', 'invalidSaleDiscount', 'invalidSaleClient', 'clientUnavailable'];
 
 export default function FabricSaleDialog({ fabrics, token, permissions, onClose, onSold, onReloaded }) {
   const { t, i18n } = useTranslation();
-  const dialog = useRef(null), busy = useRef(false), request = useRef(null);
+  const dialog = useRef(null), busy = useRef(false);
+  const accountId = useSelector(state => state.LoginAdmin.user?._id) || 'current';
+  const storageKey = 'atwabe-fabric-sale:' + accountId;
+  const [recovery, setRecovery] = useState(() => readFabricSaleRecovery(storageKey));
+  const [checkout, setCheckout] = useState(recovery?.snapshot || null);
   const [fabricId, setFabricId] = useState(''), [colorId, setColorId] = useState(''), [pieceId, setPieceId] = useState('');
   const [meters, setMeters] = useState(''), [pricingMode, setPricingMode] = useState('retail');
   const [discountType, setDiscountType] = useState('percent'), [discountValue, setDiscountValue] = useState('');
   const [clientId, setClientId] = useState(''), [clientName, setClientName] = useState('');
   const [clients, setClients] = useState({ loading: true, rows: [], error: false }), [clientAttempt, setClientAttempt] = useState(0);
-  const [saving, setSaving] = useState(false), [reloading, setReloading] = useState(false), [error, setError] = useState('');
+  const [reloading, setReloading] = useState(false), [error, setError] = useState('');
   const fabric = fabrics.find(row => row._id === fabricId), color = fabric?.colors.find(row => row._id === colorId), piece = color?.pieces.find(row => row._id === pieceId);
   const match = piece ? { fabric, color, piece } : null;
   const locale = i18n.language === 'ar' ? 'ar-MA' : 'fr-MA';
@@ -39,7 +46,7 @@ export default function FabricSaleDialog({ fabrics, token, permissions, onClose,
     }).catch(() => { if (!controller.signal.aborted) setClients({ rows: [], loading: false, error: true }); });
     return () => controller.abort();
   }, [token, clientAttempt]);
-  const close = () => { if (!busy.current) onClose(); };
+  const close = () => { if (!busy.current && !checkout) onClose(); };
   const clearError = () => setError('');
   const reload = async () => {
     if (busy.current) return;
@@ -58,16 +65,14 @@ export default function FabricSaleDialog({ fabrics, token, permissions, onClose,
       calculateFabricReduction(input.meters, piece.meters);
       calculateFabricSale(input, fabric);
     } catch (failure) { setError(errorCodes.includes(failure.message) ? failure.message : 'saleFailed'); return; }
-    const fingerprint = JSON.stringify([fabricId, colorId, pieceId, fabricSaleFingerprint(input)]);
-    if (request.current?.fingerprint !== fingerprint) request.current = { fingerprint, id: crypto.randomUUID() };
-    busy.current = true; setSaving(true); setError('');
-    try { onSold(await sellFabricPiece(match, input, request.current.id, token)); }
-    catch (failure) { const code = failure.response?.data?.message; setError(errorCodes.includes(code) ? code : 'saleFailed'); }
-    finally { busy.current = false; setSaving(false); }
+    const quote = calculateFabricSale(input, fabric);
+    setCheckout({ input, total: quote.total, unitPrice: quote.unitPrice,
+      description: [fabric.type, color.name].filter(Boolean).join(' · '),
+      match: { fabric: { _id: fabric._id, __v: fabric.__v }, color: { _id: color._id }, piece: { _id: piece._id, barcode: piece.barcode } } });
   };
-  return <dialog ref={dialog} dir={i18n.dir()} aria-labelledby="fabric-sale-title" onCancel={event => { event.preventDefault(); close(); }} className="m-auto max-h-[92dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
-    <header className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 dark:border-slate-700"><div><h2 id="fabric-sale-title" className="flex items-center gap-2 text-xl font-bold text-blue-700 dark:text-blue-300"><IoCartOutline />{t('fabrics.sales.title')}</h2><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t('fabrics.sales.hint')}</p></div><button type="button" disabled={saving || reloading} onClick={close} aria-label={t('dialog.close')} className="rounded-lg p-2 hover:bg-slate-200 dark:hover:bg-slate-800"><IoCloseOutline size={24} /></button></header>
-    <form noValidate onSubmit={submit} className="p-4 sm:p-6"><fieldset disabled={saving || reloading} className="min-w-0 space-y-5 disabled:opacity-70">
+  return <><dialog ref={dialog} dir={i18n.dir()} aria-labelledby="fabric-sale-title" onCancel={event => { event.preventDefault(); close(); }} className="m-auto max-h-[92dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+    <header className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 dark:border-slate-700"><div><h2 id="fabric-sale-title" className="flex items-center gap-2 text-xl font-bold text-blue-700 dark:text-blue-300"><IoCartOutline />{t('fabrics.sales.title')}</h2><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t('fabrics.sales.hint')}</p></div><button type="button" disabled={reloading || Boolean(checkout)} onClick={close} aria-label={t('dialog.close')} className="rounded-lg p-2 hover:bg-slate-200 dark:hover:bg-slate-800"><IoCloseOutline size={24} /></button></header>
+    <form noValidate onSubmit={submit} className="p-4 sm:p-6"><fieldset disabled={reloading || Boolean(checkout)} className="min-w-0 space-y-5 disabled:opacity-70">
       <section className="space-y-4 rounded-2xl border border-blue-100 bg-white p-4 dark:border-blue-900 dark:bg-slate-950/30"><h3 className="font-bold">{t('fabrics.sales.selectRoll')}</h3>
         <div className="grid gap-4 sm:grid-cols-3">
           <div><label htmlFor="fabric-sale-type" className="mb-2 block text-sm font-semibold">{t('fabrics.type')} *</label><select id="fabric-sale-type" autoFocus value={fabricId} onChange={event => { setFabricId(event.target.value); setColorId(''); setPieceId(''); clearError(); }} className={inputClass}><option value="">{t('fabrics.chooseType')}</option>{fabrics.map(row => <option key={row._id} value={row._id}>{row.type}{row.reference ? ' · ' + row.reference : ''}</option>)}</select></div>
@@ -82,7 +87,7 @@ export default function FabricSaleDialog({ fabrics, token, permissions, onClose,
       <dl className="grid gap-3 sm:grid-cols-3">{[['subtotal', preview?.subtotal], ['discount', preview?.discountAmount], ['total', preview?.total]].map(([key, value]) => <div key={key} className={'rounded-2xl border p-4 ' + (key === 'total' ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800')}><dt className="text-sm">{t('fabrics.sales.' + key)}</dt><dd data-fabric-sale-total={key} data-value={value} className="mt-2 text-xl font-bold"><bdi>{value === undefined ? '—' : money(value)}</bdi></dd></div>)}</dl>
       {preview && <p className="text-sm text-slate-500 dark:text-slate-400">{t('fabrics.sales.remainingAfter')}: <bdi>{length(preview.remaining)}</bdi></p>}
       {(error || previewError) && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">{t('fabrics.errors.' + (error || previewError))}</p>}
-      <footer className="sticky bottom-0 flex flex-wrap justify-between gap-3 border-t border-slate-200 bg-slate-50 py-4 dark:border-slate-700 dark:bg-slate-900"><button type="button" onClick={reload} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold dark:border-slate-700"><IoRefreshOutline />{t('fabrics.reloadStock')}</button><div className="flex gap-2"><button type="button" onClick={close} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold dark:border-slate-700">{t('dialog.close')}</button><button type="submit" data-confirm-fabric-sale disabled={!match || !preview || !permissions.sell} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-40"><IoCartOutline />{t(saving ? 'common.loading' : 'fabrics.sales.confirm')}</button></div></footer>
+      <footer className="sticky bottom-0 flex flex-wrap justify-between gap-3 border-t border-slate-200 bg-slate-50 py-4 dark:border-slate-700 dark:bg-slate-900"><button type="button" onClick={reload} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold dark:border-slate-700"><IoRefreshOutline />{t('fabrics.reloadStock')}</button><div className="flex gap-2"><button type="button" onClick={close} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold dark:border-slate-700">{t('dialog.close')}</button><button type="submit" data-confirm-fabric-sale disabled={!match || !preview || !permissions.sell} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-40"><IoCartOutline />{t(reloading ? 'common.loading' : 'fabrics.sales.confirm')}</button></div></footer>
     </fieldset></form>
-  </dialog>;
+  </dialog>{checkout && <FabricSaleCheckoutDialog snapshot={checkout} recovery={recovery} storageKey={storageKey} token={token} permissions={permissions} onClose={() => { setCheckout(null); setRecovery(null); }} onSold={onSold} />}</>;
 }

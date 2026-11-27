@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { Loginuser } from "../../slices/SliceLoginAdmin";
 import gsap from "gsap";
 import { useTranslation } from "react-i18next";
+import AdminRecoveryDialog from './AdminRecoveryDialog.jsx';
 
 function LoginAdmin() {
   const { t, i18n } = useTranslation();
@@ -15,6 +16,8 @@ function LoginAdmin() {
   const boxRef = useRef(null);
   const { loading, error } = useSelector((state) => state.LoginAdmin);
   const [infoAdmin, setInfoAdmin] = useState({ email: "", password: "" });
+  const [recovering, setRecovering] = useState(false);
+  const [recovered, setRecovered] = useState(false);
 
   useEffect(() => {
     gsap.fromTo(
@@ -26,6 +29,8 @@ function LoginAdmin() {
 
   function login(e) {
     e.preventDefault();
+    if (loading) return;
+    setRecovered(false);
     dispatch(Loginuser({ role: "admin", data: infoAdmin }))
       .unwrap()
       .then(() => {
@@ -36,11 +41,11 @@ function LoginAdmin() {
           duration: 0.4,
           onComplete: () => nav("/Home/Dashboard"),
         });
-      });
+      }).catch(() => {});
   }
 
   return (
-    <div className="h-screen w-full flex flex-col justify-center items-center p-4 overflow-hidden relative transition-colors duration-700 bg-gray-100 dark:bg-[#1e293b] font-sans">
+    <div className="min-h-screen w-full flex flex-col justify-center items-center px-4 py-8 overflow-x-hidden relative transition-colors duration-700 bg-gray-100 dark:bg-[#1e293b] font-sans">
       <div className="absolute top-[-10%] left-[-5%] w-125 h-125 bg-primary-500/10 dark:bg-primary-600/15 rounded-full blur-[120px] animate-pulse pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-5%] w-125 h-125 bg-primary-400/10 dark:bg-primary-400/10 rounded-full blur-[120px] animate-pulse pointer-events-none" />
 
@@ -69,8 +74,10 @@ function LoginAdmin() {
         </div>
 
         <form className="flex flex-col gap-4" onSubmit={login}>
+          {recovered && <p role="status" data-recovery-complete className="rounded-xl bg-emerald-50 p-3 text-sm leading-6 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">{t('adminRecovery.resetDone')}</p>}
           <div className="space-y-1">
             <label
+              htmlFor="admin-login-email"
               className={`text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase ${
                 isArabic ? "mr-2" : "ml-2"
               }`}
@@ -78,7 +85,11 @@ function LoginAdmin() {
               {t("loginAdmin.emailLabel")}
             </label>
             <input
+              id="admin-login-email"
               type="email"
+              autoComplete="username"
+              dir="ltr"
+              value={infoAdmin.email}
               placeholder={t("loginAdmin.emailPlaceholder")}
               className="w-full px-5 py-4 rounded-2xl outline-none transition-all duration-300
                 bg-slate-50 border-slate-100 text-slate-900 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
@@ -91,6 +102,7 @@ function LoginAdmin() {
 
           <div className="space-y-1">
             <label
+              htmlFor="admin-login-password"
               className={`text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase ${
                 isArabic ? "mr-2" : "ml-2"
               }`}
@@ -98,7 +110,11 @@ function LoginAdmin() {
               {t("loginAdmin.passwordLabel")}
             </label>
             <input
+              id="admin-login-password"
               type="password"
+              autoComplete="current-password"
+              dir="ltr"
+              value={infoAdmin.password}
               placeholder="********"
               className="w-full px-5 py-4 rounded-2xl outline-none transition-all duration-300
                 bg-slate-50 border-slate-100 text-slate-900 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
@@ -109,7 +125,8 @@ function LoginAdmin() {
             />
           </div>
 
-          <button className="mt-4 bg-primary-600 hover:bg-primary-500 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-primary-600/20 active:scale-[0.98] transition-all flex items-center justify-center">
+          <button type="button" data-forgot-password disabled={loading} onClick={() => { setRecovered(false); setRecovering(true); }} className="self-end py-1 text-sm font-bold text-blue-600 hover:underline disabled:opacity-60 dark:text-blue-400">{t('adminRecovery.forgot')}</button>
+          <button disabled={loading} className="mt-4 bg-primary-600 hover:bg-primary-500 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-primary-600/20 active:scale-[0.98] transition-all flex items-center justify-center disabled:opacity-60">
             {loading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
@@ -132,13 +149,14 @@ function LoginAdmin() {
             </Link>
           </div>
 
-          {error && (
+          {error && !recovered && (
             <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-bold text-center uppercase tracking-wider">
               {apiErrorMessage(error, t)}
             </div>
           )}
         </form>
       </div>
+      {recovering && <AdminRecoveryDialog initialEmail={infoAdmin.email} onClose={() => setRecovering(false)} onRecovered={email => { setInfoAdmin({ email, password: '' }); setRecovering(false); setRecovered(true); }} />}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import UserCriditModele from "../models/userCidit.js";
 import mongoose from "mongoose";
 import { createHash } from "node:crypto";
 import { creditCustomer, creditInvoiceReference, creditPaymentReference } from "../../shared/creditDocuments.js";
+import { CREDIT_CUSTOMER_FIELDS, validateCreditCustomerProfile } from '../../shared/creditCustomerProfile.js';
 
 const toNumber = (value, fallback = 0) => {
   const parsed = Number(value);
@@ -102,6 +103,31 @@ export async function mutateCredit(id, ownerId, change) {
   }
 }
 const sendCreditWriteError = (res, error) => res.status(error.status || 500).json({ message: error.status ? error.message : "creditSaveFailed" });
+
+export const UpdateUserCridite = async (req, res) => {
+  try {
+    const { ownerId, actor } = await creditAccessFor(req);
+    if (!mongoose.isObjectIdOrHexString(req.params.id)) throw creditFailure('User not found', 404);
+    const profile = validateCreditCustomerProfile(req.body);
+    if (!Number.isSafeInteger(req.body.version) || req.body.version < 0) throw creditFailure('creditConflict', 409);
+    const user = await UserCriditModele.findOne({ _id: req.params.id, idUser: ownerId });
+    if (!user) throw creditFailure('User not found', 404);
+    const before = Object.fromEntries(CREDIT_CUSTOMER_FIELDS.map(key => [key, user[key] || '']));
+    // A retry after a lost response is harmless and does not add another event.
+    if (CREDIT_CUSTOMER_FIELDS.every(key => before[key] === profile[key])) return res.json({ user: buildCreditPayload(user) });
+    if ((user.__v ?? 0) !== req.body.version) throw creditFailure('creditConflict', 409);
+    for (const [key, message] of [['email', 'Email already exists'], ['cin', 'CIN already exists']]) {
+      if (profile[key] && await UserCriditModele.findOne({ idUser: ownerId, _id: { $ne: user._id }, [key]: profile[key] })) throw creditFailure(message, 400);
+    }
+    for (const key of CREDIT_CUSTOMER_FIELDS) user[key] = profile[key];
+    user.profileUpdates.push({ id: new mongoose.Types.ObjectId().toString(), date: new Date(), actor, before, after: profile });
+    await user.save();
+    return res.json({ user: buildCreditPayload(user) });
+  } catch (error) {
+    if (error.name === 'VersionError') return res.status(409).json({ message: 'creditConflict' });
+    return sendCreditWriteError(res, error);
+  }
+};
 export function creditReceipt(user, amount, { paidBefore, date, source, invoiceId, actor, note = "", requestId, fingerprint }) {
   const total = round2(user.Total), paidAfter = round2(paidBefore + amount);
   return { id: new mongoose.Types.ObjectId().toString(), amount, note, Date: date, source, ...(actor ? { actor } : {}), ...(invoiceId ? { invoiceId } : {}), ...(requestId ? { requestId, requestFingerprint: fingerprint } : {}), balanceSnapshot: { total, paidBefore, paidAfter, remainingBefore: round2(Math.max(total - paidBefore, 0)), remainingAfter: round2(Math.max(total - paidAfter, 0)), customer: creditCustomer(user) } };

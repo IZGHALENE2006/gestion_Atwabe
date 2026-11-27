@@ -22,6 +22,72 @@ const line = (fabric, meters) => ({ fabricId: String(fabric._id), colorId: Strin
 const input = (f, patch) => ({ requestId: randomUUID(), paymentMode: 'paid', clientName: 'مريم', phone: '0612345678', lines: [line(f.first, 2), line(f.second, 1.25)], ...patch });
 const creditInput = (f, patch) => input(f, { paymentMode: 'credit', customerId: String(f.customer._id), amountPaid: 20, ...patch });
 const create = body => request('/fabrics/invoices', body);
+const singleCredit = (f, patch = {}) => creditInput(f, { lines: [line(f.first, 2)], ...patch });
+
+test('direct fabric credit sales work without invoice-creation permission and recognize full profit immediately', async t => {
+  const f = fabricInvoiceFixture(t), employee = f.rows(Employee)[0];
+  employee.operationPermissions = { fabrics: ['sell', 'creditSale', 'profits'], credit: ['addDebt', 'payment'] };
+  const body = singleCredit(f), result = await request('/fabrics/credit-sales', body, staff);
+  assert.equal(result.status, 201, JSON.stringify(result.data)); assert.equal(result.data.invoice.remaining, 40);
+  assert.equal(result.data.fabricId, String(f.first._id)); assert.equal(result.data.fabric.colors[0].pieces[0].meters, 28);
+  assert.doesNotMatch(JSON.stringify(result.data), /purchaseUnitPrice|costAmount|profitAmount|invoiceDebits|requestFingerprint/);
+  assert.equal(f.account().Total, 360); assert.equal(f.account().Paye, 120); assert.equal(f.account().creditInvoices.length, 1);
+  assert.equal(result.data.invoice.actor.name, employee.name);
+  const profits = await request('/fabrics/profits'); assert.equal(profits.data.summary.revenueAmount, 60); assert.equal(profits.data.summary.profitAmount, 30);
+  assert.equal((await request('/fabrics/invoices', body, staff)).status, 403);
+  assert.equal((await request('/fabrics/credit-sales', body, staff)).data.invoice._id, result.data.invoice._id);
+  assert.equal(f.account().creditInvoices.length, 1); assert.equal(f.account().paymentHistory.length, 1); assert.equal(f.fabrics()[0].movements.length, 1);
+});
+
+test('a new customer can buy a single fabric entirely on credit with trusted employee attribution', async t => {
+  const f = fabricInvoiceFixture(t), body = singleCredit(f, { customerId: undefined, amountPaid: 0, newCustomer: { name: 'زبون الثوب', phone: '0677777777', email: 'fabric@example.ma', cin: 'F77' } });
+  const result = await request('/fabrics/credit-sales', body, staff); assert.equal(result.status, 201, JSON.stringify(result.data));
+  const account = f.accounts().find(row => row.name === 'زبون الثوب'); assert.equal(account.Total, 60); assert.equal(account.Paye, 0); assert.equal(String(account.createdBy.id), employeeId);
+  assert.equal(result.data.invoice.remaining, 60); assert.equal(result.data.invoice.customer.phone, '0677777777');
+  assert.equal((await request('/fabrics/credit-sales', body, staff)).status, 201); assert.equal(f.accounts().filter(row => row.name === 'زبون الثوب').length, 1);
+  assert.equal((await request('/fabrics/profits')).data.summary.profitAmount, 30);
+});
+
+test('direct credit customer choices require sale and credit permission and never expose another shop or private account fields', async t => {
+  const f = fabricInvoiceFixture(t), employee = f.rows(Employee)[0];
+  employee.operationPermissions = { fabrics: ['sell', 'creditSale'], credit: ['addDebt'] };
+  let result = await request('/fabrics/credit-sale-customers', undefined, staff); assert.equal(result.status, 200);
+  assert.ok(result.data.customers.some(row => row._id === String(f.customer._id))); assert.ok(!result.data.customers.some(row => row._id === String(f.foreignCustomer._id)));
+  assert.ok(result.data.customers.every(row => Object.keys(row).every(key => ['_id', 'name', 'phone'].includes(key))));
+  for (const permissions of [{ fabrics: ['sell'], credit: ['addDebt'] }, { fabrics: ['creditSale'], credit: ['addDebt'] }, { fabrics: ['sell', 'creditSale'], credit: [] }]) {
+    employee.operationPermissions = permissions; result = await request('/fabrics/credit-sale-customers', undefined, staff); assert.equal(result.status, 403);
+  }
+});
+
+test('single-sale endpoint rejects paid or multiple-line invoices, invalid customers, stale prices and unauthorized operations', async t => {
+  const f = fabricInvoiceFixture(t);
+  for (const body of [singleCredit(f, { paymentMode: 'paid' }), creditInput(f), singleCredit(f, { invoiceDiscount: { type: 'percent', value: 0 } }), singleCredit(f, { customerId: String(f.foreignCustomer._id) }), singleCredit(f, { lines: [{ ...line(f.first, 2), expectedUnitPrice: 29 }] })]) assert.ok((await request('/fabrics/credit-sales', body)).status >= 400);
+  const employee = f.rows(Employee)[0];
+  for (const permissions of [{ fabrics: ['creditSale'], credit: ['addDebt', 'payment'] }, { fabrics: ['sell'], credit: ['addDebt', 'payment'] }, { fabrics: ['sell', 'creditSale'], credit: ['payment'] }, { fabrics: ['sell', 'creditSale'], credit: ['addDebt'] }]) {
+    employee.operationPermissions = permissions; assert.equal((await request('/fabrics/credit-sales', singleCredit(f), staff)).status, 403);
+  }
+  employee.operationPermissions = { fabrics: ['sell', 'creditSale'], credit: ['addDebt'] };
+  assert.equal((await request('/fabrics/credit-sales', singleCredit(f, { amountPaid: 0, customerId: undefined, newCustomer: { name: 'غير مسموح' } }), staff)).status, 403);
+  assert.equal((await request('/fabrics/credit-sales', singleCredit(f, { amountPaid: 0, lines: [{ ...line(f.first, 2), discountValue: 10 }] }), staff)).status, 403);
+  assert.equal((await request('/fabrics/credit-sales', singleCredit(f, { amountPaid: 0, lines: [{ ...line(f.first, 2), pricingMode: 'wholesale', expectedUnitPrice: 25 }] }), staff)).status, 403);
+  assert.equal(f.account().Total, 300); assert.equal(f.fabrics()[0].colors[0].pieces[0].meters, 30); assert.equal(f.invoices().length, 0);
+});
+
+for (const fault of ['fabricReserveAfterSave', 'creditBeforeSave', 'creditAfterSave', 'fabricRecordAfterSave', 'invoiceCompleteAfterSave']) test('single fabric credit sale recovers '+fault+' without duplicate meters, debt, deposit or profit', async t => {
+  const f = fabricInvoiceFixture(t), body = singleCredit(f); f.controls[fault] = true;
+  assert.equal((await request('/fabrics/credit-sales', body, staff)).status, 503);
+  const result = await request('/fabrics/credit-sales', body, staff); assert.equal(result.status, 201, JSON.stringify(result.data));
+  assert.equal(f.account().Total, 360); assert.equal(f.account().Paye, 120); assert.equal(f.account().creditInvoices.length, 1); assert.equal(f.account().paymentHistory.length, 1); assert.equal(f.fabrics()[0].colors[0].pieces[0].meters, 28);
+  assert.equal((await request('/fabrics/profits')).data.summary.profitAmount, 30);
+});
+
+test('discounted direct credit profit is counted once and does not increase again when the debt is paid', async t => {
+  const f = fabricInvoiceFixture(t), body = singleCredit(f, { amountPaid: 0, lines: [{ ...line(f.first, 2), discountType: 'percent', discountValue: 10 }] });
+  const result = await request('/fabrics/credit-sales', body, staff); assert.equal(result.status, 201);
+  assert.equal(result.data.invoice.total, 54); assert.equal((await request('/fabrics/profits')).data.summary.profitAmount, 24);
+  assert.equal((await request('/fabrics/invoices/'+result.data.invoice._id+'/payments', { amount: 54, requestId: randomUUID() }, staff)).status, 200);
+  assert.equal((await request('/fabrics/profits')).data.summary.profitAmount, 24);
+});
 
 test('one cash invoice deducts several fabrics, records their exact profits and prints only public prices', async t => {
   const f = fabricInvoiceFixture(t), result = await create(input(f)); assert.equal(result.status, 201, JSON.stringify(result.data)); const invoice = result.data.invoice;

@@ -44,6 +44,9 @@ export const loadFabricSaleClients = async (token, signal) => (
   await axios.get(`${api}/sale-clients`, { headers: { Authorization: `Bearer ${token}` }, signal })
 ).data;
 
+export const loadFabricCreditSaleCustomers = async (token, signal) => (await axios.get(`${api}/credit-sale-customers`, { headers: { Authorization: `Bearer ${token}` }, signal })).data;
+export const sellFabricOnCredit = async (input, token) => (await axios.post(`${api}/credit-sales`, input, { headers: { Authorization: `Bearer ${token}` } })).data;
+
 export const loadFabricProfits = async (token, filters, signal) => (
   await axios.get(`${api}/profits`, { params: filters, headers: { Authorization: `Bearer ${token}` }, signal })
 ).data;

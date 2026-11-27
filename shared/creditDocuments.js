@@ -29,6 +29,7 @@ export function creditDocument(user, selection = {}) {
 // an account never changes or invents the actor on its historical records.
 export function creditActivity(user) {
   const events = [{ id: "customer:" + user._id, kind: "customer", date: user.createdAt || user.Date, actor: user.createdBy }];
+  for (const change of user.profileUpdates || []) events.push({ id: 'profile:' + change.id, kind: 'profile', date: change.date, actor: change.actor });
   for (const invoice of user.creditInvoices || []) events.push({ id: "invoice:" + invoice.id, kind: invoice.origin === "cashier" ? "sale" : "credit", date: invoice.Date, actor: invoice.actor, total: invoice.total, paid: invoice.paid, remaining: invoice.remaining, reference: invoice.reference || creditInvoiceReference(invoice) });
   for (const [index, payment] of (user.paymentHistory || []).entries()) events.push({ id: "payment:" + (payment.id || index), kind: payment.source === "initial" ? "initial" : "payment", date: payment.Date, actor: payment.actor, amount: payment.amount, note: payment.note, remaining: payment.balanceSnapshot?.remainingAfter, reference: creditPaymentReference(user._id, payment, index) });
   return events.sort((a, b) => (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0));

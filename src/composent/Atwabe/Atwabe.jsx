@@ -1,4 +1,5 @@
 import RowActionsMenu from '../shared/RowActionsMenu.jsx';
+import FabricInvoiceDetails from './FabricInvoiceDetails.jsx';
 import FabricInvoices from './FabricInvoices.jsx';
 import useSearchTarget from "../../hooks/useSearchTarget.js";
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
@@ -84,7 +85,7 @@ export default function Atwabe() {
     setStatus({ token, message: "reduced" });
   };
   const sold = data => {
-    reduced(data); setSale(null); setStatus({ token, message: "saleSaved" }); setReceipt({ token, movement: data.movement });
+    reduced(data); setSale(null); setStatus({ token, message: "saleSaved" }); setReceipt({ token, ...(data.invoice ? { invoice: data.invoice } : { movement: data.movement }) });
   };
   const showHistory = (barcode = "") => { setReduction(null); setHistory({ token, barcode }); };
 
@@ -116,7 +117,7 @@ export default function Atwabe() {
     </div>
     {editor?.token === token && <AddFabricForm key={editor.fabric?._id || "new"} fabric={editor.fabric} canUpdate={state.permissions.update} canAddColor={state.permissions.addColor} canAddPiece={state.permissions.addPiece} canDeleteColor={state.permissions.deleteColor} canDeletePiece={state.permissions.deletePiece} token={token} usedBarcodes={usedBarcodes} onClose={() => setEditor(null)} onSaved={saved} />}
     {sale?.token === token && <FabricSaleDialog fabrics={state.fabrics} token={token} permissions={state.permissions} onClose={() => setSale(null)} onSold={sold} onReloaded={data => setResult({ ...data, token, loading: false, error: "" })} />}
-    {receipt?.token === token && <FabricSaleReceiptDialog movement={receipt.movement} onClose={() => setReceipt(null)} />}
+    {receipt?.token === token && (receipt.invoice ? <FabricInvoiceDetails invoice={receipt.invoice} permissions={state.permissions} token={token} onChanged={invoice => setReceipt({ token, invoice })} onClose={() => setReceipt(null)} /> : <FabricSaleReceiptDialog movement={receipt.movement} onClose={() => setReceipt(null)} />)}
     {reduction?.token === token && <FabricReductionDialog fabrics={state.fabrics} token={token} canReduce={state.permissions.reduce} onClose={() => setReduction(null)} onReduced={reduced} onReloaded={(data) => setResult({ ...data, token, loading: false, error: "" })} onHistory={state.permissions.history ? showHistory : undefined} />}
     {history?.token === token && <FabricMovements token={token} barcode={history.barcode} onClose={() => setHistory(null)} onReceipt={movement => setReceipt({ token, movement })} />}
     {deletion?.token === token && <FabricDeleteDialog target={deletion} token={token} onClose={() => setDeletion(null)} onDeleted={deleted} />}

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { creditRound } from "../../shared/creditDocuments.js";
 const requestFields = { requestId: { type: String, default: undefined }, requestFingerprint: { type: String, default: undefined } };
 const customerSchema = new mongoose.Schema({ name: String, phone: String, cin: String }, { _id: false });
+const profileSchema = new mongoose.Schema({ name: String, phone: String, cin: String, email: String }, { _id: false });
 const moneyField = { type: Number, required: true, min: 0 };
 const balanceSchema = new mongoose.Schema({ total: moneyField, paidBefore: moneyField, paidAfter: moneyField, remainingBefore: moneyField, remainingAfter: moneyField, customer: { type: customerSchema, required: true } }, { _id: false });
 
@@ -87,6 +88,7 @@ invoiceSchema.pre("validate", function () { if (!this.line && !this.lines?.lengt
 const UserCriditShema = new mongoose.Schema(
   {
     createdBy: { type: creditActorSchema, default: undefined },
+    profileUpdates: { type: [new mongoose.Schema({ id: { type: String, required: true }, date: { type: Date, required: true }, actor: { type: creditActorSchema, required: true }, before: { type: profileSchema, required: true }, after: { type: profileSchema, required: true } }, { _id: false })], default: [] },
     clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
     idUser: {
       type: mongoose.Schema.Types.ObjectId,

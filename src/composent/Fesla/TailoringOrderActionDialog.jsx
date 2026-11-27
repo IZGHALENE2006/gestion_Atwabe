@@ -12,18 +12,20 @@ export default function TailoringOrderActionDialog({ order, mode, token, onClose
   const [deliverOnCredit, setDeliverOnCredit] = useState(false);
   const { t, i18n } = useTranslation();
   const dialogRef = useRef(null), busyRef = useRef(false), submissionRef = useRef(null);
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(() => mode === "payment" ? "" : operations.payment ? String(tailoringRemainingAmount(order.totalPrice ?? 0, order.paidAmount ?? 0) ?? 0) : "0");
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const payment = mode === "payment", cancelling = mode === "cancel";
+  const delivery = !payment && !cancelling;
   const remaining = tailoringRemainingAmount(order.totalPrice ?? 0, order.paidAmount ?? 0);
   const cents = tailoringMoneyCents(amount);
   const validAmount = cents !== null && cents > 0 && remaining !== null && cents <= tailoringMoneyCents(remaining);
+  const validDeliveryAmount = cents === 0 || validAmount;
   const money = value => value === null ? "—" : new Intl.NumberFormat(i18n.language === "ar" ? "ar-MA" : "fr-MA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
-  const afterPayment = validAmount ? (tailoringMoneyCents(remaining) - cents) / 100 : null;
+  const afterPayment = remaining !== null && (validAmount || delivery && cents === 0) ? (tailoringMoneyCents(remaining) - cents) / 100 : null;
   useEffect(() => {
     const dialog = dialogRef.current;
     dialog.showModal();
-    dialog.querySelector(payment ? "input" : "button[type=submit]")?.focus();
+    dialog.querySelector("input:not([type=checkbox]), button[type=submit]")?.focus();
     return () => dialog.close();
   }, [payment]);
   const close = () => { if (!busyRef.current) { dialogRef.current.close(); onClose(); } };
@@ -37,18 +39,19 @@ export default function TailoringOrderActionDialog({ order, mode, token, onClose
   const submit = async event => {
     event.preventDefault();
     if (busyRef.current) return;
-    if (deliverOnCredit && !creditDeliveryDepositValid(order.totalPrice, order.paidAmount)) { setError("creditDepositRequired"); return; }
+    if (delivery && !validDeliveryAmount) { setError(cents !== null && cents > 0 ? "paymentExceedsRemaining" : "invalidDeliveryPayment"); return; }
+    if (deliverOnCredit && !creditDeliveryDepositValid(order.totalPrice, (tailoringMoneyCents(order.paidAmount) + cents) / 100)) { setError("creditDepositRequired"); return; }
     if (payment && !validAmount) { setError(cents !== null && cents > 0 ? "paymentExceedsRemaining" : "invalidPayment"); return; }
-    if (payment && submissionRef.current?.cents !== cents) submissionRef.current = { cents, requestId: crypto.randomUUID() };
+    if ((payment || delivery) && (submissionRef.current?.cents !== cents || submissionRef.current?.deliverOnCredit !== deliverOnCredit)) submissionRef.current = { cents, deliverOnCredit, requestId: crypto.randomUUID() };
     busyRef.current = true; setBusy(true); setError("");
     try {
-      const updated = payment ? await addTailoringPayment(order, amount, submissionRef.current.requestId, token) : cancelling ? await cancelTailoringOrder(order, token) : await deliverTailoringOrder(order, token, { deliverOnCredit });
+      const updated = payment ? await addTailoringPayment(order, amount, submissionRef.current.requestId, token) : cancelling ? await cancelTailoringOrder(order, token) : await deliverTailoringOrder(order, token, { deliverOnCredit, paymentAmount: amount, requestId: submissionRef.current.requestId });
       if (dialogRef.current?.open) { dialogRef.current.close(); onSaved(updated); }
     } catch (failure) {
       if (dialogRef.current?.open) {
         const message = failure.response?.data?.message;
         const code = !payment && !cancelling && message === "chooseCreditClient" ? "creditClientUnavailable" : message;
-        setError(["creditOwnerFixed", "creditOwnerAmbiguous", "creditClientRegistrationForbidden", "creditClientRegistrationInvalid", "creditClientUnavailable", "creditDepositRequired", "chooseCreditClient", "creditCustomerAmbiguous", "creditAccountUnavailable", "invalidPayment", "paymentExceedsRemaining", "invalidRequest", "requestConflict", "notFound", "forbidden", "conflict", "orderCancelled", "orderNotDelivered", "fabricStockUnavailable", "fabricStockReturnLimit", "sfifaStockUnavailable", "sfifaStockReturnLimit"].includes(code) ? code : "saveFailed");
+        setError(["creditOwnerFixed", "creditOwnerAmbiguous", "creditClientRegistrationForbidden", "creditClientRegistrationInvalid", "creditClientUnavailable", "creditDepositRequired", "chooseCreditClient", "creditCustomerAmbiguous", "creditAccountUnavailable", "invalidPayment", "invalidDeliveryPayment", "paymentExceedsRemaining", "invalidRequest", "requestConflict", "notFound", "forbidden", "conflict", "orderCancelled", "orderNotDelivered", "fabricStockUnavailable", "fabricStockReturnLimit", "sfifaStockUnavailable", "sfifaStockReturnLimit"].includes(code) ? code : "saveFailed");
       }
     } finally { busyRef.current = false; if (dialogRef.current?.open) setBusy(false); }
   };
@@ -58,7 +61,13 @@ export default function TailoringOrderActionDialog({ order, mode, token, onClose
       <div className="tailoring-delivery-owner" data-tailoring-order-owner><p dir="auto" className="fesla-action-client">{order.clientName}</p><bdi dir="ltr">{order.phone}</bdi>{!payment && !cancelling && <small>{t("tailoringCredit.orderOwnerLabel")}</small>}</div>
       <dl className="fesla-action-summary">{["totalPrice", "paidAmount", "remainingAmount"].map(key => <div key={key}><dt>{t(`fesla.${key}`)}</dt><dd><bdi>{money(key === "remainingAmount" ? remaining : order[key] ?? 0)} {t("fesla.currency")}</bdi></dd></div>)}</dl>
       {payment ? <div className="fesla-payment-input"><label htmlFor="fesla-payment-amount">{t("fesla.paymentAmount")} ({t("fesla.currency")})</label><input id="fesla-payment-amount" type="text" inputMode="decimal" dir="ltr" value={amount} onChange={event => { setAmount(event.target.value); setError(""); }} disabled={busy} maxLength={12} placeholder="0.00" required aria-invalid={Boolean(error)} aria-describedby={error ? "fesla-action-error" : undefined} /><p aria-live="polite">{t("fesla.remainingAfterPayment")}: <bdi>{money(afterPayment)} {t("fesla.currency")}</bdi></p></div> : <p className={cancelling ? "fesla-cancellation-notice" : "fesla-delivery-hint"}>{t(cancelling ? ((order.fabricStock || order.sfifaStock) ? order.deliveredAt ? "fesla.stockSfifa.cancelAfterDelivery" : "fesla.stockSfifa.cancelBeforeDelivery" : "fesla.cancellation.confirm") : "fesla.deliveryHint")}</p>}
-      {!payment && !cancelling && operations.creditDelivery && remaining > 0 && <TailoringCreditChoice checked={deliverOnCredit} disabled={busy} useOrderClient debtAmount={remaining} onChange={value => { setDeliverOnCredit(value); setError(""); }} />}
+      {delivery && remaining > 0 && operations.payment && <div className="fesla-payment-input" data-delivery-payment>
+        <label htmlFor="fesla-delivery-payment-amount">{t("fesla.deliveryPaymentAmount")} ({t("fesla.currency")})</label>
+        <input id="fesla-delivery-payment-amount" type="text" inputMode="decimal" dir="ltr" value={amount} onChange={event => { setAmount(event.target.value); if (tailoringMoneyCents(event.target.value) === tailoringMoneyCents(remaining)) setDeliverOnCredit(false); setError(""); }} disabled={busy} maxLength={12} placeholder="0.00" aria-invalid={Boolean(error)} aria-describedby="fesla-delivery-payment-hint fesla-delivery-balance" />
+        <p id="fesla-delivery-payment-hint">{t("fesla.deliveryPaymentHint")}</p>
+        <p id="fesla-delivery-balance" aria-live="polite">{t("fesla.remainingAfterPayment")}: <bdi data-delivery-balance>{money(afterPayment)} {t("fesla.currency")}</bdi></p>
+      </div>}
+      {delivery && operations.creditDelivery && remaining > 0 && <TailoringCreditChoice checked={deliverOnCredit} disabled={busy} useOrderClient debtAmount={afterPayment} onChange={value => { setDeliverOnCredit(value); if (operations.payment) setAmount(value ? "0" : String(remaining)); setError(""); }} />}
       {cancelling && order.creditDelivery && <p className="fesla-cancellation-notice">{t("tailoringCredit.cancelHint")}</p>}
       {error && <div id="fesla-action-error" role="alert" className="fesla-action-error"><p>{t(`fesla.errors.${error}`)}</p>{["conflict", "loadFailed", "requestConflict"].includes(error) && <button type="button" disabled={busy} onClick={reload}>{t("fesla.reloadOrder")}</button>}</div>}
       <footer><button type="button" disabled={busy} onClick={close}>{t("common.cancel")}</button><button type="submit" data-confirm-tailoring-action disabled={busy || (payment && remaining === 0)} className={payment ? "fesla-payment-button" : cancelling ? "fesla-cancel-button" : "fesla-deliver-button"}>{payment ? <IoCashOutline size={20} aria-hidden="true" /> : cancelling ? <IoBanOutline size={20} aria-hidden="true" /> : <IoCheckmarkCircleOutline size={20} aria-hidden="true" />}{t(busy ? "common.loading" : payment ? "fesla.recordPayment" : cancelling ? "fesla.cancellation.action" : deliverOnCredit ? "tailoringCredit.confirmDelivery" : "fesla.completeAndDeliver")}</button></footer>

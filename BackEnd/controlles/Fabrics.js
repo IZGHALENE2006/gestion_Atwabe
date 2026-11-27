@@ -20,7 +20,7 @@ import { saveFabricPhoto, deleteFabricPhoto, fabricPhotoPath } from "../utils/fa
 import { protectPendingFabricInvoice } from '../utils/fabricInvoiceStock.js';
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
-const publicFabric = (fabric) => {
+export const publicFabric = (fabric) => {
   const { invoiceDebits: _invoiceDebits, tailoringOrderIds: _tailoringOrderIds, tailoringStockOperations: _tailoringStockOperations, movements: _movements, workerMaterialDebits: _workerMaterialDebits, photo, ...value } = typeof fabric.toObject === "function" ? fabric.toObject() : fabric;
   return { ...value, hasPhoto: Boolean(fabricPhotoPath(photo)) };
 };

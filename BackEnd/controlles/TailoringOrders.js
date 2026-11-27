@@ -27,7 +27,7 @@ const fail = (message, status) => Object.assign(new Error(message), { status });
 const readyTailoringOrder = async order => finishTailoringCredit(await finishTailoringClient(await resumeTailoringFabricStock(order)));
 const publicPayment = (order, receipt, index) => ({ amount: receipt.amount, paidAt: receipt.paidAt, reference: tailoringPaymentReference(order, index), ...(receipt.actor ? { actor: receipt.actor } : {}), ...(receipt.document ? { document: publicTailoringReceipt(receipt.document) } : {}) });
 const publicOrder = async (document) => {
-  const { stockOperation: _stockOperation, clientRegistration: _clientRegistration, photo, items: _items, requestId: _requestId, requestFingerprint: _fingerprint, paymentReceipts = [], deliveryFabricItems: _deliveryFabricItems, deliveredBy: _deliveredBy, ...order } = typeof document.toObject === "function" ? document.toObject() : document;
+  const { stockOperation: _stockOperation, clientRegistration: _clientRegistration, photo, items: _items, requestId: _requestId, requestFingerprint: _fingerprint, paymentReceipts = [], deliveryPayment: _deliveryPayment, deliveryFabricItems: _deliveryFabricItems, deliveredBy: _deliveredBy, ...order } = typeof document.toObject === "function" ? document.toObject() : document;
   const totalPrice = order.totalPrice ?? 0, paidAmount = order.paidAmount ?? 0;
   const items = tailoringOrderItems({ ...order, items: _items, photo }).map(raw => { const { photo: itemPhoto, fabricSale: _fabricSale, ...item } = raw; return { ...item, hasPhoto: Boolean(itemPhoto) }; });
   const garmentType = tailoringGarmentType(order);
@@ -260,12 +260,42 @@ export async function addTailoringPayment(req, res) {
 }
 export async function deliverTailoringOrder(req, res) {
   try {
+    // Older clients can still deliver without recording a payment. New clients
+    // commit the payment, receipt and delivery intent in the same order save.
+    const collecting = Object.hasOwn(req.body, 'paymentAmount');
+    const amount = collecting ? tailoringMoneyCents(req.body.paymentAmount) : 0;
+    const requestId = typeof req.body.requestId === 'string' ? req.body.requestId.toLowerCase() : '';
+    if (amount === null) throw fail('invalidDeliveryPayment', 400);
+    if (collecting && !/^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/.test(requestId)) throw fail('invalidRequest', 400);
+    if (amount > 0 && !req.tailoringAccess.permissions.payment) throw fail('forbidden', 403);
     const order = await actionOrder(req);
     if (order.cancelledAt) throw fail("orderCancelled", 409);
-    if (order.deliveredAt) return res.json(await publicOrder(order));
-    checkActionVersion(req, order);
     const flag = req.body.deliverOnCredit;
     const credit = tailoringCreditInput({ clientId: order.clientId ? String(order.clientId) : undefined, deliverOnCredit: flag, registerClient: !order.clientId && [true, 'true'].includes(flag) });
+    const output = async saved => {
+      const result = await publicOrder(saved);
+      const index = collecting ? saved.paymentReceipts.findIndex(row => row.requestId === requestId) : -1;
+      return index < 0 ? result : { ...result, paymentReceipt: publicPayment(saved, saved.paymentReceipts[index], index) };
+    };
+    if (order.deliveredAt) {
+      if (collecting && (!order.deliveryPayment || order.deliveryPayment.requestId !== requestId)) throw fail('conflict', 409);
+      if (collecting && (tailoringMoneyCents(order.deliveryPayment.amount) !== amount || order.deliveryPayment.deliverOnCredit !== Boolean(credit.deliverOnCredit))) throw fail('requestConflict', 409);
+      return res.json(await output(order));
+    }
+    checkActionVersion(req, order);
+    if (collecting) {
+      if (order.paymentReceipts.some(row => row.requestId === requestId)) throw fail('requestConflict', 409);
+      const remaining = tailoringRemainingAmount(order.totalPrice, order.paidAmount);
+      if (remaining === null) throw fail('invalidDeliveryPayment', 400);
+      if (amount > tailoringMoneyCents(remaining)) throw fail('paymentExceedsRemaining', 400);
+      if (amount > 0) {
+        order.paidAmount = (tailoringMoneyCents(order.paidAmount) + amount) / 100;
+        const paidAt = new Date();
+        const document = createTailoringReceipt(order, { kind: 'payment', reference: tailoringPaymentReference(order, order.paymentReceipts.length), issuedAt: paidAt, paymentAmount: amount / 100 });
+        order.paymentReceipts.push({ requestId, amount: amount / 100, paidAt, createdBy: req.tailoringAccess.createdBy, actor: req.tailoringAccess.creator, document });
+      }
+      order.deliveryPayment = { requestId, amount: amount / 100, deliverOnCredit: Boolean(credit.deliverOnCredit) };
+    }
     if (credit.deliverOnCredit) {
       if (!req.tailoringAccess.permissions.creditDelivery) throw fail('forbidden', 403);
       // Delivery always belongs to the original order owner; a request cannot
@@ -274,14 +304,14 @@ export async function deliverTailoringOrder(req, res) {
       const registeringClient = order.clientId ? undefined : await prepareTailoringClient(order, req.tailoringAccess, { delivery: true });
       order.creditDelivery = await prepareTailoringCredit(order, req.tailoringAccess, registeringClient);
       await order.save();
-      return res.json(await publicOrder(await finishTailoringCredit(await finishTailoringClient(order))));
+      return res.json(await output(await finishTailoringCredit(await finishTailoringClient(order))));
     }
     if (order.costing?.pricingVersion >= 2 || order.fabricSalesVersion === 1) order.deliveryFabricItems = order.items.map(item => item.toObject());
     order.deliveryFinancials = createTailoringDeliveryFinancials(order);
     order.deliveredAt = new Date();
     order.deliveredBy = req.tailoringAccess.createdBy;
     await order.save();
-    res.json(await publicOrder(order));
+    res.json(await output(order));
   } catch (error) { sendError(res, error, "saveFailed"); }
 }
 

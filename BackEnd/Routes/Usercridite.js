@@ -9,12 +9,14 @@ import {
   AddUserPayment,
   DeleteCreditProduct,
   DeleteUsercridite,
+  UpdateUserCridite,
 } from '../controlles/UserCridite.js'
 const router = express.Router()
 
 router.post('/add', auth, AddUserCridite)
 router.get('/get', auth, AllUserCridite)
 router.get('/get/:id', auth, GetUserCriditeById)
+router.put('/update/:id', auth, requireOperation('credit', 'update'), UpdateUserCridite)
 router.post('/add-product/:id', auth, AddCreditProduct)
 router.post('/add-payment/:id', auth, AddUserPayment)
 router.delete('/DeleteProduct/:id/:productId', auth, requireOperation('credit','deleteDebt'), DeleteCreditProduct)

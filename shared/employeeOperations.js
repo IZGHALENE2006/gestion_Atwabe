@@ -3,7 +3,7 @@ export const EMPLOYEE_MODULE_LABELS = { cashier: "nav.cashier", credit: "nav.cre
 // One catalogue for the permission editor, UI controls and server authorization.
 export const EMPLOYEE_OPERATIONS = {
   cashier: ["history", "sell", "creditSale", "discount", "wholesale", "print"],
-  credit: ["ownerDebts", "addOwnerDebt", "payOwnerDebt", "ownerDebtHistory", "add", "details", "addDebt", "payment", "deleteDebt", "delete", "history", "print", "share"],
+  credit: ["ownerDebts", "addOwnerDebt", "payOwnerDebt", "ownerDebtHistory", "add", "update", "details", "addDebt", "payment", "deleteDebt", "delete", "history", "print", "share"],
   tailoring: ["creditDelivery", "assign", "add", "update", "discount", "details", "payment", "deliver", "cancel", "settings", "profits", "tracking", "print", "share", "labels"],
   sfifa: ["details", "add", "update", "restock", "delete", "history", "labels", "download"],
   fabrics: ["invoiceHistory", "addInvoice", "invoicePayment", "invoicePrint", "invoiceShare", "creditSale", "details", "add", "update", "addColor", "addPiece", "delete", "deleteColor", "deletePiece", "sell", "discount", "wholesale", "reduce", "history", "profits", "labels", "catalog"],
@@ -26,6 +26,7 @@ function legacyOperation(user, module, operation) {
   if (module === "tailoring" && operation === "cancel") return user?.action?.delete === true;
   if (module === "products" && ["add", "update", "restock", "delete"].includes(operation)) return false;
   if (module === "credit" && ["ownerDebts", "addOwnerDebt", "payOwnerDebt", "ownerDebtHistory"].includes(operation)) return false;
+  if (module === "credit" && operation === "update") return user?.action?.update === true;
   if (module === "credit") return !["delete", "deleteDebt"].includes(operation);
   if (["cashier", "categories", "invoices", "profits"].includes(module)) return true;
   const action = operation === "restock" ? "add" : ["assign", "increase"].includes(operation) ? "add" : ["addColor", "addPiece", "complete", "reduce", "sell", "payment", "deliver", "settings", "pay", "advance"].includes(operation) ? "update" : ["deleteColor", "deletePiece", "deleteWork", "cancelWork"].includes(operation) ? "delete" : operation;

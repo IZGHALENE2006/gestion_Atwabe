@@ -2,6 +2,8 @@ import Admin from '../models/AdminModel.js'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import AdminModel from '../models/AdminModel.js'
+import Employee from '../models/EmployeModele.js';
+import { passwordChangeError } from '../../shared/passwordChange.js';
 //Register Admin
 export const CreatAdmin = async(req,res)=>{
     const {name,email,password}  = req.body
@@ -66,27 +68,30 @@ export const getAdminFromToken =async (req,res)=>{
 //UpdatePasswod
 export const UpdatePassword = async (req, res) => {
   try {
-    const { old, newpass, newpass2 } = req.body;
+    if (!['admin', 'Employe'].includes(req.user?.role)) return res.status(403).json({ message: 'Forbidden' });
+    const error = passwordChangeError(req.body);
+    if (error) return res.status(400).json({ message: error });
+    const { old, newpass } = req.body;
 
-    const user = await AdminModel.findById(req.user.id);
+    const admin = req.user.role === 'admin';
+    const user = await (admin ? AdminModel : Employee).findById(req.user.id);
     if (!user)
       return res.status(404).json({ message: "User not found" });
+    if (user.role !== req.user.role || !admin && user.isActive !== true) return res.status(403).json({ message: 'Forbidden' });
 
-    const isMatch = await bcrypt.compare(old, user.password);
+    const isMatch = admin ? await bcrypt.compare(old, user.password) : old === user.password;
     if (!isMatch)
       return res.status(400).json({ message: "Current password incorrect" });
 
-    if (newpass !== newpass2)
-      return res.status(400).json({ message: "Password not confirmed" });
-
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newpass, salt);
+    // AdminModel hashes modified passwords in its save hook. Passing a hash
+    // here would hash it a second time and break the next login.
+    // Employees keep the credential format used by their existing login flow.
+    user.password = newpass;
     await user.save();
 
     res.status(200).json({ message: "Password updated successfully" });
 
-  } catch (error) {
-    console.error(error);
+  } catch {
     res.status(500).json({ message: "Server error" });
   }
 };

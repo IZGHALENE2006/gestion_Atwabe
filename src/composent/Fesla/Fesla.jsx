@@ -100,7 +100,7 @@ export default function Fesla() {
     setResult(current => ({ ...current, orders: current.orders.map(entry => entry._id === order._id ? order : entry) }));
     setStatus({ token, key: action.mode === "payment" ? "paymentAdded" : action.mode === "cancel" ? "cancellation.saved" : "orderDelivered" });
     setAction(null);
-    if (action.mode === "payment" && order.paymentReceipt && operations.print) printReceipt(order, order.paymentReceipt);
+    if (order.paymentReceipt && operations.print) printReceipt(order, order.paymentReceipt);
     else setDetails({ token, id: order._id });
   };
   const reloaded = data => { if (Array.isArray(data.orders)) setResult({ ...data, token, attempt, loading: false, error: "" }); };

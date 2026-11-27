@@ -3,44 +3,29 @@ import useEmployeeOperations from "../../hooks/useEmployeeOperations.js";
 import EmployeeOperation from "../permissions/EmployeeOperation.jsx";
 import CreditActivity from "./CreditActivity.jsx";
 import { apiErrorMessage } from "../../i18n/apiErrors.js";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   IoAddCircleOutline,
-  IoCameraOutline,
   IoCashOutline,
   IoDocumentTextOutline,
   IoShareSocialOutline,
-  IoCloseOutline,
-  IoPricetagOutline,
   IoTrashOutline,
   IoWalletOutline,
 } from "react-icons/io5";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
-import Quagga from "quagga";
 import { useTranslation } from "react-i18next";
 import {
-  AddCreditLine,
-  AddCreditPayment,
   DeleteCreditLine,
   GetUserCriditeById,
 } from "../../slices/SliceCridite";
-import { GetAllProduct } from "../../slices/SliceProduct";
+import CreditCustomerActionDialog from './CreditCustomerActionDialog.jsx';
 
 import CreditDocumentDialog from "./CreditDocumentDialog.jsx";
 import CreditShareDialog from "./CreditShareDialog.jsx";
 import { creditInvoiceReference } from '../../../shared/creditDocuments.js';
 import "./creditDocuments.css";
-
-const defaultLineForm = {
-  mode: "stock",
-  productId: "",
-  nom: "",
-  prix: "",
-  Quantite: 1,
-  Paiement: 0,
-};
 
 export default function UserCreditDetails() {
   const operations = useEmployeeOperations('credit');
@@ -50,13 +35,7 @@ export default function UserCreditDetails() {
   const dispatch = useDispatch();
   const locale = i18n.language === "ar" ? "ar-MA" : "fr-MA";
 
-  const [isLineModalOpen, setIsLineModalOpen] = useState(false);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [openScanner, setOpenScanner] = useState(false);
-  const [barcodeSearch, setBarcodeSearch] = useState("");
-  const [lineForm, setLineForm] = useState(defaultLineForm);
-  const [paymentForm, setPaymentForm] = useState({ amount: "", note: "" });
-  const scannerRef = useRef(null), lineRequestRef = useRef(null), paymentRequestRef = useRef(null), savingRef = useRef(false);
+  const [entryMode, setEntryMode] = useState(null);
   const [documentView, setDocumentView] = useState(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [lineFilter, setLineFilter] = useState({ customerId: id, value: 'all' });
@@ -72,146 +51,20 @@ export default function UserCreditDetails() {
     (state) => state.userCridite
   );
   const selectedUser = loadedUser?._id === id ? loadedUser : null;
-  const { Produts } = useSelector((state) => state.Product);
   const canDelete = operations.deleteDebt;
 
   useEffect(() => {
     if (!id) return;
     dispatch(GetUserCriditeById(id));
-    dispatch(GetAllProduct());
   }, [dispatch, id]);
-
-  const selectedProduct = useMemo(() => {
-    return Produts.find((p) => p._id === lineForm.productId);
-  }, [Produts, lineForm.productId]);
-
-  const stopScan = () => {
-    try {
-      Quagga.stop();
-    } catch {
-      // scanner already stopped
-    }
-    setOpenScanner(false);
-  };
-
-  const handleBarcodeLookup = useCallback(
-    (rawCode = barcodeSearch) => {
-      const code = String(rawCode || "").trim();
-      if (!code) return;
-
-      const found = Produts.find(
-        (p) => String(p.barcode || "").trim() === code
-      );
-
-      if (!found) {
-        toast.error(t("creditDetails.barcodeNotFound"));
-        return;
-      }
-
-      setLineForm((prev) => ({ ...prev, productId: found._id }));
-      toast.success(t("creditDetails.selectedProduct", { name: found.name, price: found.prix_vente }));
-    },
-    [Produts, barcodeSearch, t]
-  );
-
-  useEffect(() => {
-    if (!openScanner) return;
-
-    Quagga.init(
-      {
-        inputStream: {
-          type: "LiveStream",
-          target: scannerRef.current,
-          constraints: { facingMode: "environment" },
-        },
-        decoder: {
-          readers: ["ean_reader", "code_128_reader", "code_39_reader"],
-        },
-        locate: true,
-      },
-      (err) => {
-        if (err) {
-          toast.error(t("creditDetails.cameraError"));
-          stopScan();
-          return;
-        }
-        Quagga.start();
-      }
-    );
-
-    const onDetected = (result) => {
-      const code = result?.codeResult?.code;
-      if (!code) return;
-
-      setBarcodeSearch(code);
-      handleBarcodeLookup(code);
-      stopScan();
-    };
-
-    Quagga.onDetected(onDetected);
-
-    return () => {
-      try {
-        Quagga.offDetected(onDetected);
-      } catch {
-        // ignore
-      }
-      stopScan();
-    };
-  }, [openScanner, Produts, handleBarcodeLookup, t]);
-
-  const handleOpenLineModal = () => {
-    lineRequestRef.current = null;
-    setLineForm(defaultLineForm);
-    setBarcodeSearch("");
-    setIsLineModalOpen(true);
-  };
 
   const openDocument = (user, selection = { kind: "statement" }) => {
     const payment = selection.kind === "payment" ? user.paymentHistory.find(entry => entry.reference === selection.reference) : null;
     if (selection.kind === "payment" && !payment) { toast.error(t("creditDocuments.errors.unavailable")); return; }
-    if (!operations.print) return;
+    if (!operations.print && !(operations.share && selection.kind === 'payment')) return;
     setDocumentView({ user, selection: { ...selection, ...(payment ? { payment } : {}) } });
   };
-  const requestFor = (ref, payload) => {
-    const fingerprint = JSON.stringify(payload);
-    if (ref.current?.fingerprint !== fingerprint) ref.current = { fingerprint, requestId: crypto.randomUUID() };
-    return ref.current.requestId;
-  };
-  const handleOpenPaymentModal = () => { paymentRequestRef.current = null; setPaymentForm({ amount: "", note: "" }); setIsPaymentModalOpen(true); };
-  const handleAddCreditLine = async e => {
-    e.preventDefault(); if (savingRef.current) return;
-    const qty = Math.max(1, Number(lineForm.Quantite || 1)), upfront = Math.max(0, Number(lineForm.Paiement || 0));
-    let productName = lineForm.nom, productPrice = Number(lineForm.prix);
-    if (lineForm.mode === "stock") {
-      if (!selectedProduct) { toast.error(t("creditDetails.chooseStockProduct")); return; }
-      productName = selectedProduct.name; productPrice = Number(selectedProduct.prix_vente);
-    }
-    if (!productName?.trim()) { toast.error(t("creditDetails.productNameRequired")); return; }
-    if (!productPrice || productPrice <= 0) { toast.error(t("creditDetails.priceGreaterThanZero")); return; }
-    if (upfront > productPrice * qty) { toast.error(t("creditDetails.initialPaymentExceeded")); return; }
-    const payload = { nom: productName.trim(), prix: productPrice, Quantite: qty, Paiement: upfront };
-    savingRef.current = true;
-    try {
-      const result = await dispatch(AddCreditLine({ userId: id, payload: { ...payload, requestId: requestFor(lineRequestRef, payload) } })).unwrap();
-      toast.success(t("creditDetails.creditLineAdded")); setIsLineModalOpen(false); setLineForm(defaultLineForm); setBarcodeSearch("");
-      openDocument(result.user, result.document);
-    } catch (error) { toast.error(apiErrorMessage(error, t, "creditDetails.failedToAddCreditLine")); }
-    finally { savingRef.current = false; }
-  };
-  const handleAddPayment = async e => {
-    e.preventDefault(); if (savingRef.current) return;
-    const amount = Number(paymentForm.amount || 0);
-    if (!Number.isFinite(amount) || amount <= 0) { toast.error(t("creditDetails.paymentGreaterThanZero")); return; }
-    const payload = { amount, note: paymentForm.note.trim() };
-    savingRef.current = true;
-    try {
-      const result = await dispatch(AddCreditPayment({ userId: id, payload: { ...payload, requestId: requestFor(paymentRequestRef, payload) } })).unwrap();
-      toast.success(t("creditDetails.paymentSaved")); setIsPaymentModalOpen(false); setPaymentForm({ amount: "", note: "" });
-      openDocument(result.user, result.document);
-    } catch (error) { toast.error(apiErrorMessage(error, t, "creditDetails.failedSavePayment")); }
-    finally { savingRef.current = false; }
-  };
+  const entrySaved = result => { setEntryMode(null); if (result.document) openDocument(result.user, result.document); };
 
   const handleDeleteLine = async (productId) => {
     if (!window.confirm(t("creditDetails.deleteCreditLineConfirm"))) return;
@@ -319,13 +172,13 @@ export default function UserCreditDetails() {
             <EmployeeOperation module="credit" operation="print"><button type="button" data-credit-statement onClick={() => openDocument(selectedUser)} className="credit-document-button"><IoDocumentTextOutline size={19} />{t("creditDocuments.printInvoice")}</button></EmployeeOperation>
             <EmployeeOperation module="credit" operation="share"><button type="button" data-share-credit onClick={() => setShareOpen(true)} className="credit-document-button"><IoShareSocialOutline size={19} />{t("creditDocuments.share.title")}</button></EmployeeOperation>
             <EmployeeOperation module="credit" operation="addDebt"><button data-add-credit-line
-              onClick={handleOpenLineModal}
+              onClick={() => setEntryMode("debt")}
               className="flex items-center gap-2 px-5 py-3 bg-slate-900 dark:bg-primary-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all"
             >
               <IoAddCircleOutline size={18} /> {t("creditDetails.addCredit")}
             </button></EmployeeOperation>
             <EmployeeOperation module="credit" operation="payment"><button
-              data-add-credit-payment onClick={handleOpenPaymentModal}
+              data-add-credit-payment onClick={() => setEntryMode("payment")}
               className="flex items-center gap-2 px-5 py-3 bg-primary-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all"
             >
               <IoCashOutline size={18} /> {t("creditDetails.addPayment")}
@@ -456,7 +309,7 @@ export default function UserCreditDetails() {
                   </td>
                   <td className="px-6 py-4" data-credit-payment-actor><span dir="auto">{payment.actor?.name || t("creditAudit.unrecorded")}</span>{payment.actor && <small className="block text-xs text-slate-500 dark:text-slate-400">{t(payment.actor.role === "admin" ? "creditAudit.admin" : "creditAudit.employee")}</small>}</td>
                   <td className="px-6 py-4 text-sm font-bold">{payment.balanceSnapshot ? formatMoney(payment.balanceSnapshot.remainingAfter) : "—"}</td>
-                  <td className="px-6 py-4" data-row-actions-cell><RowActionsMenu menuKey="UserCreditDetails"><EmployeeOperation module="credit" operation="print"><button type="button" data-credit-payment-receipt={payment.reference} onClick={() => openDocument(selectedUser, { kind: "payment", reference: payment.reference })} className="credit-document-icon" title={t("creditDocuments.printReceipt")} aria-label={t("creditDocuments.printReceipt")}><IoDocumentTextOutline size={20} /></button></EmployeeOperation></RowActionsMenu></td>
+                  <td className="px-6 py-4" data-row-actions-cell><RowActionsMenu menuKey="UserCreditDetails">{(operations.print || operations.share) && <button type="button" data-credit-payment-receipt={payment.reference} onClick={() => openDocument(selectedUser, { kind: "payment", reference: payment.reference })} className="credit-document-icon" title={t(operations.print ? "creditDocuments.printReceipt" : "creditDocuments.receipt")} aria-label={t(operations.print ? "creditDocuments.printReceipt" : "creditDocuments.receipt")}><IoDocumentTextOutline size={20} /></button>}</RowActionsMenu></td>
                 </tr>
               ))}
             </tbody>
@@ -470,261 +323,10 @@ export default function UserCreditDetails() {
       </div></EmployeeOperation>
 
       {shareOpen && <EmployeeOperation module="credit" operation="share"><CreditShareDialog key={id} userId={id} onClose={() => setShareOpen(false)} /></EmployeeOperation>}
-      {documentView?.user._id === id && <EmployeeOperation module="credit" operation="print"><CreditDocumentDialog user={documentView.user} selection={documentView.selection} onClose={() => setDocumentView(null)} /></EmployeeOperation>}
+      {documentView?.user._id === id && (operations.print || operations.share && documentView.selection.kind === "payment") && <CreditDocumentDialog user={documentView.user} selection={documentView.selection} onClose={() => setDocumentView(null)} />}
       <EmployeeOperation module="credit" operation="history"><CreditActivity user={selectedUser} /></EmployeeOperation>
 
-      {isLineModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-[2.5rem] p-8 shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black uppercase tracking-tight flex items-center gap-2 text-slate-800 dark:text-white">
-                <IoPricetagOutline className="text-primary-500" /> {t("creditDetails.addCreditLine")}
-              </h3>
-              <button
-                onClick={() => setIsLineModalOpen(false)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-              >
-                <IoCloseOutline size={24} className="text-slate-400" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddCreditLine} className="space-y-5">
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setLineForm({ ...defaultLineForm, mode: "stock" })
-                  }
-                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest ${
-                    lineForm.mode === "stock"
-                      ? "bg-primary-600 text-white"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-                  }`}
-                >
-                  {t("creditDetails.fromStock")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setLineForm({ ...defaultLineForm, mode: "custom" })
-                  }
-                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest ${
-                    lineForm.mode === "custom"
-                      ? "bg-primary-600 text-white"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-                  }`}
-                >
-                  {t("creditDetails.manual")}
-                </button>
-              </div>
-
-              {lineForm.mode === "stock" ? (
-                <div className="space-y-3">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={barcodeSearch}
-                      onChange={(e) => setBarcodeSearch(e.target.value)}
-                      placeholder={t("creditDetails.scanOrTypeBarcode")}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 outline-none font-bold text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleBarcodeLookup()}
-                      className="px-4 rounded-xl bg-slate-900 dark:bg-slate-700 text-white text-xs font-black uppercase tracking-widest"
-                    >
-                      {t("creditDetails.find")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setOpenScanner(true)}
-                      className="px-4 rounded-xl bg-primary-600 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2"
-                    >
-                      <IoCameraOutline size={16} />
-                      {t("creditDetails.scan")}
-                    </button>
-                  </div>
-
-                  <select
-                    required
-                    value={lineForm.productId}
-                    onChange={(e) =>
-                      setLineForm((prev) => ({ ...prev, productId: e.target.value }))
-                    }
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 outline-none font-bold text-sm"
-                  >
-                    <option value="">{t("creditDetails.chooseProduct")}</option>
-                    {Produts.map((p) => (
-                      <option key={p._id} value={p._id}>
-                        {p.name} - {p.prix_vente} DH
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input
-                    required
-                    type="text"
-                    placeholder={t("creditDetails.productName")}
-                    value={lineForm.nom}
-                    onChange={(e) =>
-                      setLineForm((prev) => ({ ...prev, nom: e.target.value }))
-                    }
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 outline-none font-bold text-sm"
-                  />
-                  <input
-                    required
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder={t("creditDetails.unitPrice")}
-                    value={lineForm.prix}
-                    onChange={(e) =>
-                      setLineForm((prev) => ({ ...prev, prix: e.target.value }))
-                    }
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 outline-none font-bold text-sm"
-                  />
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={lineForm.Quantite}
-                  onChange={(e) =>
-                    setLineForm((prev) => ({ ...prev, Quantite: e.target.value }))
-                  }
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 outline-none font-bold text-sm"
-                  placeholder={t("creditDetails.quantityPlaceholder")}
-                />
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  disabled={!operations.payment} value={lineForm.Paiement}
-                  onChange={(e) =>
-                    setLineForm((prev) => ({ ...prev, Paiement: e.target.value }))
-                  }
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 outline-none font-bold text-sm"
-                  placeholder={t("creditDetails.initialPayment")}
-                />
-              </div>
-
-              {lineForm.mode === "stock" && selectedProduct && (
-                <p className="text-xs font-bold text-slate-500 dark:text-slate-300">
-                  {t("creditDetails.selectedProduct", {
-                    name: selectedProduct.name,
-                    price: selectedProduct.prix_vente,
-                  })}
-                </p>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsLineModalOpen(false);
-                    stopScan();
-                  }}
-                  className="flex-1 py-4 border-2 border-slate-100 dark:border-slate-800 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all"
-                >
-                  {t("common.cancel")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="flex-[2] py-4 bg-primary-600 hover:bg-primary-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all shadow-xl shadow-primary-600/20 disabled:opacity-50"
-                >
-                  {actionLoading ? t("creditAddClient.saving") : t("creditDetails.saveCreditLine")}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {openScanner && (
-        <div className="fixed inset-0 z-[150] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 w-full max-w-md relative shadow-2xl border border-white/20">
-            <button
-              type="button"
-              onClick={stopScan}
-              className="absolute -top-12 right-0 p-2 bg-white/10 text-white rounded-full hover:bg-white/20 transition-all"
-            >
-              <IoCloseOutline size={24} />
-            </button>
-            <div
-              ref={scannerRef}
-              className="w-full h-80 overflow-hidden rounded-[1.5rem] bg-black border-4 border-primary-500"
-            />
-            <p className="text-center mt-4 text-slate-900 dark:text-white text-xs font-black uppercase tracking-widest">
-              {t("creditDetails.scanningBarcode")}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {isPaymentModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl border border-slate-200 dark:border-slate-800">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black uppercase tracking-tight text-slate-800 dark:text-white">
-                {t("creditDetails.registerPayment")}
-              </h3>
-              <button
-                onClick={() => setIsPaymentModalOpen(false)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-              >
-                <IoCloseOutline size={24} className="text-slate-400" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddPayment} className="space-y-4">
-              <input
-                required
-                type="number"
-                min="0"
-                step="0.01"
-                value={paymentForm.amount}
-                onChange={(e) =>
-                  setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))
-                }
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 outline-none font-bold text-sm"
-                placeholder={t("creditDetails.amount")}
-              />
-              <textarea
-                value={paymentForm.note}
-                onChange={(e) =>
-                  setPaymentForm((prev) => ({ ...prev, note: e.target.value }))
-                }
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 outline-none font-bold text-sm"
-                placeholder={t("creditDetails.noteOptional")}
-                rows={3}
-              />
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsPaymentModalOpen(false)}
-                  className="flex-1 py-4 border-2 border-slate-100 dark:border-slate-800 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all"
-                >
-                  {t("common.cancel")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="flex-[2] py-4 bg-primary-600 hover:bg-primary-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all shadow-xl shadow-primary-600/20 disabled:opacity-50"
-                >
-                  {actionLoading ? t("creditAddClient.saving") : t("creditDetails.savePayment")}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {entryMode && operations[entryMode === 'debt' ? 'addDebt' : 'payment'] && <CreditCustomerActionDialog key={id + entryMode} userId={id} mode={entryMode} onClose={() => setEntryMode(null)} onSaved={entrySaved} />}
     </div>
   );
 }

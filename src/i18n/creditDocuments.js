@@ -1,5 +1,7 @@
 export const creditDocumentsArabic = {
   share: {
+    paymentAction: 'مشاركة الوصل',
+    paymentMessage: 'مرحبًا {{name}}،\nهذا وصل تسديدكم رقم {{reference}}.\nالتاريخ: {{date}}\nالمبلغ المستلم: {{amount}} {{currency}}\n{{balanceLabel}}: {{remaining}} {{currency}}',
     title: "مشاركة كشف الدَّين", named: "مشاركة كشف الدَّين للزبون {{name}}", pdfTitle: "كشف حساب الدَّين",
     hint: "كشف بالمشتريات وإجمالي المدفوع والمتبقي، مع بيانات الاتصال المسجّلة للزبون.",
     preparing: "جارٍ تحميل الحساب وتجهيز ملف PDF…", prepareFailed: "تعذر تجهيز كشف الدَّين. تحقّق من الاتصال ثم أعد المحاولة.",
@@ -22,6 +24,8 @@ export const creditDocumentsArabic = {
 };
 export const creditDocumentsFrench = {
   share: {
+    paymentAction: 'Partager le reçu',
+    paymentMessage: 'Bonjour {{name}},\nVoici votre reçu de paiement {{reference}}.\nDate : {{date}}\nMontant reçu : {{amount}} {{currency}}\n{{balanceLabel}} : {{remaining}} {{currency}}',
     title: "Partager le relevé de crédit", named: "Partager le relevé de crédit de {{name}}", pdfTitle: "Relevé de crédit",
     hint: "Les achats, le total payé et le solde, avec les coordonnées enregistrées du client.",
     preparing: "Chargement du compte et préparation du PDF…", prepareFailed: "Impossible de préparer le relevé. Vérifiez la connexion puis réessayez.",

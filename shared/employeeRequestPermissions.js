@@ -20,7 +20,8 @@ export function employeeCanRequest(user, method, rawPath, input) {
     return method === 'POST' && (path === '/owner-debts' ? can('credit','addOwnerDebt') : path === '/owner-debts/payments' && can('credit','payOwnerDebt'));
   }
   if (path.startsWith("/usercridite")) {
-    if (read) return /\/get\/.+/.test(path) ? any("credit", "details", "addDebt", "payment", "history", "print", "share") : allowed("credit");
+    if (read) return /\/get\/.+/.test(path) ? any("credit", "details", "update", "addDebt", "payment", "history", "print", "share") : allowed("credit");
+    if (/^\/usercridite\/update\/[^/]+$/.test(path) && method === 'PUT') return can('credit', 'update');
     if (path === "/usercridite/add" && method === "POST") return can("credit", "add");
     if (path.startsWith("/usercridite/add-product/") && method === "POST") return can("credit", "addDebt") && (!(Number(body.Paiement) > 0) || can("credit", "payment"));
     if (path.startsWith("/usercridite/add-payment/") && method === "POST") return can("credit", "payment");
@@ -68,6 +69,8 @@ export function employeeCanRequest(user, method, rawPath, input) {
     return method === "POST" ? can("sfifa", path.endsWith("/restock") ? "restock" : "add") : method === "PUT" ? can("sfifa", "update") : method === "DELETE" && can("sfifa", "delete");
   }
   if (path.startsWith("/fabrics")) {
+    if (path === '/fabrics/credit-sale-customers') return read && can('fabrics', 'sell') && can('fabrics', 'creditSale') && can('credit', 'addDebt');
+    if (path === '/fabrics/credit-sales') return method === 'POST' && can('fabrics', 'sell') && can('fabrics', 'creditSale') && can('credit', 'addDebt') && (!body.newCustomer || can('credit', 'add')) && (!(Number(body.amountPaid) > 0) || can('credit', 'payment')) && (!Array.isArray(body.lines) || !body.lines.some(line => line?.pricingMode === 'wholesale' && !can('fabrics', 'wholesale') || Number(line?.discountValue) > 0 && !can('fabrics', 'discount')));
     if (path === '/fabrics/invoice-customers') return read && can('fabrics', 'addInvoice') && can('credit', 'addDebt');
     if (path === '/fabrics/invoices' || path.startsWith('/fabrics/invoices/')) {
       if (read) return can('fabrics', 'invoiceHistory');

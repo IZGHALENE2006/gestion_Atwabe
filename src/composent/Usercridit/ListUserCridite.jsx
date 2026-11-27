@@ -11,6 +11,9 @@ import {
   IoEyeOutline,
   IoShareSocialOutline,
   IoWalletOutline,
+  IoAddCircleOutline,
+  IoCashOutline,
+  IoCreateOutline,
 } from "react-icons/io5";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +24,8 @@ import {
   GetAllUserCridite,
 } from "../../slices/SliceCridite";
 import CreditShareDialog from "./CreditShareDialog.jsx";
+import CreditCustomerActionDialog from './CreditCustomerActionDialog.jsx';
+import CreditDocumentDialog from './CreditDocumentDialog.jsx';
 
 const ListUsercridite = () => {
   const matchesSearchTarget = useSearchTarget();
@@ -30,6 +35,7 @@ const ListUsercridite = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [shareUserId, setShareUserId] = useState(null);
+  const [customerAction, setCustomerAction] = useState(null), [documentView, setDocumentView] = useState(null);
   const canDelete = operations.delete;
   const locale = i18n.language === "ar" ? "ar-MA" : "fr-MA";
 
@@ -73,6 +79,13 @@ const ListUsercridite = () => {
     } catch (error) {
       toast.error(apiErrorMessage(error, t, "creditList.deleteFailed"));
     }
+  };
+
+  const actionSaved = result => {
+    setCustomerAction(null);
+    if (!result.document || !operations.print && !(operations.share && result.document.kind === 'payment')) return;
+    const payment = result.document.kind === 'payment' ? result.user.paymentHistory.find(entry => entry.reference === result.document.reference) : null;
+    setDocumentView({ user: result.user, selection: { ...result.document, ...(payment ? { payment } : {}) } });
   };
 
   return (
@@ -154,6 +167,7 @@ const ListUsercridite = () => {
               {filteredUsers.map((user) => (
                 <tr
                   key={user._id}
+                  data-credit-customer={user._id}
                   className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-all"
                 >
                   <td className="px-8 py-5">
@@ -186,15 +200,18 @@ const ListUsercridite = () => {
                   <td className="px-8 py-5" data-credit-customer-creator><span dir="auto">{user.createdBy?.name || t("creditAudit.unrecorded")}</span>{user.createdBy && <small className="block text-xs text-slate-500 dark:text-slate-400">{t(user.createdBy.role === "admin" ? "creditAudit.admin" : "creditAudit.employee")}</small>}</td>
                   <td className="px-8 py-5" data-row-actions-cell><RowActionsMenu menuKey="ListUserCridite">
                     <div className="flex items-center justify-center gap-2">
+                      <EmployeeOperation module="credit" operation="addDebt"><button type="button" data-list-add-credit={user._id} onClick={() => setCustomerAction({ id: user._id, mode: 'debt' })} className="credit-document-icon" aria-label={t('creditDetails.addCredit')}><IoAddCircleOutline size={19} /></button></EmployeeOperation>
+                      <EmployeeOperation module="credit" operation="payment"><button type="button" data-list-add-payment={user._id} onClick={() => setCustomerAction({ id: user._id, mode: 'payment' })} className="credit-document-icon" aria-label={t('creditDetails.addPayment')}><IoCashOutline size={19} /></button></EmployeeOperation>
+                      <EmployeeOperation module="credit" operation="update"><button type="button" data-list-edit-credit={user._id} onClick={() => setCustomerAction({ id: user._id, mode: 'edit' })} className="credit-document-icon" aria-label={t('creditList.editInfo')}><IoCreateOutline size={19} /></button></EmployeeOperation>
                       <EmployeeOperation module="credit" operation="share"><button type="button" className="credit-document-icon" data-share-credit={user._id} onClick={() => setShareUserId(user._id)} title={t("creditDocuments.share.title")} aria-label={t("creditDocuments.share.named", { name: user.name })}><IoShareSocialOutline size={18} /></button></EmployeeOperation>
-                      <button
+                      <EmployeeOperation module="credit" operation="details"><button
                         onClick={() =>
                           navigate(`/Home/cridit/UserCreditDetails/${user._id}`)
                         }
                         className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-primary-500 hover:text-white transition-all shadow-sm"
                        aria-label={t("productList.details")}>
                         <IoEyeOutline size={18} />
-                      </button>
+                      </button></EmployeeOperation>
                       {canDelete && <button
                         disabled={actionLoading}
                         onClick={() => handleDelete(user._id)}
@@ -217,6 +234,8 @@ const ListUsercridite = () => {
         )}
       </div>
       {shareUserId && <CreditShareDialog key={shareUserId} userId={shareUserId} onClose={() => setShareUserId(null)} />}
+      {customerAction && operations[customerAction.mode === 'debt' ? 'addDebt' : customerAction.mode === 'payment' ? 'payment' : 'update'] && <CreditCustomerActionDialog key={customerAction.id + customerAction.mode} userId={customerAction.id} mode={customerAction.mode} onClose={() => setCustomerAction(null)} onSaved={actionSaved} />}
+      {documentView && (operations.print || operations.share && documentView.selection.kind === 'payment') && <CreditDocumentDialog user={documentView.user} selection={documentView.selection} onClose={() => setDocumentView(null)} />}
     </div>
   );
 };

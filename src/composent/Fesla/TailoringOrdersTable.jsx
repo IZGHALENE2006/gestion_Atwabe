@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { IoBanOutline, IoCashOutline, IoCreateOutline, IoBarcodeOutline, IoCheckmarkCircleOutline, IoEyeOutline, IoReceiptOutline, IoLogoWhatsapp, IoGitBranchOutline } from "react-icons/io5";
 import TailoringOrderTracking from "./TailoringOrderTracking.jsx";
 import TailoringOrderStatus from "./TailoringOrderStatus.jsx";
-import { tailoringRemainingAmount, tailoringOrderItems, tailoringGarmentType, tailoringProfitAmount } from "../../../shared/tailoring.js";
+import { tailoringRemainingAmount, tailoringOrderItems, tailoringGarmentType, tailoringProfitAmount, tailoringFabricMeters } from "../../../shared/tailoring.js";
 import { tailoringOrderBarcode } from "../../../shared/tailoringBarcode.js";
 
 export default function TailoringOrdersTable({ orders, tracking, onDetails, onAction, onReceipt, onEdit, onLabel, onShareReceipt, onNotify, onAssign }) {
@@ -16,6 +16,7 @@ export default function TailoringOrdersTable({ orders, tracking, onDetails, onAc
   const sectionLabels = garmentType !== "djellaba";
   const locale = i18n.language === "ar" ? "ar-MA" : "fr-MA";
   const money = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const meters = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 3 });
   const date = value => new Date(`${value}T12:00:00`).toLocaleDateString(locale);
   return <section className="fesla-table-panel">
     <p className="fesla-table-hint" id="fesla-table-hint">{t("fesla.scrollTable")}</p>
@@ -31,7 +32,7 @@ export default function TailoringOrdersTable({ orders, tracking, onDetails, onAc
             <td data-tailoring-creator><span dir="auto">{order.creator?.name || t("employeePermissions.unrecorded")}</span>{order.creator && <small className="block text-slate-500 dark:text-slate-400">{t(order.creator.role === "admin" ? "employeePermissions.admin" : "employeePermissions.employee")}</small>}</td>
             <td><time dateTime={order.orderDate}>{date(order.orderDate)}</time></td>
             <td><time dateTime={order.readyDate}>{date(order.readyDate)}</time></td>
-            <td className="fesla-table-fabric"><strong data-tailoring-item-count={tailoringOrderItems(order).length}>{t(sectionLabels ? `fesla.${garmentType}.garmentsCount` : "fesla.garmentsCount", { count: tailoringOrderItems(order).length })}</strong>{tailoringOrderItems(order).slice(0, 2).map(item => <small key={item.lineId} dir="auto">{item.fabricType}{item.fabricColor ? ` · ${item.fabricColor}` : ""}{trousers ? ` · ${t("fesla.trouserTypes." + item.trouserType)}` : garmentType === "shirts" ? ` · ${item.shirtType}` : ""}</small>)}{tailoringOrderItems(order).length > 2 && <small>{t("fesla.moreGarments", { count: tailoringOrderItems(order).length - 2 })}</small>}</td>
+            <td className="fesla-table-fabric"><strong data-tailoring-item-count={tailoringOrderItems(order).length}>{t(sectionLabels ? `fesla.${garmentType}.garmentsCount` : "fesla.garmentsCount", { count: tailoringOrderItems(order).length })}</strong>{tailoringOrderItems(order).slice(0, 2).map(item => <small key={item.lineId} dir="auto">{item.fabricType}{item.fabricColor ? ` · ${item.fabricColor}` : ""}{tailoringFabricMeters(item.fabricMeters) !== null && <> — <bdi data-tailoring-item-meters={item.lineId}>{meters.format(tailoringFabricMeters(item.fabricMeters))} {t("fesla.costs.metersUnit")}</bdi></>}{trousers ? ` · ${t("fesla.trouserTypes." + item.trouserType)}` : garmentType === "shirts" ? ` · ${item.shirtType}` : ""}</small>)}{tailoringOrderItems(order).length > 2 && <small>{t("fesla.moreGarments", { count: tailoringOrderItems(order).length - 2 })}</small>}</td>
             <td className="fesla-table-tracking"><EmployeeOperation module="tailoring" operation="tracking"><TailoringOrderTracking order={order} tracking={tracking} compact /></EmployeeOperation></td>
             <td><TailoringOrderStatus order={order} /></td>
             {[order.totalPrice ?? 0, order.paidAmount ?? 0, remaining, order.expenseAmount ?? null, tailoringProfitAmount(order.totalPrice, order.expenseAmount)].filter((_, index) => index < 3 || operations.profits).map((amount, index) => <td key={index} data-order-expenses={index === 3 ? amount : undefined} data-order-profit={index === 4 ? amount : undefined} className={`fesla-table-money${index === 4 && amount < 0 ? " is-loss" : ""}${index === 2 ? ` fesla-table-balance${amount === 0 ? " is-paid" : ""}` : ""}`}><bdi>{amount === null ? "—" : money.format(amount)}</bdi><small>{t("fesla.currency")}</small></td>)}

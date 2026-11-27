@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useReactToPrint } from "react-to-print";
-import { IoCloseOutline, IoPrintOutline } from "react-icons/io5";
+import { IoCloseOutline, IoPrintOutline, IoShareSocialOutline } from "react-icons/io5";
+import useEmployeeOperations from '../../hooks/useEmployeeOperations.js';
+import CreditPaymentShareDialog from './CreditPaymentShareDialog.jsx';
 import { creditDocument } from "../../../shared/creditDocuments.js";
 import { documentPrintFonts } from "../../utils/documentFonts.js";
 import { useInvoiceSettings } from "../Facture/useInvoiceSettings.js";
@@ -10,6 +12,8 @@ import printStyles from "./creditPrint.css?inline";
 
 export default function CreditDocumentDialog({ user, selection, document: providedDocument, onClose }) {
   const { t, i18n } = useTranslation();
+  const operations = useEmployeeOperations('credit');
+  const [sharePayment, setSharePayment] = useState(false);
   const [data] = useState(() => providedDocument || creditDocument(user, selection));
   const dialogRef = useRef(null), printRef = useRef(null);
   const { settings, loading, error, retry } = useInvoiceSettings();
@@ -19,9 +23,9 @@ export default function CreditDocumentDialog({ user, selection, document: provid
     onAfterPrint: () => setPrinting(false), onPrintError: () => { setPrinting(false); setPrintError(true); },
   });
   useEffect(() => { const dialog = dialogRef.current; dialog.showModal(); return () => dialog.close(); }, []);
-  const close = () => { if (!printing) { dialogRef.current.close(); onClose(); } };
+  const close = () => { if (!printing && !(sharePayment && operations.share)) { dialogRef.current.close(); onClose(); } };
   const title = t(`creditDocuments.${data.kind === "payment" ? "paymentTitle" : data.kind === "invoice" ? "invoiceTitle" : "statementTitle"}`);
-  return <dialog ref={dialogRef} dir={i18n.dir()} className="credit-document-dialog" aria-labelledby="credit-document-title" onCancel={event => { event.preventDefault(); close(); }}>
+  return <><dialog ref={dialogRef} dir={i18n.dir()} className="credit-document-dialog" aria-labelledby="credit-document-title" onCancel={event => { event.preventDefault(); close(); }}>
     <header><div><h2 id="credit-document-title">{title}</h2><p>{t(`creditDocuments.${data.kind === "payment" ? "paymentHint" : data.kind === "invoice" ? "invoiceHint" : "statementHint"}`)}</p></div><button type="button" data-close-credit-document disabled={printing} onClick={close} aria-label={t("creditDocuments.close")}><IoCloseOutline size={24} /></button></header>
     <div className="credit-document-body">
       {loading && <p role="status" className="credit-document-feedback">{t("common.loading")}</p>}
@@ -29,6 +33,6 @@ export default function CreditDocumentDialog({ user, selection, document: provid
       {printError && <p role="alert" className="credit-document-feedback">{t("creditDocuments.errors.printFailed")}</p>}
       {!loading && !error && <><p className="credit-document-scroll-hint">{t("creditDocuments.scrollPreview")}</p><div className="credit-document-preview"><CreditDocumentPaper document={data} settings={settings} paperRef={printRef} /></div></>}
     </div>
-    <footer><button type="button" disabled={printing} onClick={close}>{t("creditDocuments.close")}</button><button type="button" data-print-credit-document disabled={loading || Boolean(error) || printing} onClick={() => { setPrintError(false); setPrinting(true); print(); }}><IoPrintOutline size={20} />{t(printing ? "creditDocuments.printing" : "creditDocuments.print")}</button></footer>
-  </dialog>;
+    <footer><button type="button" disabled={printing} onClick={close}>{t("creditDocuments.close")}</button>{data.kind === 'payment' && operations.share && <button type="button" data-share-credit-payment disabled={loading || Boolean(error) || printing} onClick={() => setSharePayment(true)}><IoShareSocialOutline size={20} />{t('creditDocuments.share.paymentAction')}</button>}{operations.print && <button type="button" data-print-credit-document disabled={loading || Boolean(error) || printing} onClick={() => { setPrintError(false); setPrinting(true); print(); }}><IoPrintOutline size={20} />{t(printing ? "creditDocuments.printing" : "creditDocuments.print")}</button>}</footer>
+  </dialog>{sharePayment && operations.share && <CreditPaymentShareDialog document={data} user={user} settings={settings} onClose={() => setSharePayment(false)} />}</>;
 }

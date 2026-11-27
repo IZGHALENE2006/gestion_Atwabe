@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { creditDocument } from "../shared/creditDocuments.js";
-import { creditWhatsAppNumber, creditWhatsAppUrl, creditEmailAddress, creditEmailUrl, creditStatementFilename, canShareCreditFile } from "../shared/creditSharing.js";
+import { creditWhatsAppNumber, creditWhatsAppUrl, creditEmailAddress, creditEmailUrl, creditStatementFilename, creditPaymentFilename, creditPaymentShareMessage, canShareCreditFile } from "../shared/creditSharing.js";
 
 test("saved Moroccan and international contact numbers open the intended WhatsApp chat", () => {
   for (const phone of ["0612345678", "06 12 34 56 78", "+212 612-345-678", "00212 (612) 345678", "٠٦١٢٣٤٥٦٧٨", "۰۶۱۲۳۴۵۶۷۸"]) assert.equal(creditWhatsAppNumber(phone), "212612345678");
@@ -46,4 +46,22 @@ test("native file sharing is offered only when the device accepts the prepared P
   assert.equal(canShareCreditFile({ share() {}, canShare() { throw new Error("Policy denied"); } }, file), false);
   assert.equal(canShareCreditFile({ share() {}, canShare: data => data.files[0] === file }, file), true);
   assert.equal(canShareCreditFile({ share() {}, canShare: () => true }, null), false);
+});
+
+test('payment sharing uses the selected historical receipt instead of the current account balance', () => {
+  const user = { _id: 'customer', name: 'اسم حالي', Total: 1000, Paye: 900, summary: { total: 1000, paid: 900, remaining: 100 } };
+  const payment = { id: '123', Date: '2026-11-26T10:00:00Z', amount: 25.5, balanceSnapshot: { customer: { name: 'اسم تاريخي', phone: '0612345678' }, total: 500, paidBefore: 100, paidAfter: 125.5, remainingBefore: 400, remainingAfter: 374.5 } };
+  const data = creditDocument(user, { kind: 'payment', payment });
+  let message;
+  creditPaymentShareMessage(data, { locale: 'fr-MA', t: (key, values) => { if (values) message = values; return key; } });
+  assert.equal(message.name, 'اسم تاريخي'); assert.equal(message.amount, '25,50'); assert.equal(message.remaining, '374,50'); assert.equal(message.balanceLabel, 'creditDocuments.remainingAfter'); assert.equal(message.reference, 'RC-123');
+  assert.equal(creditPaymentFilename(data.reference), 'credit_payment_RC-123.pdf');
+  assert.doesNotMatch(creditPaymentFilename('../../bad?name\n'), /\.\.\/|\n|\?/);
+});
+
+test('old receipts without a saved balance explicitly label the current balance in the sharing message', () => {
+  const data = creditDocument({ _id: 'customer', name: 'زبون', Total: 500, Paye: 200 }, { kind: 'payment', payment: { id: 'old', Date: '2026-11-20', amount: 50 } });
+  let message;
+  creditPaymentShareMessage(data, { locale: 'fr-MA', t: (key, values) => { if (values) message = values; return key; } });
+  assert.equal(message.balanceLabel, 'creditDocuments.currentBalance'); assert.equal(message.remaining, '300,00');
 });

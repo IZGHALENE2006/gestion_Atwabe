@@ -1,4 +1,5 @@
 import React from "react";
+import AdminRecoverySettings from './AdminRecoverySettings.jsx';
 import { useSelector } from "react-redux";
 import {
   IoLockClosedOutline,
@@ -122,6 +123,7 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      {role === 'admin' && <AdminRecoverySettings />}
     </div>
   );
 }

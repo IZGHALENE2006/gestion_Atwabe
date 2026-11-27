@@ -7,6 +7,17 @@ const AdminShema = new mongoose.Schema(
             name:String,
             email:String,
             password :String,
+            // Never include recovery credentials in account/profile responses.
+            passwordRecovery: {
+              type: new mongoose.Schema({
+                codeHash: String,
+                proofHash: String,
+                proofExpiresAt: Date,
+                proofCredentialHash: String,
+              }, { _id: false }),
+              select: false,
+              default: undefined,
+            },
             invoiceSettings: { type: invoiceSettingsSchema, default: () => ({}) },
             role:{
               type:String,
@@ -92,6 +103,7 @@ const AdminShema = new mongoose.Schema(
 
         }
 )
+AdminShema.set('toJSON', { transform(_doc, value) { delete value.passwordRecovery; return value; } });
 AdminShema.pre("save", async function () {
   if (!this.isModified("password")) return;
   this.password = await bcrypt.hash(this.password, 10);

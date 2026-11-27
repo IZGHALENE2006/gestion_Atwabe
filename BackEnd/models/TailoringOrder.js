@@ -139,6 +139,11 @@ const schema = new mongoose.Schema({
   deliveredAt: { type: Date, default: null },
   deliveryFinancials: { type: deliveryFinancialsSchema },
   deliveredBy: { type: mongoose.Schema.Types.ObjectId, default: null },
+  deliveryPayment: { type: new mongoose.Schema({
+    requestId: { type: String, required: true, match: /^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/ },
+    amount: { ...costMoney },
+    deliverOnCredit: { type: Boolean, required: true },
+  }, { _id: false }) },
   cancelledAt: { type: Date },
   cancelledBy: { type: actorSchema },
   paymentReceipts: { type: [paymentReceiptSchema], default: [] },
@@ -147,6 +152,10 @@ const schema = new mongoose.Schema({
   deliveryFabricItems: { type: [itemSchema], default: undefined },
 }, { timestamps: true, optimisticConcurrency: true });
 schema.pre("validate", function () {
+  if (this.deliveryPayment) {
+    const payment = this.deliveryPayment, receipt = this.paymentReceipts.find(row => row.requestId === payment.requestId);
+    if ((!this.deliveredAt && !this.creditDelivery) || payment.deliverOnCredit !== Boolean(this.creditDelivery) || (payment.amount > 0 && (!receipt || tailoringMoneyCents(receipt.amount) !== tailoringMoneyCents(payment.amount)))) this.invalidate('deliveryPayment', 'Delivery and its payment must be saved together');
+  }
   if (this.clientRegistration?.state === 'prepared' && (String(this.clientRegistration.clientId) !== String(this.clientId) || this.clientRegistration.name !== this.clientName || this.clientRegistration.phone !== this.phone)) this.invalidate('clientRegistration', 'Invalid client registration snapshot');
   if (this.creditDelivery) {
     const plan = this.creditDelivery;

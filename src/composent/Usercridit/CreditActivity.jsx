@@ -10,7 +10,7 @@ export default function CreditActivity({ user }) {
       <td><time dateTime={event.date}>{event.date ? new Date(event.date).toLocaleString(i18n.language === "ar" ? "ar-MA" : "fr-MA") : "—"}</time></td>
       <td>{t(`creditAudit.${event.kind}`)}</td>
       <td data-credit-activity-actor><span dir="auto">{event.actor?.name || t("creditAudit.unrecorded")}</span>{event.actor && <small>{t(event.actor.role === "admin" ? "creditAudit.admin" : "creditAudit.employee")}</small>}</td>
-      <td>{event.kind === "customer" ? <span dir="auto">{user.name}</span> : ["credit", "sale"].includes(event.kind) ? t("creditAudit.invoiceSummary", { total: money(event.total), paid: money(event.paid), remaining: money(event.remaining) }) : <>{t("creditAudit.paymentSummary", { amount: money(event.amount) })}{event.remaining != null && <small>{t("creditAudit.paymentBalance", { remaining: money(event.remaining) })}</small>}{event.note && <small dir="auto">{event.note}</small>}</>}</td>
+      <td>{event.kind === "profile" ? t('creditAudit.profileSummary') : event.kind === "customer" ? <span dir="auto">{user.name}</span> : ["credit", "sale"].includes(event.kind) ? t("creditAudit.invoiceSummary", { total: money(event.total), paid: money(event.paid), remaining: money(event.remaining) }) : <>{t("creditAudit.paymentSummary", { amount: money(event.amount) })}{event.remaining != null && <small>{t("creditAudit.paymentBalance", { remaining: money(event.remaining) })}</small>}{event.note && <small dir="auto">{event.note}</small>}</>}</td>
       <td><bdi dir="ltr">{event.reference || "—"}</bdi></td>
     </tr>)}</tbody></table></div>
     {!events.length && <p className="credit-activity-empty">{t("creditAudit.empty")}</p>}

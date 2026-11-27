@@ -31,6 +31,14 @@ export function creditStatementFilename(reference) {
   return `credit_${String(reference || "statement").replace(/[^a-z\d_-]/gi, "_").slice(0, 100)}.pdf`;
 }
 
+export const creditPaymentFilename = reference => creditStatementFilename(reference || 'receipt').replace(/^credit_/, 'credit_payment_');
+
+export function creditPaymentShareMessage(data, { t, locale }) {
+  const money = amount => new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+  const date = data.date && Number.isFinite(new Date(data.date).getTime()) ? new Date(data.date).toLocaleString(locale) : '—';
+  return t('creditDocuments.share.paymentMessage', { name: data.customer?.name || '', reference: data.reference, date, amount: money(data.amount), balanceLabel: t('creditDocuments.' + (data.historical ? 'remainingAfter' : 'currentBalance')), remaining: money(data.remaining), currency: t('fesla.currency') });
+}
+
 export function canShareCreditFile(navigator, file) {
   try { return Boolean(file && navigator?.share && navigator?.canShare?.({ files: [file] })); }
   catch { return false; }

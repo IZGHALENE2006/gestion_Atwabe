@@ -1,4 +1,5 @@
 import { clientTailoringArabic } from './clientTailoring.js';
+import { adminRecoveryArabic } from './adminRecovery.js';
 import { workerClientBatchArabic } from './workerClientBatch.js';
 import { workerShopBatchArabic } from './workerShopBatch.js';
 import { workerShopGarmentsArabic } from './workerShopGarments.js';
@@ -29,6 +30,7 @@ const resources = {
   fr: { translation: french },
   ar: {
     translation: {
+      adminRecovery: adminRecoveryArabic,
       ownerDebts: ownerDebtsArabic,
       globalSearch: globalSearchArabic,
       fabricInvoices: fabricInvoicesArabic,
@@ -493,6 +495,7 @@ const resources = {
         somethingWentWrong: "وقع خطأ",
       },
       creditList: {
+        editInfo: 'تعديل بيانات الزبون', updated: 'تم تحديث بيانات الزبون.', updateFailed: 'تعذّر تحديث بيانات الزبون. حاول مجددًا.', invalidProfile: 'راجع الاسم وبيانات التواصل. الاسم مطلوب، ويجب أن يكون الهاتف والبريد صالحين عند إدخالهما.', loadFailed: 'تعذّر تحميل حساب الزبون. أعد المحاولة.', reloadInfo: 'إعادة تحميل البيانات', productsFailed: 'تعذّر تحميل المنتجات. يمكنك إدخال الدين يدويًا أو إعادة فتح النافذة.', invalidQuantity: 'أدخل كمية صحيحة أكبر من صفر.',
         clients: "الزبائن",
         remainingFiltered: "المتبقي (حسب الفلترة)",
         searchPlaceholder: "ابحث بالاسم أو CIN أو الهاتف...",
@@ -848,6 +851,11 @@ const resources = {
         memberSince: "عضو منذ",
       },
       changePassword: {
+        showPassword: "إظهار كلمة المرور",
+        hidePassword: "إخفاء كلمة المرور",
+        tooShort: "يجب أن تتكوّن كلمة المرور الجديدة من 8 أحرف على الأقل.",
+        tooLong: "كلمة المرور الجديدة طويلة جدًا. استخدم كلمة أقصر.",
+        saving: "جارٍ تحديث كلمة المرور…",
         security: "الأمان",
         updatePrompt: "قم بتحديث كلمة المرور لحماية حسابك.",
         currentPassword: "كلمة المرور الحالية",

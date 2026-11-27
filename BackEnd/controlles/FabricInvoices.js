@@ -4,7 +4,7 @@ import Invoice from '../models/FabricInvoice.js';
 import Fabric from '../models/Fabric.js';
 import UserCredit from '../models/userCidit.js';
 import Employee from '../models/EmployeModele.js';
-import { fabricAccessFor } from './Fabrics.js';
+import { fabricAccessFor, publicFabric } from './Fabrics.js';
 import { mutateCredit, creditReceipt } from './UserCridite.js';
 import { canEmployeeOperation } from '../../shared/employeeOperations.js';
 import { createFabricSaleFinancials } from '../../shared/fabricProfits.js';
@@ -116,18 +116,27 @@ async function publicInvoice(operation) {
   const remaining = balance?.remaining ?? (Math.round(p.total * 100) - Math.round(p.paidAmount * 100)) / 100;
   return { _id: String(operation._id), reference: fabricInvoiceReference(operation._id), status: operation.status, date: p.date, actor: p.actor, customer: p.customer, creditUserId: p.customerId, paymentMode: p.paymentMode, lines, subtotal: p.subtotal, lineDiscountAmount: p.lineDiscountAmount ?? p.discountAmount, afterLineDiscounts: p.afterLineDiscounts ?? p.total, invoiceDiscount: p.invoiceDiscount ?? { type: 'percent', value: 0 }, invoiceDiscountAmount: p.invoiceDiscountAmount ?? 0, discountAmount: p.discountAmount, total: p.total, paidAmount: (Math.round(p.total * 100) - Math.round(remaining * 100)) / 100, remaining, payments: receipts, accountUnavailable: Boolean(p.customerId && !account) };
 }
-export async function createFabricInvoice(req, res) {
+async function writeFabricInvoice(req, res, singleCreditSale = false) {
   let operation;
   try {
-    const access = await fabricAccessFor(req, 'addInvoice'), input = validateFabricInvoice(req.body); await salePermissions(req, access, input);
+    const access = await fabricAccessFor(req, singleCreditSale ? 'creditSale' : 'addInvoice'), input = validateFabricInvoice(req.body);
+    if (singleCreditSale && (input.paymentMode !== 'credit' || input.lines.length !== 1 || input.invoiceDiscount !== undefined)) throw fail('invalidInvoice');
+    await salePermissions(req, access, input);
     const output = await locked(access.idAdmin, async () => {
       operation = await Invoice.findOne({ idAdmin: access.idAdmin, requestId: input.requestId });
       if (operation && (operation.fingerprint !== fingerprint(input) || String(operation.plan.actor.id) !== String(access.createdBy))) throw fail('requestConflict', 409);
       if (!operation) operation = await prepare(input, access, { id: String(access.createdBy), name: access.createdByName, role: req.user.role });
       return publicInvoice(await finish(operation));
-    }); res.status(201).json({ invoice: output });
+    });
+    if (singleCreditSale) {
+      const fabricId = input.lines[0].fabricId, fabric = await Fabric.findOne({ _id: fabricId, idAdmin: access.idAdmin });
+      return res.status(201).json({ invoice: output, fabricId, fabric: fabric ? publicFabric(fabric) : null });
+    }
+    res.status(201).json({ invoice: output });
   } catch (error) { replyError(res, error, Boolean(operation && !error.status)); }
 }
+export const createFabricInvoice = (req, res) => writeFabricInvoice(req, res);
+export const createFabricCreditSale = (req, res) => writeFabricInvoice(req, res, true);
 export async function listFabricInvoices(req, res) {
   try { const { idAdmin } = await fabricAccessFor(req, 'invoiceHistory'); const rows = await Invoice.find({ idAdmin }).sort({ createdAt: -1 }); res.json({ invoices: await Promise.all(rows.map(publicInvoice)) }); }
   catch (error) { replyError(res, error); }
@@ -164,7 +173,9 @@ export async function payFabricInvoice(req, res) {
     }); const invoice = await publicInvoice(operation); res.json({ invoice, payment: invoice.payments.find(row => row.id === paymentId) });
   } catch (error) { replyError(res, error); }
 }
-export async function fabricInvoiceCustomers(req, res) {
-  try { const { idAdmin } = await fabricAccessFor(req, 'addInvoice'); await creditPermission(req, 'addDebt'); const rows = await UserCredit.find({ idUser: idAdmin }).select('_id name phone').sort({ name: 1 }); res.json({ customers: rows.map(row => ({ _id: row._id, name: row.name, phone: row.phone })) }); }
+async function listCreditCustomers(req, res, sale = false) {
+  try { const { idAdmin, permissions } = await fabricAccessFor(req, sale ? 'creditSale' : 'addInvoice'); if (sale && !permissions.sell) throw fail('forbidden', 403); await creditPermission(req, 'addDebt'); const rows = await UserCredit.find({ idUser: idAdmin }).select('_id name phone').sort({ name: 1 }); res.json({ customers: rows.map(row => ({ _id: row._id, name: row.name, phone: row.phone })) }); }
   catch (error) { replyError(res, error); }
 }
+export const fabricInvoiceCustomers = (req, res) => listCreditCustomers(req, res);
+export const fabricCreditSaleCustomers = (req, res) => listCreditCustomers(req, res, true);

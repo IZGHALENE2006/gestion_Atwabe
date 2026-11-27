@@ -1,4 +1,5 @@
 import { clientTailoringFrench } from './clientTailoring.js';
+import { adminRecoveryFrench } from './adminRecovery.js';
 import { workerClientBatchFrench } from './workerClientBatch.js';
 import { workerShopBatchFrench } from './workerShopBatch.js';
 import { workerShopGarmentsFrench } from './workerShopGarments.js';
@@ -23,6 +24,7 @@ import { sfifaStockFrench } from "./sfifaStock.js";
 
 import { globalSearchFrench } from './globalSearch.js';
 export default {
+  adminRecovery: adminRecoveryFrench,
   ownerDebts: ownerDebtsFrench,
   globalSearch: globalSearchFrench,
       fabricInvoices: fabricInvoicesFrench,
@@ -540,6 +542,7 @@ export default {
     "somethingWentWrong": "Une erreur est survenue"
   },
   "creditList": {
+    "editInfo": "Modifier les coordonnées du client", "updated": "Les coordonnées du client ont été mises à jour.", "updateFailed": "Impossible de modifier les coordonnées. Réessayez.", "invalidProfile": "Vérifiez le nom et les coordonnées. Le nom est obligatoire ; le téléphone et l’adresse e-mail doivent être valides s’ils sont renseignés.", "loadFailed": "Impossible de charger le compte du client. Réessayez.", "reloadInfo": "Recharger les coordonnées", "productsFailed": "Impossible de charger les produits. Saisissez le crédit manuellement ou rouvrez la fenêtre.", "invalidQuantity": "Saisissez une quantité entière supérieure à zéro.",
     "clients": "Clients",
     "remainingFiltered": "Reste à payer (filtré)",
     "searchPlaceholder": "Rechercher par nom, CIN ou téléphone…",
@@ -893,6 +896,11 @@ export default {
     "memberSince": "Membre depuis"
   },
   "changePassword": {
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe",
+    "tooShort": "Le nouveau mot de passe doit contenir au moins 8 caractères.",
+    "tooLong": "Le nouveau mot de passe est trop long. Choisissez-en un plus court.",
+    "saving": "Modification du mot de passe…",
     "security": "Sécurité",
     "updatePrompt": "Modifiez votre mot de passe pour protéger votre compte.",
     "currentPassword": "Mot de passe actuel",

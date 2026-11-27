@@ -1,5 +1,10 @@
 const batchErrors = ['productBatchBarcodeReserved','productBatchRequired','productBatchInvalid','productBatchUnavailable','productBatchStockChanged','productBatchEditLocked','productRestockInvalidRequest','productRestockInvalidQuantity','productRestockInvalidDetails','productRestockRequestConflict','productRestockLimit','productRestockFailed','productCheckoutPending','productCheckoutFailed'];
 const keys = {
+  ...Object.fromEntries(['recoveryCodeRequired', 'recoveryCodeLength', 'recoveryCodeMismatch', 'recoveryInvalid', 'recoveryExpired', 'recoverySaveConflict', 'recoveryRateLimited'].map(code => [code, 'adminRecovery.' + code])),
+  passwordFieldsRequired: 'changePassword.allRequired',
+  passwordTooShort: 'changePassword.tooShort',
+  passwordTooLong: 'changePassword.tooLong',
+  creditCustomerProfileInvalid: 'creditList.invalidProfile',
   fabricInvoiceLinked: "fabricInvoices.errors.fabricInvoiceLinked",
   ...Object.fromEntries(batchErrors.map(code => [code, 'productBatches.' + code])),
   creditAccessDenied: "creditAudit.accessDenied",

@@ -45,6 +45,11 @@ export const GetAllUserCridite = createAsyncThunk(
   }
 );
 
+export const UpdateUserCridite = createAsyncThunk('credit/updateUser', async ({ userId, payload }, { rejectWithValue }) => {
+  try { return (await axios.put(`${API_URL}/update/${encodeURIComponent(userId)}`, payload, getAuthConfig())).data.user; }
+  catch (error) { return rejectWithValue(error.response?.data?.message || 'Server error'); }
+});
+
 export const GetUserCriditeById = createAsyncThunk(
   "credit/getUserById",
   async (id, { rejectWithValue }) => {
@@ -133,6 +138,12 @@ const SliceCridite = createSlice({
     },
   },
   extraReducers: (builder) => {
+    builder.addCase(UpdateUserCridite.pending, state => { state.actionLoading = true; state.error = null; })
+      .addCase(UpdateUserCridite.fulfilled, (state, action) => {
+        state.actionLoading = false; upsertUser(state.users, action.payload);
+        if (state.selectedUser?._id === action.payload._id) state.selectedUser = action.payload;
+      })
+      .addCase(UpdateUserCridite.rejected, (state, action) => { state.actionLoading = false; state.error = action.payload; });
     builder
       .addCase(GetAllUserCridite.pending, (state) => {
         state.loading = true;

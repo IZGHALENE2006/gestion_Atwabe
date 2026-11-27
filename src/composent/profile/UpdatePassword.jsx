@@ -1,150 +1,63 @@
-import { apiErrorMessage } from "../../i18n/apiErrors.js";
-import React, { useState } from "react";
-import {
-  IoLockClosedOutline,
-  IoShieldCheckmarkOutline,
-  IoEyeOffOutline,
-} from "react-icons/io5";
-import { useDispatch, useSelector } from "react-redux";
-import { UpdatePassword } from "../../slices/SliceLoginAdmin";
-import { useNavigate } from "react-router";
-import toast, { Toaster } from "react-hot-toast";
-import { useTranslation } from "react-i18next";
+import { useRef, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { IoShieldCheckmarkOutline, IoEyeOutline, IoEyeOffOutline, IoCheckmarkCircleOutline } from 'react-icons/io5';
+import { UpdatePassword } from '../../slices/SliceLoginAdmin';
+import { apiErrorMessage } from '../../i18n/apiErrors.js';
+import { passwordChangeError } from '../../../shared/passwordChange.js';
 
-const ChangePassword = () => {
-  const { t } = useTranslation();
-  const { error } = useSelector((state) => state.LoginAdmin);
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const [newPassword, setNewPassword] = useState({
-    old: "",
-    newpass: "",
-    newpass2: "",
-  });
+const emptyPasswords = () => ({ old: '', newpass: '', newpass2: '' });
+const fields = [
+  { name: 'old', label: 'currentPassword', autoComplete: 'current-password' },
+  { name: 'newpass', label: 'newPassword', autoComplete: 'new-password' },
+  { name: 'newpass2', label: 'confirmPassword', autoComplete: 'new-password' },
+];
 
-  function handleUpdatePassword(e) {
-    e.preventDefault();
+export default function ChangePassword() {
+  const { t, i18n } = useTranslation();
+  const dispatch = useDispatch(), navigate = useNavigate(), busyRef = useRef(false);
+  const [passwords, setPasswords] = useState(emptyPasswords);
+  const [visible, setVisible] = useState({});
+  const [busy, setBusy] = useState(false), [error, setError] = useState(''), [saved, setSaved] = useState(false);
 
-    if (!newPassword.old || !newPassword.newpass || !newPassword.newpass2) {
-      toast.error(t("changePassword.allRequired"));
-      return;
-    }
+  const submit = async event => {
+    event.preventDefault();
+    if (busyRef.current) return;
+    setSaved(false);
+    const invalid = passwordChangeError(passwords);
+    if (invalid) { setError(apiErrorMessage(invalid, t)); return; }
+    busyRef.current = true; setBusy(true); setError('');
+    try {
+      await dispatch(UpdatePassword(passwords)).unwrap();
+      setPasswords(emptyPasswords()); setVisible({}); setSaved(true);
+    } catch (failure) { setError(apiErrorMessage(failure, t, 'changePassword.somethingWrong')); }
+    finally { busyRef.current = false; setBusy(false); }
+  };
 
-    if (newPassword.newpass !== newPassword.newpass2) {
-      toast.error(t("changePassword.notMatch"));
-      return;
-    }
-
-    dispatch(UpdatePassword(newPassword))
-      .unwrap()
-      .then(() => {
-        toast.success(t("changePassword.updatedSuccess"), {
-          duration: 3000,
-          position: "top-right",
-        });
-        navigate("/Home/profile");
-      })
-      .catch((err) => {
-        toast.error(apiErrorMessage(err, t, "changePassword.somethingWrong"), {
-          duration: 4000,
-        });
-      });
-  }
-
-  return (
-    <div className="min-h-[80vh] bg-gray-100 dark:bg-[#1e293b] flex items-center justify-center p-4 transition-colors duration-300">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-500">
-        <div className="p-8 pb-4 text-center">
-          <div className="w-16 h-16 bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
-            <IoShieldCheckmarkOutline size={32} />
+  return <main dir={i18n.dir()} className="flex min-h-[80vh] items-center justify-center bg-slate-50 p-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:p-8">
+    <section className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900" aria-labelledby="change-password-title">
+      <header className="border-b border-slate-100 px-6 py-7 dark:border-slate-800 sm:px-8">
+        <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-300"><IoShieldCheckmarkOutline size={30} aria-hidden="true" /></div>
+        <h1 id="change-password-title" className="text-2xl font-bold">{t('changePassword.updateButton')}</h1>
+        <p className="mt-2 text-sm leading-7 text-slate-500 dark:text-slate-400">{t('changePassword.updatePrompt')}</p>
+      </header>
+      <form noValidate onSubmit={submit} className="space-y-5 p-6 sm:p-8" aria-busy={busy}>
+        {saved && <p role="status" data-password-updated className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"><IoCheckmarkCircleOutline size={22} className="shrink-0" aria-hidden="true" />{t('changePassword.updatedSuccess')}</p>}
+        {fields.map(field => <div key={field.name}>
+          <label htmlFor={'change-password-' + field.name} className="mb-2 block text-sm font-bold">{t('changePassword.' + field.label)}</label>
+          <div className="relative">
+            <input id={'change-password-' + field.name} name={field.name} type={visible[field.name] ? 'text' : 'password'} dir="ltr" autoComplete={field.autoComplete} required value={passwords[field.name]} disabled={busy} aria-invalid={Boolean(error)} aria-describedby={error ? 'password-change-error' : field.name === 'newpass' ? 'new-password-hint' : undefined} onChange={event => { setPasswords(current => ({ ...current, [field.name]: event.target.value })); setError(''); setSaved(false); }} className="min-h-12 w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pr-12 pl-4 text-base outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:focus:ring-blue-950" />
+            <button type="button" disabled={busy} onClick={() => setVisible(current => ({ ...current, [field.name]: !current[field.name] }))} aria-label={t('changePassword.' + (visible[field.name] ? 'hidePassword' : 'showPassword')) + ': ' + t('changePassword.' + field.label)} aria-pressed={Boolean(visible[field.name])} aria-controls={'change-password-' + field.name} className="absolute top-1/2 right-2 grid h-10 w-10 -translate-y-1/2 cursor-pointer place-items-center rounded-lg text-slate-500 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-slate-300 dark:hover:bg-slate-700">{visible[field.name] ? <IoEyeOffOutline size={21} /> : <IoEyeOutline size={21} />}</button>
           </div>
-          <h2 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">
-            {t("changePassword.security")}
-          </h2>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-2">
-            {t("changePassword.updatePrompt")}
-          </p>
+          {field.name === 'newpass' && <p id="new-password-hint" className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t('changePassword.minChars')}</p>}
+        </div>)}
+        {error && <p id="password-change-error" role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-700 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-200">{error}</p>}
+        <div className="flex flex-wrap gap-3 pt-2">
+          <button type="submit" disabled={busy} data-save-password className="min-h-12 flex-1 cursor-pointer rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">{t(busy ? 'changePassword.saving' : 'changePassword.updateButton')}</button>
+          <button type="button" disabled={busy} onClick={() => navigate('/Home/profile')} className="min-h-12 cursor-pointer rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800">{t('common.cancel')}</button>
         </div>
-
-        <form className="p-8 pt-4 space-y-6" onSubmit={handleUpdatePassword}>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">
-              {t("changePassword.currentPassword")}
-            </label>
-            <div className="relative group">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors">
-                <IoLockClosedOutline size={18} />
-              </span>
-              <input
-                type="password"
-                placeholder="********"
-                className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-4 outline-none text-slate-700 dark:text-slate-200 font-bold focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all"
-                onChange={(e) => setNewPassword({ ...newPassword, old: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
-
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">
-              {t("changePassword.newPassword")}
-            </label>
-            <div className="relative group">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors">
-                <IoEyeOffOutline size={18} />
-              </span>
-              <input
-                type="password"
-                placeholder={t("changePassword.minChars")}
-                className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-4 outline-none text-slate-700 dark:text-slate-200 font-bold focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all"
-                onChange={(e) =>
-                  setNewPassword({ ...newPassword, newpass: e.target.value })
-                }
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">
-              {t("changePassword.confirmPassword")}
-            </label>
-            <div className="relative group">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors">
-                <IoEyeOffOutline size={18} />
-              </span>
-              <input
-                type="password"
-                placeholder={t("changePassword.repeatPassword")}
-                className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-4 outline-none text-slate-700 dark:text-slate-200 font-bold focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all"
-                onChange={(e) =>
-                  setNewPassword({ ...newPassword, newpass2: e.target.value })
-                }
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3 pt-4">
-            <button
-              type="submit"
-              className="w-full py-4 bg-primary-600 hover:bg-primary-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-primary-600/20 transition-all active:scale-95"
-            >
-              {t("changePassword.updateButton")}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/Home/profile")}
-              className="w-full bg-red-400 rounded-xl py-4 text-white dark:text-slate-500 font-black text-xs uppercase tracking-[0.2em] hover:bg-red-600 dark:hover:text-slate-300 transition-all"
-            >
-              {t("common.cancel")}
-            </button>
-            {error && <span className="text-red-500 text-xs font-bold text-center mt-2">{apiErrorMessage(error, t)}</span>}
-          </div>
-        </form>
-      </div>
-      <Toaster />
-    </div>
-  );
-};
-
-export default ChangePassword;
+      </form>
+    </section>
+  </main>;
+}
