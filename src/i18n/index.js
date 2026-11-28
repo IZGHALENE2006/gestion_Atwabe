@@ -1,3 +1,4 @@
+import { landingArabic } from './landing.js';
 import { clientTailoringArabic } from './clientTailoring.js';
 import { adminRecoveryArabic } from './adminRecovery.js';
 import { workerClientBatchArabic } from './workerClientBatch.js';
@@ -604,70 +605,7 @@ const resources = {
         alreadyHave: "عندك حساب؟ سجل الدخول",
         allFieldsMandatory: "جميع الحقول إجبارية",
       },
-      landingNav: {
-        home: "الرئيسية",
-        about: "حول",
-        team: "الفريق",
-        contact: "اتصل بنا",
-        getStarted: "ابدأ الآن",
-      },
-      landingHero: {
-        betaVersion: "نسخة تجريبية",
-        badge: "جرّب النسخة التجريبية",
-        title1: "مخزون أذكى",
-        title2: "تجارة أفضل",
-        description:
-          "منصة المخزون التي تشتغل بجد مثلك. صُممت لمساعدة مشروعك على النمو خطوة بخطوة.",
-        startNow: "ابدأ الآن",
-        darkMode: "الوضع الليلي",
-        lightMode: "الوضع النهاري",
-      },
-      landingAbout: {
-        features: "المزايا",
-        title: "مصممة لفرق عالية الأداء",
-        productManagementTitle: "إدارة المنتجات",
-        productManagementDesc: "صنّف وأدر آلاف المنتجات بسهولة.",
-        realtimeTrackingTitle: "تتبع لحظي",
-        realtimeTrackingDesc: "راقب المخزون والاتجاهات في الوقت الحقيقي.",
-        supplierPortalTitle: "بوابة الموردين",
-        supplierPortalDesc: "سهّل الشراء بطلبات تلقائية.",
-        teamAccessTitle: "وصول الفريق",
-        teamAccessDesc: "امنح صلاحيات مخصصة للموظفين.",
-        ctaTitle: "تحكم كامل يبدأ اليوم.",
-        ctaDesc: "منصة حديثة تنمو مع مشروعك.",
-        ctaButton: "ابدأ التحكم الآن",
-      },
-      landingTeam: {
-        label: "الفريق",
-        title: "الخبراء وراء المنصة",
-        backendRole: "مطوّر الأنظمة الخلفية",
-        frontendRole: "مطوّر واجهات المستخدم",
-      },
-      landingContact: {
-        label: "تواصل معنا",
-        title: "جاهز لتحديث إدارة مخزونك؟",
-        emailUs: "راسلنا",
-        namePlaceholder: "الاسم",
-        emailPlaceholder: "البريد الإلكتروني",
-        messagePlaceholder: "الرسالة",
-        sendMessage: "إرسال الرسالة",
-      },
-      landingFooter: {
-        description:
-          "منصة إدارة المخزون المتكاملة المصممة للكفاءة ولفرق العمل عالية الأداء.",
-        product: "المنتج",
-        company: "الشركة",
-        followUs: "تابعنا",
-        features: "المزايا",
-        pricing: "الأسعار",
-        apiDocs: "توثيق API",
-        aboutUs: "من نحن",
-        careers: "الوظائف",
-        privacyPolicy: "سياسة الخصوصية",
-        rights: "© {{year}} Stock Pro Inc. جميع الحقوق محفوظة.",
-        terms: "الشروط",
-        cookies: "ملفات تعريف الارتباط",
-      },
+      ...landingArabic,
       productPage: {
         totalProduct: "إجمالي المنتجات",
         lowStock: "مخزون منخفض",

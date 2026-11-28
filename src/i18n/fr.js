@@ -1,3 +1,4 @@
+import { landingFrench } from './landing.js';
 import { clientTailoringFrench } from './clientTailoring.js';
 import { adminRecoveryFrench } from './adminRecovery.js';
 import { workerClientBatchFrench } from './workerClientBatch.js';
@@ -651,68 +652,7 @@ export default {
     "alreadyHave": "Déjà un compte ? Se connecter",
     "allFieldsMandatory": "Tous les champs sont obligatoires"
   },
-  "landingNav": {
-    "home": "Accueil",
-    "about": "À propos",
-    "team": "Équipe",
-    "contact": "Contact",
-    "getStarted": "Commencer"
-  },
-  "landingHero": {
-    "betaVersion": "Version bêta",
-    "badge": "Essayez notre version bêta",
-    "title1": "Un stock mieux géré",
-    "title2": "Une activité plus efficace",
-    "description": "La plateforme de gestion de stock qui vous accompagne au quotidien et aide votre activité à se développer, étape par étape.",
-    "startNow": "Commencer",
-    "darkMode": "Mode sombre",
-    "lightMode": "Mode clair"
-  },
-  "landingAbout": {
-    "features": "Fonctionnalités",
-    "title": "Conçue pour les équipes performantes",
-    "productManagementTitle": "Gestion des produits",
-    "productManagementDesc": "Classez et gérez facilement des milliers de références.",
-    "realtimeTrackingTitle": "Suivi en temps réel",
-    "realtimeTrackingDesc": "Suivez les niveaux de stock et leur évolution en temps réel.",
-    "supplierPortalTitle": "Espace fournisseurs",
-    "supplierPortalDesc": "Simplifiez vos approvisionnements grâce aux commandes automatisées.",
-    "teamAccessTitle": "Accès de l’équipe",
-    "teamAccessDesc": "Attribuez des autorisations personnalisées aux employés.",
-    "ctaTitle": "Prenez le contrôle dès aujourd’hui.",
-    "ctaDesc": "Une plateforme moderne conçue pour accompagner le développement de votre activité.",
-    "ctaButton": "Prendre le contrôle"
-  },
-  "landingTeam": {
-    "label": "L’équipe",
-    "title": "Les experts derrière la plateforme",
-    "backendRole": "Développeur côté serveur",
-    "frontendRole": "Développeur d’interfaces"
-  },
-  "landingContact": {
-    "label": "Contactez-nous",
-    "title": "Prêt à moderniser la gestion de votre stock ?",
-    "emailUs": "Écrivez-nous",
-    "namePlaceholder": "Nom",
-    "emailPlaceholder": "E-mail",
-    "messagePlaceholder": "Message",
-    "sendMessage": "Envoyer le message"
-  },
-  "landingFooter": {
-    "description": "La plateforme de gestion de stock conçue pour l’efficacité et les équipes performantes.",
-    "product": "Produit",
-    "company": "Entreprise",
-    "followUs": "Suivez-nous",
-    "features": "Fonctionnalités",
-    "pricing": "Tarifs",
-    "apiDocs": "Documentation API",
-    "aboutUs": "À propos",
-    "careers": "Carrières",
-    "privacyPolicy": "Politique de confidentialité",
-    "rights": "© {{year}} Stock Pro Inc. Tous droits réservés.",
-    "terms": "Conditions d’utilisation",
-    "cookies": "Cookies"
-  },
+      ...landingFrench,
   "productPage": {
     "totalProduct": "Total des produits",
     "lowStock": "Stock faible",

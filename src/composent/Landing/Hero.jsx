@@ -1,176 +1,52 @@
-import React, { useEffect, useRef, useState } from "react";
-import gsap from "gsap";
-import { FaArrowRight, FaArrowTrendUp } from "react-icons/fa6";
-import { NavLink } from "react-router";
-import { useTranslation } from "react-i18next";
+import { createElement } from 'react';
+import { ArrowUpLeft, ArrowUpRight, Barcode, Check, Layers, Ruler, Scissors } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
-const IMAGES = [
-  "mck1.png",
-  "mck2.png",
-  "mck3.png",
-  "mck4.png",
-  "mck5.png",
-  "mck6.png",
-  "mck7.png",
-  "mck8.png",
+const fabrics = [
+  { key: 'crepe', meters: 48, colors: ['#21645c', '#cc9b98', '#d9bd8b', '#3c5579'] },
+  { key: 'linen', meters: 30, colors: ['#b99973', '#ded2b8', '#7c8e71', '#945d52'] },
+  { key: 'satin', meters: 18, colors: ['#425276', '#9c7890', '#d2b480', '#303b45'] },
 ];
 
-const Hero = () => {
-  const { t } = useTranslation();
-  const containerRef = useRef(null);
-  const buttonRef = useRef(null);
-  const progressRef = useRef(null);
-  const comparisonContainerRef = useRef(null);
-  const timelineRef = useRef(null);
-
-  const [index, setIndex] = useState(0);
-  const [sliderPos, setSliderPos] = useState(50);
-  const [isDragging, setIsDragging] = useState(false);
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.from(".hero-word", {
-        y: 60,
-        opacity: 0,
-        duration: 1,
-        stagger: 0.1,
-        ease: "expo.out",
-      });
-      gsap.from(buttonRef.current, { opacity: 0, y: 20, duration: 0.8, delay: 0.8 });
-
-      timelineRef.current = gsap.timeline({
-        repeat: -1,
-        onRepeat: () => {
-          gsap.set(progressRef.current, { scaleX: 0 });
-        },
-      });
-
-      timelineRef.current
-        .to(progressRef.current, {
-          scaleX: 1,
-          duration: 6,
-          ease: "none",
-          transformOrigin: "left center",
-        })
-        .call(() => {
-          setIndex((prev) => (prev + 2) % IMAGES.length);
-          gsap.to(
-            { val: sliderPos },
-            {
-              val: 50,
-              duration: 0.5,
-              onUpdate: function () {
-                setSliderPos(this.targets()[0].val);
-              },
-            }
-          );
-        });
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, []);
-
-  const handleMove = (e) => {
-    if (!isDragging || !comparisonContainerRef.current) return;
-
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const rect = comparisonContainerRef.current.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * 100;
-    setSliderPos(Math.min(Math.max(x, 0), 100));
-  };
-
-  const nextPairIndex = (index + 1) % IMAGES.length;
-
-  return (
-    <section
-      id="home"
-      ref={containerRef}
-      className="pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden bg-gray-100 dark:bg-[#1e293b] transition-colors duration-300"
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col lg:flex-row items-center gap-16">
-          <div className="flex-1 text-center lg:text-left">
-            <div className="animate-pulse inline-flex items-center space-x-2 px-3 py-1 bg-[#19b393]/10 border border-[#19b393]/20 rounded-full text-[#19b393] text-sm font-semibold mb-6">
-              <FaArrowTrendUp />
-              <span>{t("landingHero.badge")}</span>
-            </div>
-            <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 dark:text-white leading-[1.1] mb-8 transition-colors">
-              <span className="block hero-word">{t("landingHero.title1")}</span>
-              <span className="block hero-word text-[#19b393]">{t("landingHero.title2")}</span>
-            </h1>
-            <p className="hero-word text-lg md:text-xl text-gray-600 dark:text-gray-400 mb-10 max-w-xl mx-auto lg:mx-0 transition-colors">
-              {t("landingHero.description")}
-            </p>
-            <div ref={buttonRef}>
-              <NavLink to="/LoginChoise">
-                <button className="px-8 py-4 bg-[#19b393] text-white rounded-2xl font-bold text-lg hover:shadow-2xl shadow-[#19b393]/30 transition-all flex items-center gap-2 group mx-auto lg:mx-0">
-                  {t("landingHero.startNow")}
-                  <FaArrowRight className="group-hover:translate-x-1 transition-transform" />
-                </button>
-              </NavLink>
-            </div>
-          </div>
-
-          <div className="flex-1 relative w-full select-none">
-            <div className="text-[12px] flex justify-between px-12 text-gray-500 dark:text-gray-100/50">
-              <p>{t("landingHero.darkMode")}</p>
-              <p>{t("landingHero.lightMode")}</p>
-            </div>
-            <div
-              ref={comparisonContainerRef}
-              onMouseDown={() => setIsDragging(true)}
-              onMouseUp={() => setIsDragging(false)}
-              onMouseLeave={() => {
-                setIsDragging(false);
-                timelineRef.current?.play();
-              }}
-              onMouseMove={handleMove}
-              onTouchStart={() => setIsDragging(true)}
-              onTouchEnd={() => setIsDragging(false)}
-              onTouchMove={handleMove}
-              onMouseEnter={() => timelineRef.current?.pause()}
-              className="relative z-10 rounded-[2.5rem] overflow-hidden shadow-2xl border-[6px] border-white dark:border-gray-700 bg-white dark:bg-gray-800 aspect-video cursor-ew-resize transition-colors"
-            >
-              <div className="absolute inset-0 scale-105">
-                <img
-                  key={`back-${nextPairIndex}`}
-                  src={IMAGES[nextPairIndex]}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              </div>
-
-              <div
-                className="absolute inset-0 z-10 scale-105"
-                style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
-              >
-                <img
-                  key={`front-${index}`}
-                  src={IMAGES[index]}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              </div>
-
-              <div className="absolute top-0 bottom-0 z-20 w-1 bg-[#19b393]" style={{ left: `${sliderPos}%` }}>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 bg-gray-100 dark:bg-gray-700 rounded-full shadow-xl flex items-center justify-center text-white border-4 border-[#19b393]">
-                  <div className="flex gap-0.5" />
-                </div>
-              </div>
-
-              <div className="absolute bottom-0 left-0 w-full h-2 bg-black/5 dark:bg-white/10 z-30">
-                <div
-                  ref={progressRef}
-                  className="h-full bg-[#19b393] rounded-r-full scale-x-0 origin-left shadow-[0_0_15px_rgba(51, 116, 173,0.8)]"
-                />
-              </div>
-            </div>
-            <div className="absolute -top-10 -right-10 w-64 h-64 bg-[#19b393]/15 dark:bg-[#19b393]/10 rounded-full blur-3xl -z-10" />
-          </div>
+export default function Hero() {
+  const { t, i18n } = useTranslation();
+  const Arrow = i18n.dir() === 'rtl' ? ArrowUpLeft : ArrowUpRight;
+  const number = value => new Intl.NumberFormat(i18n.language === 'ar' ? 'ar-MA' : 'fr-MA').format(value);
+  return <section id="home" className="relative overflow-hidden bg-[#f0f6f3] pb-20 pt-32 dark:bg-[#152722] sm:pb-28 sm:pt-40">
+    <div aria-hidden="true" className="pointer-events-none absolute -end-44 -top-44 h-[600px] w-[600px] rounded-full border-[80px] border-emerald-200/20 dark:border-emerald-400/5" />
+    <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 sm:px-8 lg:grid-cols-2 lg:gap-16">
+      <div>
+        <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"><span className="h-2 w-2 rounded-full bg-emerald-500" />{t('landingHero.badge')}</p>
+        <h1 className="text-4xl font-black leading-[1.35] tracking-tight text-slate-900 dark:text-white sm:text-5xl lg:text-[3.5rem]">
+          <span className="block">{t('landingHero.title1')}</span><span className="block text-emerald-700 dark:text-emerald-400">{t('landingHero.title2')}</span>
+        </h1>
+        <p className="mt-6 max-w-xl text-base leading-8 text-slate-600 dark:text-slate-300 sm:text-lg">{t('landingHero.description')}</p>
+        <div className="mt-8 flex flex-wrap items-center gap-4">
+          <Link to="/LoginChoise" data-landing-login className="inline-flex items-center justify-center gap-3 rounded-2xl bg-emerald-700 px-6 py-4 font-bold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600">{t('landingHero.startNow')}<Arrow size={20} /></Link>
+          <a href="#about" className="rounded-xl px-2 py-3 text-sm font-bold text-slate-700 underline decoration-slate-300 underline-offset-8 hover:text-emerald-700 dark:text-slate-200">{t('landingHero.explore')}</a>
+        </div>
+        <div className="mt-9 flex flex-wrap gap-x-5 gap-y-3 border-t border-emerald-900/10 pt-6 text-xs font-semibold text-slate-600 dark:border-white/10 dark:text-slate-300">
+          {[['fabricTag', Ruler], ['barcodeTag', Barcode], ['tailoringTag', Scissors]].map(([key, Icon]) => <span key={key} className="inline-flex items-center gap-2">{createElement(Icon, { size: 16, className: 'text-emerald-700 dark:text-emerald-400' })}{t('landingHero.' + key)}</span>)}
         </div>
       </div>
-    </section>
-  );
-};
-
-export default Hero;
+      <div data-fabric-preview className="relative min-w-0 rounded-[2rem] border border-white bg-white p-4 shadow-[0_24px_80px_-30px_#194c3c55] dark:border-slate-700 dark:bg-slate-900 sm:p-6">
+        <div className="mb-5 flex items-center justify-between gap-3 border-b border-slate-100 pb-5 dark:border-slate-800">
+          <div className="flex min-w-0 items-center gap-3"><span className="rounded-xl bg-emerald-50 p-3 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"><Layers size={22} /></span><div><h2 className="font-black text-slate-900 dark:text-white">{t('landingHero.previewTitle')}</h2><p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('landingHero.previewHint')}</p></div></div>
+          <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">{t('landingHero.previewLabel')}</span>
+        </div>
+        <div className="mb-5 grid grid-cols-3 gap-2">
+          {[['types', number(3)], ['colors', number(12)], ['totalMeters', t('landingHero.meters', { value: number(96) })]].map(([key, value]) => <div key={key} className="rounded-2xl bg-[#f3f7f5] px-2 py-3 text-center dark:bg-slate-800"><p className="text-xl font-black text-emerald-800 dark:text-emerald-300">{value}</p><p className="mt-1 text-[10px] font-semibold leading-5 text-slate-500 dark:text-slate-400">{t('landingHero.' + key)}</p></div>)}
+        </div>
+        <div className="space-y-3">
+          {fabrics.map(fabric => <div key={fabric.key} className="flex items-center gap-3 rounded-2xl border border-slate-100 p-3 dark:border-slate-800">
+            <div aria-hidden="true" className="relative h-16 w-14 shrink-0 overflow-hidden rounded-xl shadow-inner" style={{ backgroundColor: fabric.colors[0], backgroundImage: 'repeating-linear-gradient(100deg, transparent 0 8px, #ffffff12 9px, #00000014 12px, transparent 17px)' }}><div className="absolute inset-x-0 top-0 h-3 rounded-[50%] border border-white/25 bg-black/10" /></div>
+            <div className="min-w-0 flex-1"><p className="text-sm font-bold text-slate-800 dark:text-slate-100">{t('landingHero.' + fabric.key)}</p><div aria-hidden="true" className="mt-2 flex gap-1.5">{fabric.colors.map(color => <span key={color} className="h-4 w-4 rounded-full border border-black/5 ring-2 ring-white dark:ring-slate-900" style={{ backgroundColor: color }} />)}</div></div>
+            <div className="shrink-0 text-end"><p className="text-sm font-black text-slate-800 dark:text-white">{t('landingHero.meters', { value: number(fabric.meters) })}</p><p className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400"><Check size={12} />{t('landingHero.available')}</p></div>
+          </div>)}
+        </div>
+        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-blue-50 p-3 dark:bg-blue-500/10"><Barcode size={34} className="shrink-0 text-blue-700 dark:text-blue-300" /><div><p className="text-xs font-bold text-blue-900 dark:text-blue-200">{t('landingHero.roll')} · {t('landingHero.meters', { value: number(24) })}</p><p className="mt-1 text-[11px] leading-5 text-blue-700 dark:text-blue-300">{t('landingHero.rollHint')}</p></div></div>
+      </div>
+    </div>
+  </section>;
+}
